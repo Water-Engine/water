@@ -11,11 +11,13 @@ SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
 
 ifeq ($(OS),Windows_NT)
+    SHELL := cmd.exe
     RM := del /Q
     MKDIR = if not exist "$(subst /,\\,$(1))" mkdir "$(subst /,\\,$(1))"
     SEP := \\
     EXE := .exe
 else
+    SHELL := /bin/sh
     RM := rm -f
     MKDIR = mkdir -p $(1)
     SEP := /
