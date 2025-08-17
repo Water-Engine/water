@@ -1,0 +1,68 @@
+training data:
+  label = euchre, content = can the upcard ever be the left bower
+  label = euchre, content = when would the dealer ever prefer a card to the upcard
+  label = euchre, content = bob played the same card twice is he cheating
+  label = euchre, content = how to remove a card from players hand
+  label = euchre, content = anyone want to play some euchre
+  label = calculator, content = how to assert rational invariants
+  label = calculator, content = does stack need its own big three
+  label = calculator, content = valgrind memory error not sure what it means
+trained on 8 examples
+vocabulary size = 49
+
+classes:
+  calculator, 3 examples, log-prior = -0.981
+  euchre, 5 examples, log-prior = -0.47
+classifier parameters:
+  calculator:assert, count = 1, log-likelihood = -1.1
+  calculator:big, count = 1, log-likelihood = -1.1
+  calculator:does, count = 1, log-likelihood = -1.1
+  calculator:error, count = 1, log-likelihood = -1.1
+  calculator:how, count = 1, log-likelihood = -1.1
+  calculator:invariants, count = 1, log-likelihood = -1.1
+  calculator:it, count = 1, log-likelihood = -1.1
+  calculator:its, count = 1, log-likelihood = -1.1
+  calculator:means, count = 1, log-likelihood = -1.1
+  calculator:memory, count = 1, log-likelihood = -1.1
+  calculator:need, count = 1, log-likelihood = -1.1
+  calculator:not, count = 1, log-likelihood = -1.1
+  calculator:own, count = 1, log-likelihood = -1.1
+  calculator:rational, count = 1, log-likelihood = -1.1
+  calculator:stack, count = 1, log-likelihood = -1.1
+  calculator:sure, count = 1, log-likelihood = -1.1
+  calculator:three, count = 1, log-likelihood = -1.1
+  calculator:to, count = 1, log-likelihood = -1.1
+  calculator:valgrind, count = 1, log-likelihood = -1.1
+  calculator:what, count = 1, log-likelihood = -1.1
+  euchre:a, count = 2, log-likelihood = -0.916
+  euchre:anyone, count = 1, log-likelihood = -1.61
+  euchre:be, count = 1, log-likelihood = -1.61
+  euchre:bob, count = 1, log-likelihood = -1.61
+  euchre:bower, count = 1, log-likelihood = -1.61
+  euchre:can, count = 1, log-likelihood = -1.61
+  euchre:card, count = 3, log-likelihood = -0.511
+  euchre:cheating, count = 1, log-likelihood = -1.61
+  euchre:dealer, count = 1, log-likelihood = -1.61
+  euchre:euchre, count = 1, log-likelihood = -1.61
+  euchre:ever, count = 2, log-likelihood = -0.916
+  euchre:from, count = 1, log-likelihood = -1.61
+  euchre:hand, count = 1, log-likelihood = -1.61
+  euchre:he, count = 1, log-likelihood = -1.61
+  euchre:how, count = 1, log-likelihood = -1.61
+  euchre:is, count = 1, log-likelihood = -1.61
+  euchre:left, count = 1, log-likelihood = -1.61
+  euchre:play, count = 1, log-likelihood = -1.61
+  euchre:played, count = 1, log-likelihood = -1.61
+  euchre:players, count = 1, log-likelihood = -1.61
+  euchre:prefer, count = 1, log-likelihood = -1.61
+  euchre:remove, count = 1, log-likelihood = -1.61
+  euchre:same, count = 1, log-likelihood = -1.61
+  euchre:some, count = 1, log-likelihood = -1.61
+  euchre:the, count = 3, log-likelihood = -0.511
+  euchre:to, count = 3, log-likelihood = -0.511
+  euchre:twice, count = 1, log-likelihood = -1.61
+  euchre:upcard, count = 2, log-likelihood = -0.916
+  euchre:want, count = 1, log-likelihood = -1.61
+  euchre:when, count = 1, log-likelihood = -1.61
+  euchre:would, count = 1, log-likelihood = -1.61
+
