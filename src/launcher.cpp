@@ -1,7 +1,7 @@
 #include <pch.hpp>
 
 #include "core.hpp"
-#include "game/fen.hpp"
+#include "game/board.hpp"
 #include "launcher.hpp"
 
 constexpr std::array<std::string_view, 3> POSITION_LABELS = {"position", "fen", "moves"};
