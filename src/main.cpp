@@ -1,5 +1,5 @@
-#include <iostream>
+#include "launcher.hpp"
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
+    launch();
 }
