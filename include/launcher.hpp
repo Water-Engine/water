@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <string>
 
 #include "bot.hpp"
@@ -8,7 +9,8 @@
 enum ParseResult
 {
     SUCCESS = 0,
-    FAILURE = 1,
+    EXIT = 1,
+    FAILURE = 2,
 };
 
 class Engine
@@ -19,8 +21,8 @@ class Engine
   public:
     Engine() : bot(Bot::create()) {}
     ParseResult process_line(const std::string &line);
-    void process_position_cmd(std::vector<std::string> &options);
-    void process_go_cmd(std::vector<std::string> &options);
+    void process_position_cmd(std::deque<std::string> &options);
+    void process_go_cmd(std::deque<std::string> &options);
 };
 
 void launch();

@@ -6,9 +6,11 @@ BIN_DIR := bin
 
 CXX ?= g++
 DEPFLAGS = -MMD -MP
-CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS)
+CXXFLAGS := -std=c++17 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS)
 
-SRCS := $(wildcard $(SRC_DIR)/*.cpp)
+rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
+
+SRCS := $(call rwildcard, $(SRC_DIR)/, *.cpp)
 OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
 HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
 
@@ -37,7 +39,7 @@ $(TARGET_BIN): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(HEADERS)
-	@$(call MKDIR,$(OBJ_DIR))
+	@$(call MKDIR,$(dir $@))
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 -include $(OBJS:.o=.d)
@@ -46,9 +48,13 @@ run: $(TARGET_BIN)
 	@$(TARGET_BIN)
 
 clean:
-	$(RM) $(OBJ_DIR)$(SEP)*.o
-	$(RM) $(OBJ_DIR)$(SEP)*.d
-	$(RM) $(TARGET_BIN)
+ifeq ($(OS),Windows_NT)
+	@if exist "$(OBJ_DIR)" rmdir /S /Q "$(OBJ_DIR)"
+	@if exist "$(BIN_DIR)$(SEP)$(TARGET)$(EXE)" del /Q "$(BIN_DIR)$(SEP)$(TARGET)$(EXE)"
+else
+	@rm -rf $(OBJ_DIR)
+	@rm -f $(TARGET_BIN)
+endif
 
 fmt:
 	clang-format -i $(FMT_SRCS)

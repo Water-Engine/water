@@ -15,7 +15,7 @@ void launch()
     Engine e;
     while (std::getline(std::cin, line))
     {
-        if (e.process_line(line) == FAILURE)
+        if (e.process_line(line) != SUCCESS)
             return;
     }
 }
@@ -46,20 +46,28 @@ ParseResult Engine::process_line(const std::string &line)
     }
     else if (cmd_lead == "position")
     {
+        process_position_cmd(words);
     }
     else if (cmd_lead == "go")
     {
+        process_go_cmd(words);
     }
     else if (cmd_lead == "d")
     {
+        fmt::println(bot->board_str());
     }
     else if (cmd_lead == "stop")
     {
+        bot->stop_thinking();
     }
     else if (cmd_lead == "quit")
     {
-        return FAILURE;
+        return EXIT;
     }
 
     return SUCCESS;
 }
+
+void Engine::process_position_cmd(std::deque<std::string> &options) {}
+
+void Engine::process_go_cmd(std::deque<std::string> &options) {}
