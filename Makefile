@@ -12,6 +12,8 @@ SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
 HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
 
+FMT_SRCS := $(SRCS) $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
+
 ifeq ($(OS),Windows_NT)
     SHELL := cmd.exe
     RM := del /Q
@@ -48,4 +50,16 @@ clean:
 	$(RM) $(OBJ_DIR)$(SEP)*.d
 	$(RM) $(TARGET_BIN)
 
-.PHONY: all clean run
+fmt:
+	clang-format -i $(FMT_SRCS)
+
+help:
+	@echo Usage: make [target]
+	@echo Targets:
+	@echo   all       - Build the project (default)
+	@echo   run       - Run the compiled program
+	@echo   clean     - Remove object files, dependency files, and binary
+	@echo   fmt       - Format all source and header files using clang-format
+	@echo   help      - Show this help message
+
+.PHONY: all clean run fmt help
