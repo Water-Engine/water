@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <deque>
+#include <vector>
 #include <algorithm>
 
 void launch()
@@ -12,28 +13,17 @@ void launch()
     std::string line;
     while (std::getline(std::cin, line))
     {
-        if (process_line(line) == FAILURE)
-        {
-            return;
-        }
+        if (process_line(line) == FAILURE) return;
     }
 }
 
 ParseResult process_line(const std::string &line)
 {
-    std::istringstream iss(line);
-    std::deque<std::string> words;
-    std::string word;
-    while (iss >> word)
-        words.push_back(word);
-
-    if (words.size() == 0)
-    {
-        return SUCCESS;
-    }
+    std::vector<std::string> input = str::split(line);
+    std::deque<std::string> words(input.begin(), input.end());
+    if (words.size() == 0) return SUCCESS;
 
     std::string cmd_lead = words[0];
-    
     words.pop_front();
 
     if (cmd_lead == "uci")
@@ -41,6 +31,7 @@ ParseResult process_line(const std::string &line)
     }
     else if (cmd_lead == "isready")
     {
+        fmt::println("readyok");
     }
     else if (cmd_lead == "ucinewgame")
     {

@@ -128,10 +128,16 @@ public:
         for (size_t i = 0; i < str.length(); i++)
         {
             if (str[i] == c)
-            {
-                return (int)i;
-            }
+                return static_cast<int>(i);
         }
+        return -1;
+    }
+
+    static int str_idx(const std::string &str, const std::string &substr)
+    {
+        size_t pos = str.find(substr);
+        if (pos != std::string::npos)
+            return static_cast<int>(pos);
         return -1;
     }
 
