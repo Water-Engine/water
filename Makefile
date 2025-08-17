@@ -53,23 +53,4 @@ clean:
 fmt:
 	clang-format -i $(FMT_SRCS)
 
-help:
-ifeq ($(OS),Windows_NT)
-	@echo Usage: make [target]
-	@echo Targets:
-	@echo   all       - Build the project (default)
-	@echo   run       - Run the compiled program
-	@echo   clean     - Remove object files, dependency files, and binary
-	@echo   fmt       - Format all source and header files using clang-format
-	@echo   help      - Show this help message
-else
-    @echo "Usage: make [target]"
-    @echo "Targets:"
-    @echo "  all       - Build the project (default)"
-    @echo "  run       - Run the compiled program"
-    @echo "  clean     - Remove object files, dependency files, and binary"
-    @echo "  fmt       - Format all source and header files using clang-format"
-    @echo "  help      - Show this help message"
-endif
-
-.PHONY: all clean run fmt help
+.PHONY: all clean run fmt

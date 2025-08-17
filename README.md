@@ -9,4 +9,3 @@ This project's source code and build system is designed such that it can be ran 
 - `run`: Run the compiled program
 - `clean`: Remove object files, dependency files, and binary
 - `fmt`: Format all source and header files using clang-format
-- `help`: Show this help message
