@@ -2,13 +2,15 @@ TARGET := water
 SRC_DIR := src
 INC_DIR := include
 OBJ_DIR := build
-BIN_DIR := .
+BIN_DIR := bin
 
 CXX ?= g++
-CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -I$(INC_DIR)
+DEPFLAGS = -MMD -MP
+CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS)
 
 SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
+HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
 
 ifeq ($(OS),Windows_NT)
     SHELL := cmd.exe
@@ -32,12 +34,18 @@ $(TARGET_BIN): $(OBJS)
 	@$(call MKDIR,$(BIN_DIR))
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(HEADERS)
 	@$(call MKDIR,$(OBJ_DIR))
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+-include $(OBJS:.o=.d)
+
+run: $(TARGET_BIN)
+	@$(TARGET_BIN)
+
 clean:
 	$(RM) $(OBJ_DIR)$(SEP)*.o
+	$(RM) $(OBJ_DIR)$(SEP)*.d
 	$(RM) $(TARGET_BIN)
 
-.PHONY: all clean
+.PHONY: all clean run
