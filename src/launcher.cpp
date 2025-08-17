@@ -1,33 +1,40 @@
 #include "launcher.hpp"
-#include "core.hpp"
 
-#include <iostream>
-#include <string>
-#include <sstream>
-#include <deque>
-#include <vector>
 #include <algorithm>
+#include <deque>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include "core.hpp"
 
 void launch()
 {
     std::string line;
+    Engine e;
     while (std::getline(std::cin, line))
     {
-        if (process_line(line) == FAILURE) return;
+        if (e.process_line(line) == FAILURE)
+            return;
     }
 }
 
-ParseResult process_line(const std::string &line)
+ParseResult Engine::process_line(const std::string &line)
 {
     std::vector<std::string> input = str::split(line);
     std::deque<std::string> words(input.begin(), input.end());
-    if (words.size() == 0) return SUCCESS;
+    if (words.size() == 0)
+        return SUCCESS;
 
     std::string cmd_lead = words[0];
     words.pop_front();
 
     if (cmd_lead == "uci")
     {
+        fmt::println("id name Water 0.0.1");
+        fmt::println("id author Trevor Swan");
+        fmt::println("uciok");
     }
     else if (cmd_lead == "isready")
     {
@@ -35,6 +42,7 @@ ParseResult process_line(const std::string &line)
     }
     else if (cmd_lead == "ucinewgame")
     {
+        bot->new_game();
     }
     else if (cmd_lead == "position")
     {

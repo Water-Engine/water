@@ -1,31 +1,30 @@
 #pragma once
 
-#include <string>
-#include <vector>
 #include <algorithm>
-#include <sstream>
 #include <iostream>
-#include <stdexcept>
+#include <memory>
 #include <optional>
-#include <variant>
+#include <sstream>
+#include <stdexcept>
+#include <string>
 #include <type_traits>
+#include <variant>
+#include <vector>
 
 // ================ MAKESHIFT TRAIT SYSTEM ================
 
-template <typename T, typename = void>
-struct is_container : std::false_type
+template <typename T, typename = void> struct is_container : std::false_type
 {
 };
 
 template <typename T>
-struct is_container<T, std::void_t<
-                           decltype(std::declval<T>().begin()),
-                           decltype(std::declval<T>().end())>> : std::true_type
+struct is_container<
+    T, std::void_t<decltype(std::declval<T>().begin()), decltype(std::declval<T>().end())>>
+    : std::true_type
 {
 };
 
-template <>
-struct is_container<std::string> : std::false_type
+template <> struct is_container<std::string> : std::false_type
 {
 };
 
@@ -33,7 +32,7 @@ struct is_container<std::string> : std::false_type
 
 class fmt
 {
-private:
+  private:
     template <typename T>
     static auto to_string_custom(const T &value)
         -> std::enable_if_t<!is_container<T>::value, std::string>
@@ -71,7 +70,8 @@ private:
     }
 
     template <typename T, typename... Args>
-    static void format_impl(std::ostringstream &oss, const std::string &s, size_t &pos, const T &first, const Args &...rest)
+    static void format_impl(std::ostringstream &oss, const std::string &s, size_t &pos,
+                            const T &first, const Args &...rest)
     {
         size_t placeholder = s.find("{}", pos);
         if (placeholder == std::string::npos)
@@ -83,8 +83,7 @@ private:
         format_impl(oss, s, pos, rest...);
     }
 
-    template <typename... Args>
-    static std::string format(const std::string &s, const Args &...args)
+    template <typename... Args> static std::string format(const std::string &s, const Args &...args)
     {
         std::ostringstream oss;
         size_t pos = 0;
@@ -92,37 +91,35 @@ private:
         return oss.str();
     }
 
-public:
-    template <typename... Args>
-    static void print(const std::string &s, const Args &...args)
+  public:
+    template <typename... Args> static void print(const std::string &s, const Args &...args)
     {
         std::cout << format(s, args...);
     }
 
-    template <typename... Args>
-    static void println(const std::string &s, const Args &...args)
+    template <typename... Args> static void println(const std::string &s, const Args &...args)
     {
         std::cout << format(s, args...) << std::endl;
     }
 
-    template <typename T>
-    static void print(const T &value)
+    template <typename T> static void print(const T &value)
     {
         std::cout << to_string_custom(value);
     }
 
-    template <typename T>
-    static void println(const T &value)
+    template <typename T> static void println(const T &value)
     {
         std::cout << to_string_custom(value) << std::endl;
     }
+
+    static void println() { std::cout << std::endl; }
 };
 
 // ================ STR UTILS UTILS ================
 
 class str
 {
-public:
+  public:
     static int char_idx(const std::string &str, const char c)
     {
         for (size_t i = 0; i < str.length(); i++)
@@ -143,26 +140,24 @@ public:
 
     static void to_lower(std::string &str)
     {
-        std::for_each(str.begin(), str.end(), [](char &c)
-                      { c = std::tolower(c); });
+        std::for_each(str.begin(), str.end(), [](char &c) { c = std::tolower(c); });
     }
 
     static void to_upper(std::string &str)
     {
-        std::for_each(str.begin(), str.end(), [](char &c)
-                      { c = std::toupper(c); });
+        std::for_each(str.begin(), str.end(), [](char &c) { c = std::toupper(c); });
     }
 
     static void ltrim(std::string &str)
     {
-        str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch)
-                                            { return !std::isspace(ch); }));
+        str.erase(str.begin(), std::find_if(str.begin(), str.end(),
+                                            [](unsigned char ch) { return !std::isspace(ch); }));
     }
 
     static void rtrim(std::string &str)
     {
-        str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch)
-                               { return !std::isspace(ch); })
+        str.erase(std::find_if(str.rbegin(), str.rend(),
+                               [](unsigned char ch) { return !std::isspace(ch); })
                       .base(),
                   str.end());
     }
@@ -239,8 +234,7 @@ inline bool contains(const std::string &s, const std::string &substr)
 // ================ DBG MACRO ================
 
 template <typename T>
-auto to_string_dbg(const T &value)
-    -> std::enable_if_t<!is_container<T>::value, std::string>
+auto to_string_dbg(const T &value) -> std::enable_if_t<!is_container<T>::value, std::string>
 {
     std::ostringstream oss;
     oss << value;
@@ -264,8 +258,7 @@ auto to_string_dbg(const Container &c)
     oss << "]";
     return oss.str();
 }
-template <typename... Args>
-std::string dbg_format(const Args &...args)
+template <typename... Args> std::string dbg_format(const Args &...args)
 {
     std::ostringstream oss;
     ((oss << to_string_dbg(args) << " "), ...);
@@ -273,18 +266,17 @@ std::string dbg_format(const Args &...args)
     return s;
 }
 
-#define DBG(...) \
+#define DBG(...)                                                                                   \
     std::cout << "[" << __FILE__ << ":" << __LINE__ << "] " << dbg_format(__VA_ARGS__) << std::endl;
 
 // ================ OPTION & RESULT TYPES ================
 
-template <typename T>
-class Option
+template <typename T> class Option
 {
-private:
+  private:
     std::optional<T> value;
 
-public:
+  public:
     Option() : value(std::nullopt) {}
     Option(const T &v) : value(v) {}
 
@@ -298,30 +290,20 @@ public:
         return *value;
     }
 
-    T unwrap_or(const T &default_value) const
-    {
-        return value.value_or(default_value);
-    }
+    T unwrap_or(const T &default_value) const { return value.value_or(default_value); }
 
-    friend bool operator==(const Option<T> &a, const Option<T> &b)
-    {
-        return a.value == b.value;
-    }
+    friend bool operator==(const Option<T> &a, const Option<T> &b) { return a.value == b.value; }
 
-    friend bool operator!=(const Option<T> &a, const Option<T> &b)
-    {
-        return !(a == b);
-    }
+    friend bool operator!=(const Option<T> &a, const Option<T> &b) { return !(a == b); }
 };
 
-template <typename T, typename E>
-class Result
+template <typename T, typename E> class Result
 {
-private:
+  private:
     std::variant<T, E> data;
     bool ok;
 
-public:
+  public:
     Result(const T &value) : data(value), ok(true) {}
     Result(const E &err) : data(err), ok(false) {}
 
@@ -352,8 +334,19 @@ public:
             return std::get<E>(a.data) == std::get<E>(b.data);
     }
 
-    friend bool operator!=(const Result<T, E> &a, const Result<T, E> &b)
-    {
-        return !(a == b);
-    }
+    friend bool operator!=(const Result<T, E> &a, const Result<T, E> &b) { return !(a == b); }
 };
+
+// ================ UNIQUE & SHARED POINTER WRAPPERS ================
+
+template <typename T> using Scope = std::unique_ptr<T>;
+template <typename T, typename... Args> constexpr Scope<T> CreateScope(Args &&...args)
+{
+    return std::make_unique<T>(std::forward<Args>(args)...);
+}
+
+template <typename T> using Ref = std::shared_ptr<T>;
+template <typename T, typename... Args> constexpr Ref<T> CreateRef(Args &&...args)
+{
+    return std::make_shared<T>(std::forward<Args>(args)...);
+}
