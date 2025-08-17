@@ -1,4 +1,5 @@
 #include "launcher.hpp"
+#include "core.hpp"
 
 #include <iostream>
 #include <string>
@@ -32,8 +33,7 @@ ParseResult process_line(const std::string &line)
     }
 
     std::string cmd_lead = words[0];
-    std::for_each(cmd_lead.begin(), cmd_lead.end(), [](char &c)
-                  { c = std::tolower(c); });
+    
     words.pop_front();
 
     if (cmd_lead == "uci")
