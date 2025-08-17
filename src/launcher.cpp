@@ -1,13 +1,7 @@
-#include "launcher.hpp"
-
-#include <algorithm>
-#include <deque>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <vector>
+#include <pch.hpp>
 
 #include "core.hpp"
+#include "launcher.hpp"
 
 void launch()
 {
@@ -62,12 +56,21 @@ ParseResult Engine::process_line(const std::string &line)
     }
     else if (cmd_lead == "quit")
     {
+        bot->quit();
         return EXIT;
     }
 
     return SUCCESS;
 }
 
-void Engine::process_position_cmd(std::deque<std::string> &options) {}
+Result<void, std::string> Engine::process_position_cmd(std::deque<std::string> &options)
+{
+    bool is_uci_str = contains(options, "startpos");
+    bool is_fen_str = contains(options, "fen");
+    return Result<void, std::string>();
+}
 
-void Engine::process_go_cmd(std::deque<std::string> &options) {}
+Result<void, std::string> Engine::process_go_cmd(std::deque<std::string> &options)
+{
+    return Result<void, std::string>();
+}

@@ -1,16 +1,5 @@
 #pragma once
 
-#include <algorithm>
-#include <iostream>
-#include <memory>
-#include <optional>
-#include <sstream>
-#include <stdexcept>
-#include <string>
-#include <type_traits>
-#include <variant>
-#include <vector>
-
 // ================ MAKESHIFT TRAIT SYSTEM ================
 
 template <typename T, typename = void> struct is_container : std::false_type
@@ -300,21 +289,40 @@ template <typename T> class Option
 template <typename T, typename E> class Result
 {
   private:
-    std::variant<T, E> data;
+    using ValueType = typename std::conditional<std::is_void<T>::value, std::monostate, T>::type;
+    std::variant<ValueType, E> data;
     bool ok;
 
   public:
-    Result(const T &value) : data(value), ok(true) {}
+    template <typename U = T, typename std::enable_if<!std::is_void<U>::value, int>::type = 0>
+    Result(const U &value) : data(value), ok(true)
+    {
+    }
+
+    template <typename U = T, typename std::enable_if<std::is_void<U>::value, int>::type = 0>
+    Result() : data(std::monostate{}), ok(true)
+    {
+    }
+
     Result(const E &err) : data(err), ok(false) {}
 
     bool is_ok() const { return ok; }
     bool is_err() const { return !ok; }
 
-    T unwrap() const
+    template <typename U = T>
+    typename std::enable_if<!std::is_void<U>::value, U>::type unwrap() const
     {
         if (!ok)
             throw std::runtime_error("Called unwrap on Err");
-        return std::get<T>(data);
+        return std::get<ValueType>(data);
+    }
+
+    template <typename U = T>
+    typename std::enable_if<std::is_void<U>::value, void>::type unwrap() const
+    {
+        if (!ok)
+            throw std::runtime_error("Called unwrap on Err");
+        return;
     }
 
     E unwrap_err() const
@@ -324,17 +332,16 @@ template <typename T, typename E> class Result
         return std::get<E>(data);
     }
 
-    friend bool operator==(const Result<T, E> &a, const Result<T, E> &b)
+    friend bool operator==(const Result &a, const Result &b)
     {
         if (a.ok != b.ok)
             return false;
-        else if (a.ok)
-            return std::get<T>(a.data) == std::get<T>(b.data);
-        else
-            return std::get<E>(a.data) == std::get<E>(b.data);
+        if (a.ok)
+            return a.data == b.data;
+        return std::get<E>(a.data) == std::get<E>(b.data);
     }
 
-    friend bool operator!=(const Result<T, E> &a, const Result<T, E> &b) { return !(a == b); }
+    friend bool operator!=(const Result &a, const Result &b) { return !(a == b); }
 };
 
 // ================ UNIQUE & SHARED POINTER WRAPPERS ================

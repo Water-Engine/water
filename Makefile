@@ -16,6 +16,9 @@ HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
 
 FMT_SRCS := $(SRCS) $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
 
+PCH := $(INC_DIR)/pch.hpp
+PCH_GCH := $(OBJ_DIR)/pch.hpp.gch
+
 ifeq ($(OS),Windows_NT)
     SHELL := cmd.exe
     RM := del /Q
@@ -34,13 +37,17 @@ TARGET_BIN := $(BIN_DIR)$(SEP)$(TARGET)$(EXE)
 
 all: $(TARGET_BIN)
 
+$(PCH_GCH): $(PCH)
+	@$(call MKDIR,$(OBJ_DIR))
+	$(CXX) $(CXXFLAGS) -x c++-header $(PCH) -o $(PCH_GCH)
+
 $(TARGET_BIN): $(OBJS)
 	@$(call MKDIR,$(BIN_DIR))
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(HEADERS)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(HEADERS) $(PCH_GCH)
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -include $(PCH) -c $< -o $@
 
 -include $(OBJS:.o=.d)
 

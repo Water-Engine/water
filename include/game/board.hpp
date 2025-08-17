@@ -1,10 +1,9 @@
-#include <string>
+#include "core.hpp"
 
 class Board
 {
-  private:
-
   public:
     Board() {}
+    
     std::string to_string();
 };

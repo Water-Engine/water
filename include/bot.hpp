@@ -6,14 +6,15 @@
 class Bot
 {
   private:
-    Bot() : board(CreateRef<Board>()) {}
     Ref<Board> board;
-    bool thinking = false;
+    bool thinking;
 
   public:
-    static Scope<Bot> create();
+    Bot() : board(CreateRef<Board>()), thinking(false) {}
 
     void new_game();
     void stop_thinking() { thinking = false; };
+    void quit() { stop_thinking(); }
+
     std::string board_str() { return board->to_string(); }
 };
