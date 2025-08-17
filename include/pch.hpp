@@ -5,17 +5,22 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <string_view>
 
 // Utilities
 #include <algorithm>
 #include <cassert>
+#include <climits>
 #include <memory>
+#include <numeric>
 #include <type_traits>
 #include <utility>
 
 // Containers
+#include <array>
 #include <deque>
 #include <optional>
+#include <span>
 #include <variant>
 #include <vector>
 
