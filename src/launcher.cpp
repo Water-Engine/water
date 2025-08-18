@@ -112,8 +112,12 @@ Option<int> try_get_labeled_int(const std::string& text, const std::string& labe
                                 std::span<const std::string_view> all_labels) {
     Option<std::string> maybe_string = try_get_labeled_string(text, label, all_labels);
     if (maybe_string.is_some()) {
-        int labeled_value = std::stoi(str::split(maybe_string.unwrap())[0]);
-        return Option<int>(labeled_value);
+        try {
+            int labeled_value = std::stoi(str::split(maybe_string.unwrap())[0]);
+            return Option<int>(labeled_value);
+        } catch (...) {
+            return Option<int>();
+        }
     }
 
     return Option<int>();

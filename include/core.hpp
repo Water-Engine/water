@@ -220,6 +220,10 @@ class str {
     static inline bool contains(const std::string& s, const std::string& substr) {
         return s.find(substr) != std::string::npos;
     }
+
+    static inline bool contains(const std::string& s, char c) {
+        return s.find(c) != std::string::npos;
+    }
 };
 
 // ================ GENERIC CONTAINER UTILS ================

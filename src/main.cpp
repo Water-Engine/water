@@ -2,4 +2,6 @@
 
 #include "launcher.hpp"
 
-int main() { launch(); }
+int main() { 
+    launch();
+}

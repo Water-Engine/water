@@ -9,3 +9,11 @@ This project's source code and build system is designed such that it can be ran 
 - `run`: Run the compiled program
 - `clean`: Remove object files, dependency files, and binary
 - `fmt`: Format all source and header files using clang-format
+
+# Formatting
+`clang-format` is used for formatting in this project, but I have also decided on custom formatting rules and naming conventions for this project.
+- All local variables should be written in snake_case
+- All constants should be written as CONSTANT_VALUE
+- Member variables should be written in m_PascalCase
+- Enum/Class names and enum variants should be written in PascalCase
+- All `if/for/while` code blocks should be wrapped in { curly braces }
