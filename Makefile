@@ -6,7 +6,7 @@ BIN_DIR := bin
 
 CXX ?= g++
 DEPFLAGS = -MMD -MP
-CXXFLAGS := -std=c++20 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS)
+CXXFLAGS := -std=c++20 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS)
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
@@ -68,4 +68,4 @@ endif
 fmt:
 	clang-format -i $(FMT_SRCS)
 
-.PHONY: all clean run fmt
+.PHONY: all run clean fmt

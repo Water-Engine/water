@@ -5,6 +5,7 @@
 #include "bitboard/bitboard.hpp"
 #include "game/move.hpp"
 #include "game/state.hpp"
+#include "game/piece.hpp"
 
 constexpr std::string_view STARTING_FEN =
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -46,7 +47,7 @@ class Coord {
 class PositionInfo {
   private:
     std::string m_Fen;
-    std::array<int, 64> m_Squares;
+    std::array<Piece, 64> m_Squares;
     bool m_WhiteToMove;
 
     bool m_WhiteCastleKingside;
@@ -59,7 +60,7 @@ class PositionInfo {
     int m_MoveClock;
 
   private:
-    PositionInfo(std::string fen, std::array<int, 64> squares, bool white_to_move, bool wck,
+    PositionInfo(std::string fen, std::array<Piece, 64> squares, bool white_to_move, bool wck,
                  bool wcq, bool bck, bool bcq, int ep, int halfmove_clock, int move_clock)
         : m_Fen(fen), m_Squares(squares), m_WhiteToMove(white_to_move), m_WhiteCastleKingside(wck),
           m_WhiteCastleQueenside(wcq), m_BlackCastleKingside(bck), m_BlackCastleQueenside(bcq),

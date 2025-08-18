@@ -25,6 +25,7 @@ class Piece {
     static inline Piece from_int(int value);
 
   public:
+    Piece() = default;
     Piece(PieceType piece_type, PieceColor piece_color)
         : m_Type(piece_type), m_Color(piece_color) {}
     Piece(int value);
@@ -70,9 +71,19 @@ class Piece {
         return static_cast<int>(PieceColor::Black) | static_cast<int>(PieceType::Pawn);
     }
 
-    inline int value() { return static_cast<int>(*this); };
-    inline const PieceType type() const { return m_Type; };
-    inline const PieceColor color() const { return m_Color; };
+    inline int value() const { return static_cast<int>(*this); }
+    inline PieceType type() const { return m_Type; };
+    inline PieceColor color() const { return m_Color; };
+
+    inline bool is_white() const { return m_Color == PieceColor::White; }
+    inline bool is_black() const { return m_Color == PieceColor::Black; }
+    inline bool is_rook() const { return m_Type == PieceType::Rook; }
+    inline bool is_knight() const { return m_Type == PieceType::Knight; }
+    inline bool is_bishop() const { return m_Type == PieceType::Bishop; }
+    inline bool is_queen() const { return m_Type == PieceType::Queen; }
+    inline bool is_king() const { return m_Type == PieceType::King; }
+    inline bool is_pawn() const { return m_Type == PieceType::Pawn; }
+    inline bool is_none() const { return value() == 0; }
 
     operator char() {
         char raw;
@@ -103,5 +114,5 @@ class Piece {
         return (m_Color == PieceColor::White) ? std::toupper(raw) : raw;
     }
 
-    operator int() { return static_cast<int>(m_Type) | static_cast<int>(m_Color); }
+    operator int() const { return static_cast<int>(m_Type) | static_cast<int>(m_Color); }
 };

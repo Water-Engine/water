@@ -15,6 +15,7 @@
 #include <numeric>
 #include <type_traits>
 #include <utility>
+#include <bitset>
 
 // Containers
 #include <array>

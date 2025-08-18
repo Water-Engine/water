@@ -18,4 +18,4 @@ int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black
     return 0;
 }
 
-Result<void, std::string> Bot::think_timed(int time_ms) { return Result<void, std::string>(); }
+Result<void, std::string> Bot::think_timed(int time_ms) { return Result<void, std::string>::Err("Not implemented"); }

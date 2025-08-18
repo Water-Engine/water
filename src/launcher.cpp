@@ -28,6 +28,9 @@ ParseResult Engine::process_line(const std::string& line) {
 
     std::string cmd_lead = words[0];
     words.pop_front();
+    if (words.size() == 0) {
+        return ParseResult::SUCCESS;
+    }
     std::string command = deque_join(words);
 
     if (cmd_lead == "uci") {
@@ -40,8 +43,9 @@ ParseResult Engine::process_line(const std::string& line) {
         m_Bot->new_game();
     } else if (cmd_lead == "position") {
         Result<void, std::string> result = process_position_cmd(command);
-        if (result.is_err())
+        if (result.is_err()) {
             fmt::println(result.unwrap_err());
+        }
     } else if (cmd_lead == "go") {
         process_go_cmd(command);
     } else if (cmd_lead == "d") {
@@ -133,6 +137,9 @@ Option<std::string> try_get_labeled_string(const std::string& text, const std::s
 
     int value_start = maybe_value_start + label.length() + 1;
     int value_end = trimmed.length();
+    if (value_start > static_cast<int>(trimmed.size())) {
+        return Option<std::string>();
+    }
 
     for (const auto& other_label : all_labels) {
         if (other_label != label) {

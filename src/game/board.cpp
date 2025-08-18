@@ -3,8 +3,6 @@
 #include "core.hpp"
 
 #include "game/board.hpp"
-#include "game/piece.hpp"
-#include "game/state.hpp"
 
 Coord::Coord(const std::string& square_string) {
     if (square_string.length() != 2) {
@@ -41,8 +39,8 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
     std::string& ep_square = sections[3];
 
     // Initialization
-    std::array<int, 64> squares;
-    squares.fill(0);
+    std::array<Piece, 64> squares;
+    squares.fill(Piece());
     bool white_to_move = true;
 
     bool wck = false;
@@ -66,7 +64,7 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
                 file += (int)c;
             } else {
                 Piece p(c);
-                squares[rank * 8 + file] = p.value();
+                squares[rank * 8 + file] = p;
                 file += 1;
             }
         }
@@ -120,7 +118,40 @@ void Board::load_from_position(const PositionInfo& pos) {
     m_AllMoves.reserve(pos.m_MoveClock);
     m_HalfmoveClock = pos.m_HalfmoveClock;
 
-    for (int square : pos.m_Squares) {
+    m_WhiteBB.clear();
+    m_BlackBB.clear();
+    m_RookBB.clear();
+    m_KnightBB.clear();
+    m_BishopBB.clear();
+    m_QueenBB.clear();
+    m_KingBB.clear();
+    m_PawnBB.clear();
+
+    for (size_t i = 0; i < pos.m_Squares.size(); i++) {
+        Piece piece = pos.m_Squares[i];
+        if (piece.is_none()) {
+            continue;
+        }
+
+        if (piece.is_white()) {
+            m_WhiteBB.set_bit(i);
+        } else if (piece.is_black()) {
+            m_BlackBB.set_bit(i);
+        }
+
+        if (piece.is_rook()) {
+            m_RookBB.set_bit(i);
+        } else if (piece.is_knight()) {
+            m_KnightBB.set_bit(i);
+        } else if (piece.is_bishop()) {
+            m_BishopBB.set_bit(i);
+        } else if (piece.is_queen()) {
+            m_QueenBB.set_bit(i);
+        } else if (piece.is_king()) {
+            m_KingBB.set_bit(i);
+        } else if (piece.is_pawn()) {
+            m_PawnBB.set_bit(i);
+        }
     }
 }
 
@@ -133,5 +164,5 @@ Result<void, std::string> Board::load_from_fen(const std::string& fen) {
     }
 
     load_from_position(maybe_pos.unwrap());
-    return Result<void, std::string>::Err("Im not finished");
+    return Result<void, std::string>();
 }
