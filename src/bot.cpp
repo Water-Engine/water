@@ -5,6 +5,7 @@
 void Bot::new_game() {}
 
 Result<void, std::string> Bot::set_position(const std::string& fen) {
+    m_Board->load_from_fen(fen);
     return Result<void, std::string>();
 }
 

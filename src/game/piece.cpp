@@ -1,0 +1,1 @@
+#include "game/piece.hpp"

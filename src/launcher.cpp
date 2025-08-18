@@ -13,7 +13,7 @@ void launch() {
     std::string line;
     Engine e;
     while (std::getline(std::cin, line)) {
-        if (e.process_line(line) != SUCCESS) {
+        if (e.process_line(line) != ParseResult::SUCCESS) {
             return;
         }
     }
@@ -23,7 +23,7 @@ ParseResult Engine::process_line(const std::string& line) {
     std::vector<std::string> input = str::split(line);
     std::deque<std::string> words(input.begin(), input.end());
     if (words.size() == 0) {
-        return SUCCESS;
+        return ParseResult::SUCCESS;
     }
 
     std::string cmd_lead = words[0];
@@ -37,7 +37,7 @@ ParseResult Engine::process_line(const std::string& line) {
     } else if (cmd_lead == "isready") {
         fmt::println("readyok");
     } else if (cmd_lead == "ucinewgame") {
-        bot->new_game();
+        m_Bot->new_game();
     } else if (cmd_lead == "position") {
         Result<void, std::string> result = process_position_cmd(command);
         if (result.is_err())
@@ -45,15 +45,15 @@ ParseResult Engine::process_line(const std::string& line) {
     } else if (cmd_lead == "go") {
         process_go_cmd(command);
     } else if (cmd_lead == "d") {
-        fmt::println(bot->board_str());
+        fmt::println(m_Bot->board_str());
     } else if (cmd_lead == "stop") {
-        bot->stop_thinking();
+        m_Bot->stop_thinking();
     } else if (cmd_lead == "quit") {
-        bot->quit();
-        return EXIT;
+        m_Bot->quit();
+        return ParseResult::EXIT;
     }
 
-    return SUCCESS;
+    return ParseResult::SUCCESS;
 }
 
 Result<void, std::string> Engine::process_position_cmd(const std::string& message) {
@@ -65,12 +65,12 @@ Result<void, std::string> Engine::process_position_cmd(const std::string& messag
     }
 
     if (is_uci_str) {
-        bot->set_position(str::from_view(STARTING_FEN));
+        m_Bot->set_position(str::from_view(STARTING_FEN));
     } else if (is_fen_str) {
         const auto maybe_custom_fen = try_get_labeled_string(message, "fen", POSITION_LABELS);
         if (maybe_custom_fen.is_some()) {
             std::string custom_fen = str::trim(maybe_custom_fen.unwrap());
-            bot->set_position(custom_fen);
+            m_Bot->set_position(custom_fen);
         }
     } else {
         return Result<void, std::string>::Err(
@@ -83,7 +83,7 @@ Result<void, std::string> Engine::process_position_cmd(const std::string& messag
         auto move_list = str::split(all_moves);
 
         for (const auto& move : move_list) {
-            bot->make_move(move);
+            m_Bot->make_move(move);
         }
     }
 
@@ -100,12 +100,12 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
         int increment_white_ms = try_get_labeled_int(message, "winc", GO_LABELS).unwrap_or(0);
         int increment_black_ms = try_get_labeled_int(message, "binc", GO_LABELS).unwrap_or(0);
 
-        int suggested = bot->choose_think_time(time_remaining_white_ms, time_remaining_black_ms,
+        int suggested = m_Bot->choose_think_time(time_remaining_white_ms, time_remaining_black_ms,
                                                increment_white_ms, increment_black_ms);
         think_time_ms = (suggested == 0) ? INT32_MAX : suggested;
     }
 
-    return bot->think_timed(think_time_ms);
+    return m_Bot->think_timed(think_time_ms);
 }
 
 Option<int> try_get_labeled_int(const std::string& text, const std::string& label,

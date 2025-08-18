@@ -3,7 +3,7 @@
 #include "bot.hpp"
 #include "core.hpp"
 
-enum ParseResult {
+enum class ParseResult {
     SUCCESS = 0,
     EXIT = 1,
     FAILURE = 2,
@@ -11,10 +11,10 @@ enum ParseResult {
 
 class Engine {
   private:
-    Scope<Bot> bot;
+    Scope<Bot> m_Bot;
 
   public:
-    Engine() : bot(CreateScope<Bot>()) {};
+    Engine() : m_Bot(CreateScope<Bot>()) {};
 
     ParseResult process_line(const std::string& line);
     Result<void, std::string> process_position_cmd(const std::string& options);
