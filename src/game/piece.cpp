@@ -44,30 +44,30 @@ inline Piece Piece::from_char(char c) {
 inline Piece Piece::from_int(int value) {
     switch (value) {
     case white_rook():
-        return Piece(Type::Rook, Color::White);
+        return Piece(PieceType::Rook, PieceColor::White);
     case white_knight():
-        return Piece(Type::Knight, Color::White);
+        return Piece(PieceType::Knight, PieceColor::White);
     case white_bishop():
-        return Piece(Type::Bishop, Color::White);
+        return Piece(PieceType::Bishop, PieceColor::White);
     case white_queen():
-        return Piece(Type::Queen, Color::White);
+        return Piece(PieceType::Queen, PieceColor::White);
     case white_king():
-        return Piece(Type::King, Color::White);
+        return Piece(PieceType::King, PieceColor::White);
     case white_pawn():
-        return Piece(Type::Pawn, Color::White);
+        return Piece(PieceType::Pawn, PieceColor::White);
 
     case black_rook():
-        return Piece(Type::Rook, Color::Black);
+        return Piece(PieceType::Rook, PieceColor::Black);
     case black_knight():
-        return Piece(Type::Knight, Color::Black);
+        return Piece(PieceType::Knight, PieceColor::Black);
     case black_bishop():
-        return Piece(Type::Bishop, Color::Black);
+        return Piece(PieceType::Bishop, PieceColor::Black);
     case black_queen():
-        return Piece(Type::Queen, Color::Black);
+        return Piece(PieceType::Queen, PieceColor::Black);
     case black_king():
-        return Piece(Type::King, Color::Black);
+        return Piece(PieceType::King, PieceColor::Black);
     case black_pawn():
-        return Piece(Type::Pawn, Color::Black);
+        return Piece(PieceType::Pawn, PieceColor::Black);
 
     default:
         return none();
@@ -77,5 +77,5 @@ inline Piece Piece::from_int(int value) {
 Piece::Piece(char c) {
     Piece p = from_char(c);
     m_Color = p.m_Color;
-    m_Type = p.m_Type; 
+    m_Type = p.m_Type;
 }

@@ -14,7 +14,9 @@ SRCS := $(call rwildcard, $(SRC_DIR)/, *.cpp)
 OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
 HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
 
-FMT_SRCS := $(SRCS) $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
+FMT_SRCS := $(SRCS) \
+            $(call rwildcard,$(INC_DIR)/,*.h) \
+            $(call rwildcard,$(INC_DIR)/,*.hpp)
 
 PCH := $(INC_DIR)/pch.hpp
 PCH_GCH := $(OBJ_DIR)/pch.hpp.gch

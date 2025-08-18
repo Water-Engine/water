@@ -101,7 +101,7 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
         int increment_black_ms = try_get_labeled_int(message, "binc", GO_LABELS).unwrap_or(0);
 
         int suggested = m_Bot->choose_think_time(time_remaining_white_ms, time_remaining_black_ms,
-                                               increment_white_ms, increment_black_ms);
+                                                 increment_white_ms, increment_black_ms);
         think_time_ms = (suggested == 0) ? INT32_MAX : suggested;
     }
 

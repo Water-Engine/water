@@ -1,96 +1,98 @@
 #pragma once
 
+enum class PieceType : uint8_t {
+    None = 0,
+    Rook = 1,
+    Knight = 2,
+    Bishop = 3,
+    Queen = 4,
+    King = 5,
+    Pawn = 6,
+};
+
+enum class PieceColor : uint8_t {
+    White = 0,
+    Black = 8,
+};
+
 class Piece {
   private:
-    enum class Type : uint8_t {
-        None = 0,
-        Rook = 1,
-        Knight = 2,
-        Bishop = 3,
-        Queen = 4,
-        King = 5,
-        Pawn = 6,
-    };
-
-    enum class Color : uint8_t {
-        White = 0,
-        Black = 8,
-    };
-
-  private:
-    Type m_Type;
-    Color m_Color;
+    PieceType m_Type;
+    PieceColor m_Color;
 
   private:
     static inline Piece from_char(char c);
     static inline Piece from_int(int value);
 
   public:
-    Piece(Type piece_type, Color piece_color) : m_Type(piece_type), m_Color(piece_color) {}
+    Piece(PieceType piece_type, PieceColor piece_color)
+        : m_Type(piece_type), m_Color(piece_color) {}
     Piece(int value);
     Piece(char c);
 
-    constexpr static inline int none() { return static_cast<int>(Type::None); }
+    constexpr static inline int none() { return static_cast<int>(PieceType::None); }
 
     constexpr static inline int white_rook() {
-        return static_cast<int>(Color::White) | static_cast<int>(Type::Rook);
+        return static_cast<int>(PieceColor::White) | static_cast<int>(PieceType::Rook);
     }
     constexpr static inline int white_knight() {
-        return static_cast<int>(Color::White) | static_cast<int>(Type::Knight);
+        return static_cast<int>(PieceColor::White) | static_cast<int>(PieceType::Knight);
     }
     constexpr static inline int white_bishop() {
-        return static_cast<int>(Color::White) | static_cast<int>(Type::Bishop);
+        return static_cast<int>(PieceColor::White) | static_cast<int>(PieceType::Bishop);
     }
     constexpr static inline int white_queen() {
-        return static_cast<int>(Color::White) | static_cast<int>(Type::Queen);
+        return static_cast<int>(PieceColor::White) | static_cast<int>(PieceType::Queen);
     }
     constexpr static inline int white_king() {
-        return static_cast<int>(Color::White) | static_cast<int>(Type::King);
+        return static_cast<int>(PieceColor::White) | static_cast<int>(PieceType::King);
     }
     constexpr static inline int white_pawn() {
-        return static_cast<int>(Color::White) | static_cast<int>(Type::Pawn);
+        return static_cast<int>(PieceColor::White) | static_cast<int>(PieceType::Pawn);
     }
 
     constexpr static inline int black_rook() {
-        return static_cast<int>(Color::Black) | static_cast<int>(Type::Rook);
+        return static_cast<int>(PieceColor::Black) | static_cast<int>(PieceType::Rook);
     }
     constexpr static inline int black_knight() {
-        return static_cast<int>(Color::Black) | static_cast<int>(Type::Knight);
+        return static_cast<int>(PieceColor::Black) | static_cast<int>(PieceType::Knight);
     }
     constexpr static inline int black_bishop() {
-        return static_cast<int>(Color::Black) | static_cast<int>(Type::Bishop);
+        return static_cast<int>(PieceColor::Black) | static_cast<int>(PieceType::Bishop);
     }
     constexpr static inline int black_queen() {
-        return static_cast<int>(Color::Black) | static_cast<int>(Type::Queen);
+        return static_cast<int>(PieceColor::Black) | static_cast<int>(PieceType::Queen);
     }
     constexpr static inline int black_king() {
-        return static_cast<int>(Color::Black) | static_cast<int>(Type::King);
+        return static_cast<int>(PieceColor::Black) | static_cast<int>(PieceType::King);
     }
     constexpr static inline int black_pawn() {
-        return static_cast<int>(Color::Black) | static_cast<int>(Type::Pawn);
+        return static_cast<int>(PieceColor::Black) | static_cast<int>(PieceType::Pawn);
     }
 
     inline int value() { return static_cast<int>(*this); };
+    inline const PieceType type() const { return m_Type; };
+    inline const PieceColor color() const { return m_Color; };
 
     operator char() {
         char raw;
         switch (m_Type) {
-        case Type::Rook:
+        case PieceType::Rook:
             raw = 'r';
             break;
-        case Type::Knight:
+        case PieceType::Knight:
             raw = 'n';
             break;
-        case Type::Bishop:
+        case PieceType::Bishop:
             raw = 'b';
             break;
-        case Type::Queen:
+        case PieceType::Queen:
             raw = 'q';
             break;
-        case Type::King:
+        case PieceType::King:
             raw = 'k';
             break;
-        case Type::Pawn:
+        case PieceType::Pawn:
             raw = 'p';
             break;
         default:
@@ -98,7 +100,7 @@ class Piece {
             break;
         }
 
-        return (m_Color == Color::White) ? std::toupper(raw) : raw;
+        return (m_Color == PieceColor::White) ? std::toupper(raw) : raw;
     }
 
     operator int() { return static_cast<int>(m_Type) | static_cast<int>(m_Color); }

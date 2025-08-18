@@ -1,8 +1,10 @@
 #include <pch.hpp>
 
 #include "core.hpp"
+
 #include "game/board.hpp"
 #include "game/piece.hpp"
+#include "game/state.hpp"
 
 Coord::Coord(const std::string& square_string) {
     if (square_string.length() != 2) {
@@ -20,6 +22,11 @@ Coord::Coord(int square) {
     m_RankIdx = square - m_FileIdx;
 }
 
+bool Coord::valid_square_idx() const {
+    int square_idx = square_idx_unchecked();
+    return (square_idx >= 0 && square_idx <= 63);
+}
+
 // Example: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen) {
     auto sections = str::split(fen);
@@ -31,7 +38,7 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
     std::string& position = sections[0];
     std::string& to_move = sections[1];
     std::string& castling_rights = sections[2];
-    std::string& ep_file = sections[3];
+    std::string& ep_square = sections[3];
 
     // Initialization
     std::array<int, 64> squares;
@@ -43,7 +50,7 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
     bool bck = false;
     bool bcq = false;
 
-    int ep = -1;
+    int ep_square_idx = -1;
     int halfmove_clock = 0;
     int move_clock = 0;
 
@@ -64,7 +71,7 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
             }
         }
     }
-    
+
     // Who's move is it
     if (to_move[0] == 'b') {
         white_to_move = false;
@@ -81,7 +88,7 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
         bcq = true;
     }
 
-    ep = Coord(ep_file).square_idx();
+    ep_square_idx = Coord(ep_square).square_idx();
 
     if (sections.size() >= 5) {
         try {
@@ -97,8 +104,24 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
         }
     }
 
-    PositionInfo p(fen, squares, white_to_move, wck, wcq, bck, bcq, ep, halfmove_clock, move_clock);
+    PositionInfo p(fen, squares, white_to_move, wck, wcq, bck, bcq, ep_square_idx, halfmove_clock,
+                   move_clock);
     return Result<PositionInfo, std::string>(p);
+}
+
+void Board::load_from_position(const PositionInfo& pos) {
+    m_StartPos = pos;
+    m_State = GameState(pos.m_WhiteCastleKingside, pos.m_WhiteCastleQueenside,
+                        pos.m_BlackCastleKingside, pos.m_BlackCastleQueenside, pos.m_EpSquare);
+    m_StateHistory.clear();
+    m_AllMoves.clear();
+    m_StateHistory.emplace_back(m_State);
+
+    m_AllMoves.reserve(pos.m_MoveClock);
+    m_HalfmoveClock = pos.m_HalfmoveClock;
+
+    for (int square : pos.m_Squares) {
+    }
 }
 
 std::string Board::to_string() { return std::string("Im not finished"); }
@@ -109,6 +132,6 @@ Result<void, std::string> Board::load_from_fen(const std::string& fen) {
         return Result<void, std::string>::Err(maybe_pos.unwrap_err());
     }
 
-    m_StartPos = maybe_pos.unwrap();
+    load_from_position(maybe_pos.unwrap());
     return Result<void, std::string>::Err("Im not finished");
 }
