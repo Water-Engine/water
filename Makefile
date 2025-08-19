@@ -20,7 +20,7 @@ TEST_BIN := $(BIN_ROOT)/tests/run_tests$(EXE)
 FMT_SRCS := $(SRCS) \
             $(call rwildcard,$(INC_DIR)/,*.h) \
             $(call rwildcard,$(INC_DIR)/,*.hpp) \
-			$(call rwildcard,$(TEST_DIR)/,*.cpp)
+			$(filter-out $(TEST_DIR)/test_framework/%, $(call rwildcard,$(TEST_DIR)/,*.cpp))
 
 PCH := $(INC_DIR)/pch.hpp
 

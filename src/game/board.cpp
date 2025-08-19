@@ -219,7 +219,7 @@ Result<void, std::string> Board::load_from_fen(const std::string& fen) {
     if (maybe_pos.is_err()) {
         return Result<void, std::string>::Err(maybe_pos.unwrap_err());
     }
-    
+
     load_from_position(maybe_pos.unwrap());
     return Result<void, std::string>();
 }

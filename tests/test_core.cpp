@@ -1,5 +1,5 @@
-#include <pch.hpp>
 #include "test_framework/catch_amalgamated.hpp"
+#include <pch.hpp>
 
 TEST_CASE("string content finding") {
     std::string test_string("Hello, World!");
@@ -66,4 +66,121 @@ TEST_CASE("string modification") {
     REQUIRE(str::trim(const_both) == "help");
     REQUIRE_FALSE(str::trim(const_both) == "    help    ");
     REQUIRE(str::trim("") == "");
+}
+
+TEST_CASE("string split") {
+    std::string str = "hello world test";
+    auto result = str::split(str);
+    REQUIRE(result.size() == 3);
+    REQUIRE(result[0] == "hello");
+    REQUIRE(result[1] == "world");
+    REQUIRE(result[2] == "test");
+
+    str = "one,two,three";
+    result = str::split(str, ',');
+    REQUIRE(result.size() == 3);
+    REQUIRE(result[0] == "one");
+    REQUIRE(result[1] == "two");
+    REQUIRE(result[2] == "three");
+
+    str = "apple--banana--cherry";
+    result = str::split(str, "--");
+    REQUIRE(result.size() == 3);
+    REQUIRE(result[0] == "apple");
+    REQUIRE(result[1] == "banana");
+    REQUIRE(result[2] == "cherry");
+
+    str = "aXXbXXc";
+    result = str::split(str, "XX");
+    REQUIRE(result.size() == 3);
+    REQUIRE(result[0] == "a");
+    REQUIRE(result[1] == "b");
+    REQUIRE(result[2] == "c");
+}
+
+TEST_CASE("vector contains") {
+    std::vector<int> v = {1, 2, 3, 4, 5};
+    REQUIRE(contains(v, 3) == true);
+    REQUIRE(contains(v, 6) == false);
+
+    std::vector<std::string> svec = {"apple", "banana", "cherry"};
+    REQUIRE(contains(svec, std::string("banana")) == true);
+    REQUIRE(contains(svec, std::string("pear")) == false);
+}
+
+TEST_CASE("deque contains") {
+    std::deque<int> d = {10, 20, 30};
+    REQUIRE(contains(d, 20) == true);
+    REQUIRE(contains(d, 40) == false);
+}
+
+TEST_CASE("deque_join") {
+    std::deque<std::string> d = {"hello", "world", "test"};
+    REQUIRE(deque_join(d) == "hello world test");
+
+    d = {"single"};
+    REQUIRE(deque_join(d) == "single");
+
+    d.clear();
+    REQUIRE(deque_join(d) == "");
+}
+
+TEST_CASE("option type") {
+    Option<int> none;
+    Option<int> some(42);
+
+    REQUIRE(none.is_none());
+    REQUIRE(!none.is_some());
+    REQUIRE(some.is_some());
+    REQUIRE(!some.is_none());
+
+    REQUIRE(some.unwrap() == 42);
+    REQUIRE(some.unwrap_or(10) == 42);
+    REQUIRE(none.unwrap_or(10) == 10);
+
+    REQUIRE((none != some));
+    REQUIRE((some == Option<int>(42)));
+
+    REQUIRE_THROWS_AS(none.unwrap(), illegal_unwrap);
+}
+
+TEST_CASE("non-void result type") {
+    Result<int, std::string> ok_result(100);
+    Result<int, std::string> err_result(std::string("fail"));
+
+    REQUIRE(ok_result.is_ok());
+    REQUIRE(!ok_result.is_err());
+    REQUIRE(err_result.is_err());
+    REQUIRE(!err_result.is_ok());
+
+    REQUIRE(ok_result.unwrap() == 100);
+    REQUIRE(err_result.unwrap_err() == "fail");
+
+    REQUIRE_THROWS_AS(err_result.unwrap(), illegal_unwrap);
+    REQUIRE_THROWS_AS(ok_result.unwrap_err(), illegal_unwrap);
+
+    REQUIRE(ok_result == Result<int, std::string>(100));
+    REQUIRE(err_result == Result<int, std::string>::Err("fail"));
+    REQUIRE(ok_result != err_result);
+}
+
+TEST_CASE("void result type") {
+    Result<void, std::string> ok_void = Result<void, std::string>::Ok();
+    Result<void, std::string> err_void = Result<void, std::string>::Err("error");
+
+    REQUIRE(ok_void.is_ok());
+    REQUIRE(!ok_void.is_err());
+    REQUIRE(err_void.is_err());
+    REQUIRE(!err_void.is_ok());
+
+    REQUIRE_NOTHROW(ok_void.unwrap());
+    REQUIRE_THROWS_AS(err_void.unwrap(), illegal_unwrap);
+    REQUIRE(err_void.unwrap_err() == "error");
+
+    auto a = Result<void, int>::Ok();
+    auto b = Result<void, int>::Ok();
+    auto c = Result<void, int>::Err(5);
+
+    REQUIRE(a == b);
+    REQUIRE(a != c);
 }

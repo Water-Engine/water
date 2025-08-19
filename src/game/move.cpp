@@ -10,7 +10,7 @@ Move::Move(int start_square, int target_square, int move_flag) {
 }
 
 Move::Move(Ref<Board> board, const std::string& move_uci) {
-    if (move_uci.length() < 4 ) {
+    if (move_uci.length() < 4) {
         m_Compact = 0;
         return;
     }
@@ -23,7 +23,7 @@ Move::Move(Ref<Board> board, const std::string& move_uci) {
     if (!start_coord.valid_square_idx() || !target_coord.valid_square_idx()) {
         m_Compact = 0;
         return;
-    } 
+    }
 
     Piece moved_piece = board->piece_at(start);
     int flag = NO_FLAG;

@@ -11,17 +11,17 @@
 #include <algorithm>
 #include <bitset>
 #include <cassert>
-#include <climits>
-#include <memory>
-#include <numeric>
-#include <random>
-#include <type_traits>
-#include <utility>
 #include <chrono>
+#include <climits>
 #include <fstream>
 #include <iomanip>
-#include <thread>
+#include <memory>
 #include <mutex>
+#include <numeric>
+#include <random>
+#include <thread>
+#include <type_traits>
+#include <utility>
 
 // Containers
 #include <array>

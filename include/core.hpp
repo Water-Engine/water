@@ -13,6 +13,17 @@ template <> struct is_container<std::string> : std::false_type {};
 
 // ================ PRETTY PRINT FORMATTING SUITE ================
 
+class format_error : public std::exception {
+  private:
+    std::string message;
+
+  public:
+    format_error() = delete;
+    explicit format_error(const std::string& msg) : message(msg) {}
+
+    const char* what() const noexcept override { return message.c_str(); }
+};
+
 class fmt {
   private:
     template <typename T>
@@ -42,7 +53,7 @@ class fmt {
 
     static inline void format_impl(std::ostringstream& oss, const std::string& s, size_t& pos) {
         if (s.find("{}", pos) != std::string::npos) {
-            throw std::runtime_error("Not enough arguments for format string");
+            throw format_error("Not enough arguments for format string");
         }
         oss << s.substr(pos);
     }
@@ -52,7 +63,7 @@ class fmt {
                             const T& first, const Args&... rest) {
         size_t placeholder = s.find("{}", pos);
         if (placeholder == std::string::npos) {
-            throw std::runtime_error("Too many arguments for format string");
+            throw format_error("Too many arguments for format string");
         }
         oss << s.substr(pos, placeholder - pos) << to_string_custom(first);
         pos = placeholder + 2;
@@ -102,8 +113,9 @@ class str {
 
     static int str_idx(const std::string& str, const std::string& substr) {
         size_t pos = str.find(substr);
-        if (pos != std::string::npos)
+        if (pos != std::string::npos) {
             return static_cast<int>(pos);
+        }
         return -1;
     }
 
@@ -148,7 +160,7 @@ class str {
         if (str.length() == 0) {
             return;
         }
-        
+
         str.erase(std::find_if(str.rbegin(), str.rend(),
                                [](unsigned char ch) { return !std::isspace(ch); })
                       .base(),
@@ -276,6 +288,7 @@ auto to_string_dbg(const Container& c)
     oss << "]";
     return oss.str();
 }
+
 template <typename... Args> std::string dbg_format(const Args&... args) {
     std::ostringstream oss;
     ((oss << to_string_dbg(args) << " "), ...);
@@ -287,6 +300,17 @@ template <typename... Args> std::string dbg_format(const Args&... args) {
     std::cout << "[" << __FILE__ << ":" << __LINE__ << "] " << dbg_format(__VA_ARGS__) << std::endl;
 
 // ================ OPTION & RESULT TYPES ================
+
+class illegal_unwrap : public std::exception {
+  private:
+    std::string message = "Called unwrap on improper variant";
+
+  public:
+    illegal_unwrap() = default;
+    explicit illegal_unwrap(const std::string& msg) : message(msg) {}
+
+    const char* what() const noexcept override { return message.c_str(); }
+};
 
 template <typename T> class Option {
   private:
@@ -301,16 +325,31 @@ template <typename T> class Option {
 
     T unwrap() const {
         if (!value.has_value()) {
-            throw std::runtime_error("Called unwrap on None");
+            throw illegal_unwrap("Called unwrap on None");
         }
         return *value;
     }
 
     T unwrap_or(const T& default_value) const { return value.value_or(default_value); }
 
+    std::string to_string() const {
+        if (is_some()) {
+            std::ostringstream oss;
+            oss << "Some(" << unwrap() << ")";
+            return oss.str();
+        } else {
+            return "None";
+        }
+    }
+
     friend bool operator==(const Option<T>& a, const Option<T>& b) { return a.value == b.value; }
 
     friend bool operator!=(const Option<T>& a, const Option<T>& b) { return !(a == b); }
+
+    friend std::ostream& operator<<(std::ostream& os, const Option<T>& opt) {
+        os << opt.to_string();
+        return os;
+    }
 };
 
 template <typename T, typename E> class Result {
@@ -337,7 +376,7 @@ template <typename T, typename E> class Result {
     template <typename U = T>
     typename std::enable_if<!std::is_void<U>::value, U>::type unwrap() const {
         if (!ok) {
-            throw std::runtime_error("Called unwrap on Err");
+            throw illegal_unwrap("Called unwrap on Err");
         }
         return std::get<ValueType>(data);
     }
@@ -345,16 +384,30 @@ template <typename T, typename E> class Result {
     template <typename U = T>
     typename std::enable_if<std::is_void<U>::value, void>::type unwrap() const {
         if (!ok) {
-            throw std::runtime_error("Called unwrap on Err");
+            throw illegal_unwrap("Called unwrap on Err");
         }
         return;
     }
 
     E unwrap_err() const {
         if (ok) {
-            throw std::runtime_error("Called unwrap_err on Ok");
+            throw illegal_unwrap("Called unwrap_err on Ok");
         }
         return std::get<E>(data);
+    }
+
+    std::string to_string() const {
+        std::ostringstream oss;
+        if (is_ok()) {
+            if constexpr (std::is_void_v<T>) {
+                oss << "Ok()";
+            } else {
+                oss << "Ok(" << unwrap() << ")";
+            }
+        } else {
+            oss << "Err(" << unwrap_err() << ")";
+        }
+        return oss.str();
     }
 
     friend bool operator==(const Result& a, const Result& b) {
@@ -368,6 +421,11 @@ template <typename T, typename E> class Result {
     }
 
     friend bool operator!=(const Result& a, const Result& b) { return !(a == b); }
+
+    friend std::ostream& operator<<(std::ostream& os, const Result<T, E>& res) {
+        os << res.to_string();
+        return os;
+    }
 };
 
 // ================ UNIQUE & SHARED POINTER WRAPPERS ================
