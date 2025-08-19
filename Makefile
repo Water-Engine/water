@@ -57,7 +57,10 @@ OBJS_DEBUG := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_DEBUG)/%.o,$(SRCS))
 PCH_GCH_DEBUG := $(OBJ_DIR_DEBUG)/pch.hpp.gch
 TARGET_BIN_DEBUG := $(BIN_DIR_DEBUG)/$(TARGET)$(EXE)
 
-all: release
+# ================ BUILD TARGETS ================
+default: release
+install: dist
+all: dist release debug
 dist: $(TARGET_BIN_DIST)
 release: $(TARGET_BIN_RELEASE)
 debug: $(TARGET_BIN_DEBUG)
@@ -101,10 +104,12 @@ $(PCH_GCH_DEBUG): $(PCH)
 	@$(call MKDIR,$(OBJ_DIR_DEBUG))
 	$(CXX) $(CXXFLAGS_DEBUG) -x c++-header $(PCH) -o $@
 
+# ================ INCLUDES ================
 -include $(OBJS_DIST:.o=.d)
 -include $(OBJS_RELEASE:.o=.d)
 -include $(OBJS_DEBUG:.o=.d)
 
+# ================ OTHER TARGETS ================
 run: run-release
 
 run-dist: $(TARGET_BIN_DIST)
@@ -128,4 +133,4 @@ endif
 fmt:
 	clang-format -i $(FMT_SRCS)
 
-.PHONY: all dist release debug run run-dist run-release run-debug clean fmt
+.PHONY: default install all dist release debug run run-dist run-release run-debug clean fmt
