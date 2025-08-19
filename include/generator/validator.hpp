@@ -1,7 +1,5 @@
 #pragma once
 
-#include "core.hpp"
-
 #include "bitboard/bitboard.hpp"
 
 const uint64_t A_FILE = 0x8080808080808080;

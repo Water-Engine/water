@@ -1,7 +1,5 @@
 #pragma once
 
-#include "core.hpp"
-
 #include "game/move.hpp"
 #include "game/piece.hpp"
 #include "game/state.hpp"

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "core.hpp"
-
 #include "bot.hpp"
 
 enum class ParseResult {

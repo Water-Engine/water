@@ -1,7 +1,5 @@
 #pragma once
 
-#include "core.hpp"
-
 enum class PieceType : uint8_t {
     None = 0,
     Rook = 1,

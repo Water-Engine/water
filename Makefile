@@ -1,17 +1,15 @@
 TARGET := water
 SRC_DIR := src
 INC_DIR := include
-OBJ_DIR := build
-BIN_DIR := bin
+BUILD_DIR := build
+BIN_ROOT := bin
 
 CXX ?= g++
 DEPFLAGS = -MMD -MP
-CXXFLAGS := -std=c++20 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS)
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
 SRCS := $(call rwildcard, $(SRC_DIR)/, *.cpp)
-OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
 HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
 
 FMT_SRCS := $(SRCS) \
@@ -19,53 +17,84 @@ FMT_SRCS := $(SRCS) \
             $(call rwildcard,$(INC_DIR)/,*.hpp)
 
 PCH := $(INC_DIR)/pch.hpp
-PCH_GCH := $(OBJ_DIR)/pch.hpp.gch
 
 ifeq ($(OS),Windows_NT)
     SHELL := cmd.exe
     RM := del /Q
     MKDIR = if not exist "$(subst /,\\,$(1))" mkdir "$(subst /,\\,$(1))"
-    SEP := \\
     EXE := .exe
 else
     SHELL := /bin/sh
     RM := rm -f
     MKDIR = mkdir -p $(1)
-    SEP := /
     EXE :=
 endif
 
-TARGET_BIN := $(BIN_DIR)$(SEP)$(TARGET)$(EXE)
+OBJ_DIR_RELEASE := $(BUILD_DIR)/release
+BIN_DIR_RELEASE := $(BIN_ROOT)/release
+CXXFLAGS_RELEASE := -std=c++20 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS)
 
-all: $(TARGET_BIN)
+OBJS_RELEASE := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_RELEASE)/%.o,$(SRCS))
+PCH_GCH_RELEASE := $(OBJ_DIR_RELEASE)/pch.hpp.gch
+TARGET_BIN_RELEASE := $(BIN_DIR_RELEASE)/$(TARGET)$(EXE)
 
-$(PCH_GCH): $(PCH)
-	@$(call MKDIR,$(OBJ_DIR))
-	$(CXX) $(CXXFLAGS) -x c++-header $(PCH) -o $(PCH_GCH)
+OBJ_DIR_DEBUG := $(BUILD_DIR)/debug
+BIN_DIR_DEBUG := $(BIN_ROOT)/debug
+CXXFLAGS_DEBUG := -std=c++20 -O0 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DPROFILE
 
-$(TARGET_BIN): $(OBJS)
-	@$(call MKDIR,$(BIN_DIR))
-	$(CXX) $(CXXFLAGS) -o $@ $^
+OBJS_DEBUG := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_DEBUG)/%.o,$(SRCS))
+PCH_GCH_DEBUG := $(OBJ_DIR_DEBUG)/pch.hpp.gch
+TARGET_BIN_DEBUG := $(BIN_DIR_DEBUG)/$(TARGET)$(EXE)
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(HEADERS) $(PCH_GCH)
+all: release
+release: $(TARGET_BIN_RELEASE)
+debug: $(TARGET_BIN_DEBUG)
+
+$(TARGET_BIN_RELEASE): $(OBJS_RELEASE)
+	@$(call MKDIR,$(BIN_DIR_RELEASE))
+	$(CXX) $(CXXFLAGS_RELEASE) -o $@ $^
+
+$(TARGET_BIN_DEBUG): $(OBJS_DEBUG)
+	@$(call MKDIR,$(BIN_DIR_DEBUG))
+	$(CXX) $(CXXFLAGS_DEBUG) -o $@ $^
+
+$(OBJ_DIR_RELEASE)/%.o: $(SRC_DIR)/%.cpp $(HEADERS) $(PCH_GCH_RELEASE)
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS) -include $(PCH) -c $< -o $@
+	$(CXX) $(CXXFLAGS_RELEASE) -include $(PCH) -c $< -o $@
 
--include $(OBJS:.o=.d)
+$(OBJ_DIR_DEBUG)/%.o: $(SRC_DIR)/%.cpp $(HEADERS) $(PCH_GCH_DEBUG)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_DEBUG) -include $(PCH) -c $< -o $@
 
-run: $(TARGET_BIN)
-	@$(TARGET_BIN)
+$(PCH_GCH_RELEASE): $(PCH)
+	@$(call MKDIR,$(OBJ_DIR_RELEASE))
+	$(CXX) $(CXXFLAGS_RELEASE) -x c++-header $(PCH) -o $@
+
+$(PCH_GCH_DEBUG): $(PCH)
+	@$(call MKDIR,$(OBJ_DIR_DEBUG))
+	$(CXX) $(CXXFLAGS_DEBUG) -x c++-header $(PCH) -o $@
+
+-include $(OBJS_RELEASE:.o=.d)
+-include $(OBJS_DEBUG:.o=.d)
+
+run: run-release
+
+run-release: $(TARGET_BIN_RELEASE)
+	@$(TARGET_BIN_RELEASE)
+
+run-debug: $(TARGET_BIN_DEBUG)
+	@$(TARGET_BIN_DEBUG)
 
 clean:
 ifeq ($(OS),Windows_NT)
-	@if exist "$(OBJ_DIR)" rmdir /S /Q "$(OBJ_DIR)"
-	@if exist "$(BIN_DIR)$(SEP)$(TARGET)$(EXE)" del /Q "$(BIN_DIR)$(SEP)$(TARGET)$(EXE)"
+	@if exist "$(BUILD_DIR)" rmdir /S /Q "$(BUILD_DIR)"
+	@if exist "$(BIN_ROOT)" rmdir /S /Q "$(BIN_ROOT)"
 else
-	@rm -rf $(OBJ_DIR)
-	@rm -f $(TARGET_BIN)
+	@rm -rf $(BUILD_DIR)
+	@rm -rf $(BIN_ROOT)
 endif
 
 fmt:
 	clang-format -i $(FMT_SRCS)
 
-.PHONY: all run clean fmt
+.PHONY: all release debug run clean fmt

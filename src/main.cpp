@@ -2,4 +2,8 @@
 
 #include "launcher.hpp"
 
-int main() { launch(); }
+int main() {
+    PROFILE_BEGIN_SESSION("Main", "Water-Main.json");
+    launch();
+    PROFILE_END_SESSION();
+}

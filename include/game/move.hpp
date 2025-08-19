@@ -1,7 +1,5 @@
 #pragma once
 
-#include "core.hpp"
-
 #include "game/piece.hpp"
 
 const uint16_t START_SQUARE_MASK = 0b0000000000111111;

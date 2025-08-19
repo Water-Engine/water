@@ -17,6 +17,10 @@
 #include <random>
 #include <type_traits>
 #include <utility>
+#include <chrono>
+#include <fstream>
+#include <iomanip>
+#include <thread>
 
 // Containers
 #include <array>
@@ -28,5 +32,8 @@
 
 // Exceptions
 #include <stdexcept>
+
+// Custom
+#include "core.hpp"
 
 #endif // WATER_PCH

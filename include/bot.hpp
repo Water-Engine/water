@@ -1,7 +1,5 @@
 #pragma once
 
-#include "core.hpp"
-
 #include "game/board.hpp"
 
 class Bot {

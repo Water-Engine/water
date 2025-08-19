@@ -1,7 +1,5 @@
 #pragma once
 
-#include "core.hpp"
-
 class GameState {
   private:
     bool m_WhiteCastleKingside;
