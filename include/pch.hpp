@@ -21,6 +21,7 @@
 #include <fstream>
 #include <iomanip>
 #include <thread>
+#include <mutex>
 
 // Containers
 #include <array>
