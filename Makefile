@@ -1,6 +1,7 @@
 TARGET := water
 SRC_DIR := src
 INC_DIR := include
+TEST_DIR := tests
 BUILD_DIR := build
 BIN_ROOT := bin
 
@@ -12,18 +13,16 @@ rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst 
 SRCS := $(call rwildcard, $(SRC_DIR)/, *.cpp)
 HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
 
+TEST_SRCS := $(wildcard $(TEST_DIR)/*.cpp)
+TEST_OBJS := $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/tests/%.o,$(TEST_SRCS))
+TEST_BIN := $(BIN_ROOT)/tests/run_tests$(EXE)
+
 FMT_SRCS := $(SRCS) \
             $(call rwildcard,$(INC_DIR)/,*.h) \
             $(call rwildcard,$(INC_DIR)/,*.hpp) \
 			$(call rwildcard,$(TEST_DIR)/,*.cpp)
 
 PCH := $(INC_DIR)/pch.hpp
-
-# ================ UNIT TEST SUPPORT ================
-TEST_DIR := tests
-TEST_SRCS := $(wildcard $(TEST_DIR)/*.cpp)
-TEST_OBJS := $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/tests/%.o,$(TEST_SRCS))
-TEST_BIN := $(BIN_ROOT)/tests/run_tests$(EXE)
 
 # ================ CROSS PLATFORM SUPPORT ================
 ifeq ($(OS),Windows_NT)
@@ -77,13 +76,21 @@ test: $(TEST_BIN)
 	@$(TEST_BIN)
 
 # ================ TESTING BUILD ================
+TEST_OBJS := $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/tests/%.o,$(TEST_SRCS))
+CATCH_OBJ := $(BUILD_DIR)/tests/catch_amalgamated.o
+LIB_OBJS_FOR_TESTS := $(filter-out $(OBJ_DIR_DEBUG)/main.o,$(OBJS_DEBUG))
+
 $(BUILD_DIR)/tests/%.o: $(TEST_DIR)/%.cpp $(HEADERS) $(PCH_GCH_DEBUG)
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_DEBUG) -include $(PCH) -I$(INC_DIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS_DEBUG) -include $(PCH) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
 
-$(TEST_BIN): $(TEST_OBJS) $(OBJS_DEBUG)
+$(CATCH_OBJ): $(TEST_DIR)/test_framework/catch_amalgamated.cpp
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_DEBUG) -I$(INC_DIR) -o $@ $^
+	$(CXX) $(CXXFLAGS_DEBUG) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
+
+$(TEST_BIN): $(CATCH_OBJ) $(TEST_OBJS) $(LIB_OBJS_FOR_TESTS)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_DEBUG) -o $@ $^
 
 # ================ BINARY DIRECTORIES ================
 $(TARGET_BIN_DIST): $(OBJS_DIST)
