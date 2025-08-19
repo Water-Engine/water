@@ -136,11 +136,19 @@ class str {
     }
 
     static void ltrim(std::string& str) {
+        if (str.length() == 0) {
+            return;
+        }
+
         str.erase(str.begin(), std::find_if(str.begin(), str.end(),
                                             [](unsigned char ch) { return !std::isspace(ch); }));
     }
 
     static void rtrim(std::string& str) {
+        if (str.length() == 0) {
+            return;
+        }
+        
         str.erase(std::find_if(str.rbegin(), str.rend(),
                                [](unsigned char ch) { return !std::isspace(ch); })
                       .base(),

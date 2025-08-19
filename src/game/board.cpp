@@ -82,7 +82,7 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
             rank -= 1;
         } else {
             if (std::isdigit(c)) {
-                file += (int)c;
+                file += c - '0';
             } else {
                 Piece p(c);
                 squares[rank * 8 + file] = p;
@@ -130,29 +130,6 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
 
 // ================ BOARD ================
 
-void Board::reset() {
-    m_StartPos = PositionInfo{};
-
-    m_StoredPieces.fill(Piece());
-
-    m_WhiteBB.clear();
-    m_BlackBB.clear();
-    m_PawnBB.clear();
-    m_KnightBB.clear();
-    m_BishopBB.clear();
-    m_RookBB.clear();
-    m_QueenBB.clear();
-    m_KingBB.clear();
-
-    m_State = GameState{};
-    m_WhiteToMove = true;
-
-    m_StateHistory.clear();
-    m_AllMoves.clear();
-
-    m_HalfmoveClock = 0;
-}
-
 void Board::load_from_position(const PositionInfo& pos) {
     reset();
 
@@ -194,6 +171,29 @@ void Board::load_from_position(const PositionInfo& pos) {
     }
 }
 
+void Board::reset() {
+    m_StartPos = PositionInfo{};
+
+    m_StoredPieces.fill(Piece());
+
+    m_WhiteBB.clear();
+    m_BlackBB.clear();
+    m_PawnBB.clear();
+    m_KnightBB.clear();
+    m_BishopBB.clear();
+    m_RookBB.clear();
+    m_QueenBB.clear();
+    m_KingBB.clear();
+
+    m_State = GameState{};
+    m_WhiteToMove = true;
+
+    m_StateHistory.clear();
+    m_AllMoves.clear();
+
+    m_HalfmoveClock = 0;
+}
+
 std::string Board::to_string() {
     std::ostringstream oss;
     oss << m_AllMoves.size();
@@ -219,7 +219,7 @@ Result<void, std::string> Board::load_from_fen(const std::string& fen) {
     if (maybe_pos.is_err()) {
         return Result<void, std::string>::Err(maybe_pos.unwrap_err());
     }
-
+    
     load_from_position(maybe_pos.unwrap());
     return Result<void, std::string>();
 }

@@ -10,7 +10,7 @@ Move::Move(int start_square, int target_square, int move_flag) {
 }
 
 Move::Move(Ref<Board> board, const std::string& move_uci) {
-    if (move_uci.length() < 4) {
+    if (move_uci.length() < 4 ) {
         m_Compact = 0;
         return;
     }
@@ -20,12 +20,17 @@ Move::Move(Ref<Board> board, const std::string& move_uci) {
     Coord target_coord(move_uci.substr(2, 2));
     int target = target_coord.square_idx();
 
+    if (!start_coord.valid_square_idx() || !target_coord.valid_square_idx()) {
+        m_Compact = 0;
+        return;
+    } 
+
     Piece moved_piece = board->piece_at(start);
     int flag = NO_FLAG;
 
     if (moved_piece.type() == PieceType::Pawn) {
         if (move_uci.length() > 4) {
-            flag = flag_from_promotion_char(move_uci[4]);
+            flag = flag_from_promotion_char(move_uci[move_uci.length() - 1]);
         } else if (std::abs(start_coord.rank_idx() - target_coord.rank_idx()) == 2) {
             flag = PAWN_TWO_UP_FLAG;
         } else if ((start_coord.file_idx() != target_coord.file_idx()) &&

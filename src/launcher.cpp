@@ -153,11 +153,18 @@ Option<std::string> try_get_labeled_string(const std::string& text, const std::s
         }
     }
 
-    if (value_start >= value_end) {
+    if (value_start == -1 || value_end == -1) {
         return Option<std::string>();
     }
 
-    std::string substring(trimmed.begin() + value_start, trimmed.begin() + value_end);
+    auto substr_start = trimmed.begin() + value_start;
+    auto substr_end = trimmed.begin() + value_end;
+
+    if (value_start >= value_end || substr_start >= substr_end) {
+        return Option<std::string>();
+    }
+
+    std::string substring(substr_start, substr_end);
     str::trim(substring);
     return Option<std::string>(substring);
 }

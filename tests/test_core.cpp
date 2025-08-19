@@ -47,6 +47,7 @@ TEST_CASE("string modification") {
     REQUIRE(left == "help ");
     REQUIRE(str::ltrim(const_left) == "help ");
     REQUIRE_FALSE(str::ltrim(const_left) == "    help ");
+    REQUIRE(str::ltrim("") == "");
 
     std::string right(" help    ");
     const std::string const_right(right);
@@ -55,6 +56,7 @@ TEST_CASE("string modification") {
     REQUIRE(right == " help");
     REQUIRE(str::rtrim(const_right) == " help");
     REQUIRE_FALSE(str::rtrim(const_right) == " help    ");
+    REQUIRE(str::rtrim("") == "");
 
     std::string both("    help    ");
     const std::string const_both(both);
@@ -63,4 +65,5 @@ TEST_CASE("string modification") {
     REQUIRE(both == "help");
     REQUIRE(str::trim(const_both) == "help");
     REQUIRE_FALSE(str::trim(const_both) == "    help    ");
+    REQUIRE(str::trim("") == "");
 }
