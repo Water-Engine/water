@@ -14,10 +14,18 @@ HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
 
 FMT_SRCS := $(SRCS) \
             $(call rwildcard,$(INC_DIR)/,*.h) \
-            $(call rwildcard,$(INC_DIR)/,*.hpp)
+            $(call rwildcard,$(INC_DIR)/,*.hpp) \
+			$(call rwildcard,$(TEST_DIR)/,*.cpp)
 
 PCH := $(INC_DIR)/pch.hpp
 
+# ================ UNIT TEST SUPPORT ================
+TEST_DIR := tests
+TEST_SRCS := $(wildcard $(TEST_DIR)/*.cpp)
+TEST_OBJS := $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/tests/%.o,$(TEST_SRCS))
+TEST_BIN := $(BIN_ROOT)/tests/run_tests$(EXE)
+
+# ================ CROSS PLATFORM SUPPORT ================
 ifeq ($(OS),Windows_NT)
     SHELL := cmd.exe
     RM := del /Q
@@ -64,6 +72,18 @@ all: dist release debug
 dist: $(TARGET_BIN_DIST)
 release: $(TARGET_BIN_RELEASE)
 debug: $(TARGET_BIN_DEBUG)
+
+test: $(TEST_BIN)
+	@$(TEST_BIN)
+
+# ================ TESTING BUILD ================
+$(BUILD_DIR)/tests/%.o: $(TEST_DIR)/%.cpp $(HEADERS) $(PCH_GCH_DEBUG)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_DEBUG) -include $(PCH) -I$(INC_DIR) -c $< -o $@
+
+$(TEST_BIN): $(TEST_OBJS) $(OBJS_DEBUG)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_DEBUG) -I$(INC_DIR) -o $@ $^
 
 # ================ BINARY DIRECTORIES ================
 $(TARGET_BIN_DIST): $(OBJS_DIST)
@@ -133,4 +153,4 @@ endif
 fmt:
 	clang-format -i $(FMT_SRCS)
 
-.PHONY: default install all dist release debug run run-dist run-release run-debug clean fmt
+.PHONY: default install all dist release debug test run run-dist run-release run-debug clean fmt
