@@ -503,7 +503,7 @@ class InstrumentationTimer {
     bool m_Stopped;
 };
 
-// In the case that you would like to profile regardless of debug/release preferences, uncomment this
+// In the case that you would like to profile regardless of build mode, uncomment this
 // #define PROFILE
 
 #ifdef PROFILE
