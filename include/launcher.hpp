@@ -1,7 +1,8 @@
 #pragma once
 
-#include "bot.hpp"
 #include "core.hpp"
+
+#include "bot.hpp"
 
 enum class ParseResult {
     SUCCESS = 0,

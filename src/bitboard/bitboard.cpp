@@ -2,6 +2,8 @@
 
 #include "bitboard/bitboard.hpp"
 
+#include "game/board.hpp"
+
 void Bitboard::set_bit(int bit_to_set) {
     if (bit_to_set < 0 || bit_to_set > 63) {
         return;
@@ -27,4 +29,24 @@ int Bitboard::pop_lsb(uint64_t& value) {
     value &= (value - 1);
 
     return index;
+}
+
+int Bitboard::bit_value_at(int index) {
+    if (!Coord::valid_square_idx(index)) {
+        return -1;
+    }
+
+    return (m_BBoard >> index) & 1;
+}
+
+std::string Bitboard::bin_str() const {
+    std::bitset<64> binary(m_BBoard);
+    std::string binary_str = binary.to_string();
+    std::ostringstream oss;
+
+    for (size_t i = 0; i < binary_str.length(); i += 8) {
+        oss << binary_str.substr(i, 8) << " ";
+    }
+
+    return oss.str();
 }

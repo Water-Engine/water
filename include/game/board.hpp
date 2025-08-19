@@ -2,10 +2,11 @@
 
 #include "core.hpp"
 
-#include "bitboard/bitboard.hpp"
 #include "game/move.hpp"
-#include "game/state.hpp"
 #include "game/piece.hpp"
+#include "game/state.hpp"
+
+#include "bitboard/bitboard.hpp"
 
 constexpr std::string_view STARTING_FEN =
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -26,18 +27,26 @@ class Coord {
     Coord(int file_idx, int rank_idx) : m_FileIdx(file_idx), m_RankIdx(rank_idx) {}
 
     Coord(const std::string& square_string);
-    Coord(int square);
+    Coord(int square) : m_FileIdx(file_from_square(square)), m_RankIdx(rank_from_square(square)) {}
 
     int file_idx() const { return m_FileIdx; }
     int rank_idx() const { return m_RankIdx; }
     int square_idx() const { return valid_square_idx() ? square_idx_unchecked() : -1; }
-    static int file_from_square();
-    static int rank_from_square();
+
+    static int file_from_square(int square_idx) { return square_idx & 0b000111; }
+    static int rank_from_square(int square_idx) { return square_idx >> 3; }
+
+    bool is_light_square() const { return (m_FileIdx + m_RankIdx) % 2 != 0; }
+
     bool valid_square_idx() const;
+    static bool valid_square_idx(int square_idx);
+
+    std::string as_str() const;
+    static std::string as_str(int square_idx);
 };
 
 /*
- * Reading:
+ * General Reading:
  * Bitboard information: https://www.chessprogramming.org/Bitboards#The_Board_of_Sets
  * High-level Overview:
  * https://dev.to/namanvashistha/building-a-modern-chess-engine-a-deep-dive-into-bitboard-based-move-generation-345d
@@ -77,6 +86,8 @@ class Board {
   private:
     PositionInfo m_StartPos;
 
+    std::array<Piece, 64> m_StoredPieces;
+
     Bitboard m_WhiteBB;
     Bitboard m_BlackBB;
     Bitboard m_PawnBB;
@@ -87,6 +98,7 @@ class Board {
     Bitboard m_KingBB;
 
     GameState m_State;
+    bool m_WhiteToMove;
 
     std::deque<GameState> m_StateHistory;
     std::vector<Move> m_AllMoves;
@@ -95,10 +107,25 @@ class Board {
 
   private:
     void load_from_position(const PositionInfo& pos);
+    void reset();
 
   public:
     Board() {}
 
+    bool is_white_to_move() const { return m_WhiteToMove; }
+    PieceColor friendly_color() const {
+        return is_white_to_move() ? PieceColor::White : PieceColor::Black;
+    }
+    PieceColor opponent_color() const {
+        return is_white_to_move() ? PieceColor::Black : PieceColor::White;
+    }
+
+    Bitboard all_pieces() const;
+    Piece piece_at(int square_idx);
+    void make_move(Move move);
+
     Result<void, std::string> load_from_fen(const std::string& fen);
     std::string to_string();
+
+    friend class Validator;
 };

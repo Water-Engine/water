@@ -1,8 +1,10 @@
 #include <pch.hpp>
 
-#include "core.hpp"
+#include "bitboard/bitboard.hpp"
 
 #include "game/board.hpp"
+
+// ================ COORD ================
 
 Coord::Coord(const std::string& square_string) {
     if (square_string.length() != 2) {
@@ -15,15 +17,34 @@ Coord::Coord(const std::string& square_string) {
     m_RankIdx = str::char_idx(str::from_view(RANKS), lowered[1]);
 }
 
-Coord::Coord(int square) {
-    m_FileIdx = square % 8;
-    m_RankIdx = square - m_FileIdx;
-}
-
 bool Coord::valid_square_idx() const {
     int square_idx = square_idx_unchecked();
     return (square_idx >= 0 && square_idx <= 63);
 }
+
+bool Coord::valid_square_idx(int square_idx) {
+    Coord c(square_idx);
+    return c.valid_square_idx();
+}
+
+std::string Coord::as_str() const {
+    if (!valid_square_idx()) {
+        return std::string();
+    }
+
+    char file_name = FILES[m_FileIdx];
+    char rank_name = RANKS[m_RankIdx];
+
+    char combined[3] = {file_name, rank_name, '\0'};
+    return std::string(combined);
+}
+
+std::string Coord::as_str(int square_idx) {
+    Coord c(square_idx);
+    return c.as_str();
+}
+
+// ================ POSITION INFO ================
 
 // Example: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen) {
@@ -107,25 +128,43 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
     return Result<PositionInfo, std::string>(p);
 }
 
-void Board::load_from_position(const PositionInfo& pos) {
-    m_StartPos = pos;
-    m_State = GameState(pos.m_WhiteCastleKingside, pos.m_WhiteCastleQueenside,
-                        pos.m_BlackCastleKingside, pos.m_BlackCastleQueenside, pos.m_EpSquare);
+// ================ BOARD ================
+
+void Board::reset() {
+    m_StartPos = PositionInfo{};
+
+    m_StoredPieces.fill(Piece());
+
+    m_WhiteBB.clear();
+    m_BlackBB.clear();
+    m_PawnBB.clear();
+    m_KnightBB.clear();
+    m_BishopBB.clear();
+    m_RookBB.clear();
+    m_QueenBB.clear();
+    m_KingBB.clear();
+
+    m_State = GameState{};
+    m_WhiteToMove = true;
+
     m_StateHistory.clear();
     m_AllMoves.clear();
-    m_StateHistory.emplace_back(m_State);
+
+    m_HalfmoveClock = 0;
+}
+
+void Board::load_from_position(const PositionInfo& pos) {
+    reset();
 
     m_AllMoves.reserve(pos.m_MoveClock);
     m_HalfmoveClock = pos.m_HalfmoveClock;
 
-    m_WhiteBB.clear();
-    m_BlackBB.clear();
-    m_RookBB.clear();
-    m_KnightBB.clear();
-    m_BishopBB.clear();
-    m_QueenBB.clear();
-    m_KingBB.clear();
-    m_PawnBB.clear();
+    m_StartPos = pos;
+    m_State = GameState(pos.m_WhiteCastleKingside, pos.m_WhiteCastleQueenside,
+                        pos.m_BlackCastleKingside, pos.m_BlackCastleQueenside, pos.m_EpSquare);
+
+    m_StateHistory.emplace_back(m_State);
+    m_StoredPieces = pos.m_Squares;
 
     for (size_t i = 0; i < pos.m_Squares.size(); i++) {
         Piece piece = pos.m_Squares[i];
@@ -155,7 +194,25 @@ void Board::load_from_position(const PositionInfo& pos) {
     }
 }
 
-std::string Board::to_string() { return std::string("Im not finished"); }
+std::string Board::to_string() {
+    std::ostringstream oss;
+    oss << m_AllMoves.size();
+    return oss.str();
+}
+
+Bitboard Board::all_pieces() const {
+    return m_RookBB | m_KnightBB | m_BishopBB | m_KingBB | m_QueenBB | m_PawnBB;
+}
+
+Piece Board::piece_at(int square_idx) {
+    if (!Coord::valid_square_idx(square_idx)) {
+        return Piece::none();
+    }
+
+    return m_StoredPieces[square_idx];
+}
+
+void Board::make_move(Move move) { m_AllMoves.push_back(move); }
 
 Result<void, std::string> Board::load_from_fen(const std::string& fen) {
     auto maybe_pos = PositionInfo::from_fen(fen);

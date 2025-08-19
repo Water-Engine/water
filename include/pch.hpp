@@ -9,13 +9,14 @@
 
 // Utilities
 #include <algorithm>
+#include <bitset>
 #include <cassert>
 #include <climits>
 #include <memory>
 #include <numeric>
+#include <random>
 #include <type_traits>
 #include <utility>
-#include <bitset>
 
 // Containers
 #include <array>

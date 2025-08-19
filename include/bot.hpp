@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core.hpp"
+
 #include "game/board.hpp"
 
 class Bot {
@@ -16,7 +17,7 @@ class Bot {
     void quit() { stop_thinking(); }
 
     Result<void, std::string> set_position(const std::string& fen);
-    Result<void, std::string> make_move(const std::string& move);
+    Result<void, std::string> make_move(const std::string& move_uci);
     int choose_think_time(int time_remaining_white_ms, int time_remaining_black_ms,
                           int increment_white_ms, int increment_black_ms);
     Result<void, std::string> think_timed(int time_ms);

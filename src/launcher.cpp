@@ -1,11 +1,12 @@
 #include <pch.hpp>
 
-#include "core.hpp"
-#include "game/board.hpp"
 #include "launcher.hpp"
 
-constexpr std::array<std::string_view, 3> POSITION_LABELS = {"position", "fen", "moves"};
+#include "bot.hpp"
 
+#include "game/board.hpp"
+
+constexpr std::array<std::string_view, 3> POSITION_LABELS = {"position", "fen", "moves"};
 constexpr std::array<std::string_view, 7> GO_LABELS = {"go",   "movetime", "wtime",    "btime",
                                                        "winc", "binc",     "movestogo"};
 
@@ -19,6 +20,8 @@ void launch() {
     }
 }
 
+// ================ ENGINE CORE ================
+
 ParseResult Engine::process_line(const std::string& line) {
     std::vector<std::string> input = str::split(line);
     std::deque<std::string> words(input.begin(), input.end());
@@ -28,9 +31,6 @@ ParseResult Engine::process_line(const std::string& line) {
 
     std::string cmd_lead = words[0];
     words.pop_front();
-    if (words.size() == 0) {
-        return ParseResult::SUCCESS;
-    }
     std::string command = deque_join(words);
 
     if (cmd_lead == "uci") {
@@ -112,6 +112,8 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
     return m_Bot->think_timed(think_time_ms);
 }
 
+// ================ PARSE UTILS ================
+
 Option<int> try_get_labeled_int(const std::string& text, const std::string& label,
                                 std::span<const std::string_view> all_labels) {
     Option<std::string> maybe_string = try_get_labeled_string(text, label, all_labels);
@@ -137,7 +139,7 @@ Option<std::string> try_get_labeled_string(const std::string& text, const std::s
 
     int value_start = maybe_value_start + label.length() + 1;
     int value_end = trimmed.length();
-    if (value_start > static_cast<int>(trimmed.size())) {
+    if (value_start > static_cast<int>(trimmed.length())) {
         return Option<std::string>();
     }
 

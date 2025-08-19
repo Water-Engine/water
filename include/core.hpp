@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core.hpp"
+
 // ================ MAKESHIFT TRAIT SYSTEM ================
 
 template <typename T, typename = void> struct is_container : std::false_type {};
@@ -201,13 +203,13 @@ class str {
     }
 
     static inline bool starts_with(const std::string& s, const std::string& prefix) {
-        if (prefix.size() > s.size())
+        if (prefix.length() > s.length())
             return false;
         return std::equal(prefix.begin(), prefix.end(), s.begin());
     }
 
     static inline bool ends_with(const std::string& s, const std::string& suffix) {
-        if (suffix.size() > s.size())
+        if (suffix.length() > s.length())
             return false;
         return std::equal(suffix.rbegin(), suffix.rend(), s.rbegin());
     }
@@ -235,6 +237,10 @@ auto contains(const Container& c, const T& value)
 }
 
 inline std::string deque_join(const std::deque<std::string>& parts) {
+    if (parts.size() == 0) {
+        return std::string();
+    }
+
     return std::accumulate(std::next(parts.begin()), parts.end(), parts[0],
                            [](const std::string& a, const std::string& b) { return a + " " + b; });
 }
