@@ -3,8 +3,18 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - 'Makefile'
+      - 'src/**'
+      - 'include/**'
+      - 'tests/**'
   pull_request:
     branches: [main]
+    paths:
+      - 'Makefile'
+      - 'src/**'
+      - 'include/**'
+      - 'tests/**'
 
 jobs:
   build-test:
