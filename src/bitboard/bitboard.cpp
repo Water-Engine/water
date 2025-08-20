@@ -3,6 +3,7 @@
 #include "bitboard/bitboard.hpp"
 
 #include "game/board.hpp"
+#include "game/coord.hpp"
 
 void Bitboard::set_bit(int bit_to_set) {
     if (bit_to_set < 0 || bit_to_set > 63) {

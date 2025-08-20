@@ -1,17 +1,14 @@
 #pragma once
 
-// ================ MAKESHIFT TRAIT SYSTEM ================
-
-template <typename T, typename = void> struct is_container : std::false_type {};
+// ================ CONCEPTS ================
 
 template <typename T>
-struct is_container<
-    T, std::void_t<decltype(std::declval<T>().begin()), decltype(std::declval<T>().end())>>
-    : std::true_type {};
+concept Iterable = requires(T t) {
+    std::begin(t);
+    std::end(t);
+} && (!std::same_as<T, std::string>);
 
-template <> struct is_container<std::string> : std::false_type {};
-
-// ================ PRETTY PRINT FORMATTING SUITE ================
+// ================ PRETTY PRINT FORMATTING SUITE & DBG ================
 
 class format_error : public std::exception {
   private:
@@ -26,29 +23,40 @@ class format_error : public std::exception {
 
 class fmt {
   private:
-    template <typename T>
-    static auto to_string_custom(const T& value)
-        -> std::enable_if_t<!is_container<T>::value, std::string> {
-        std::ostringstream oss;
-        oss << value;
-        return oss.str();
+    template <typename T> static constexpr bool is_named_var(std::string_view name, const T&) {
+        if (name.empty()) {
+            return false;
+        }
+
+        if (name.front() == '"' || name.front() == '\'') {
+            return false;
+        }
+
+        if (std::isdigit(name.front()) || name.front() == '-') {
+            return false;
+        }
+
+        return true;
     }
 
-    template <typename Container>
-    static auto to_string_custom(const Container& c)
-        -> std::enable_if_t<is_container<Container>::value, std::string> {
-        std::ostringstream oss;
-        oss << "[";
-        bool first = true;
-        for (const auto& el : c) {
-            if (!first) {
-                oss << ", ";
+    template <typename T> static std::string to_string_custom(const T& value) {
+        if constexpr (Iterable<T>) {
+            std::ostringstream oss;
+            oss << "[";
+            bool first = true;
+            for (const auto& el : value) {
+                if (!first)
+                    oss << ", ";
+                oss << to_string_custom(el);
+                first = false;
             }
-            oss << to_string_custom(el);
-            first = false;
+            oss << "]";
+            return oss.str();
+        } else {
+            std::ostringstream oss;
+            oss << value;
+            return oss.str();
         }
-        oss << "]";
-        return oss.str();
     }
 
     static inline void format_impl(std::ostringstream& oss, const std::string& s, size_t& pos) {
@@ -96,7 +104,45 @@ class fmt {
     }
 
     static void println() { std::cout << std::endl; }
+
+    template <typename... Args> static std::string dbg(const Args&... args) {
+        std::ostringstream oss;
+        ((oss << to_string_custom(args) << " "), ...);
+        std::string s = oss.str();
+        return s;
+    }
+
+    template <typename... Args>
+    static void dbg(std::ostringstream& oss, const char* names, const Args&... args) {
+        std::string_view sv(names);
+        size_t index = 0;
+        (([&] {
+             size_t comma = sv.find(',', index);
+             std::string_view name = (comma == std::string_view::npos)
+                                         ? sv.substr(index)
+                                         : sv.substr(index, comma - index);
+
+             if (is_named_var(name, args)) {
+                 oss << name << " = " << to_string_custom(args);
+             } else {
+                 oss << to_string_custom(args);
+             }
+
+             if constexpr (sizeof...(args) > 1)
+                 oss << ",";
+             index = comma + 1;
+         }()),
+         ...);
+    }
 };
+
+#define DBG(...)                                                                                   \
+    do {                                                                                           \
+        std::ostringstream oss;                                                                    \
+        oss << "[" << __FILE__ << ":" << __LINE__ << "] ";                                         \
+        fmt::dbg(oss, #__VA_ARGS__, __VA_ARGS__);                                                  \
+        fmt::println(oss.str());                                                                   \
+    } while (0)
 
 // ================ STR UTILS UTILS ================
 
@@ -262,42 +308,6 @@ inline std::string deque_join(const std::deque<std::string>& parts) {
     return std::accumulate(std::next(parts.begin()), parts.end(), parts[0],
                            [](const std::string& a, const std::string& b) { return a + " " + b; });
 }
-
-// ================ DBG MACRO ================
-
-template <typename T>
-auto to_string_dbg(const T& value) -> std::enable_if_t<!is_container<T>::value, std::string> {
-    std::ostringstream oss;
-    oss << value;
-    return oss.str();
-}
-
-template <typename Container>
-auto to_string_dbg(const Container& c)
-    -> std::enable_if_t<is_container<Container>::value, std::string> {
-    std::ostringstream oss;
-    oss << "[";
-    bool first = true;
-    for (const auto& el : c) {
-        if (!first) {
-            oss << ", ";
-        }
-        oss << to_string_dbg(el);
-        first = false;
-    }
-    oss << "]";
-    return oss.str();
-}
-
-template <typename... Args> std::string dbg_format(const Args&... args) {
-    std::ostringstream oss;
-    ((oss << to_string_dbg(args) << " "), ...);
-    std::string s = oss.str();
-    return s;
-}
-
-#define DBG(...)                                                                                   \
-    std::cout << "[" << __FILE__ << ":" << __LINE__ << "] " << dbg_format(__VA_ARGS__) << std::endl;
 
 // ================ OPTION & RESULT TYPES ================
 

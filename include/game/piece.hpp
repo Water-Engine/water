@@ -74,6 +74,7 @@ class Piece {
     inline int value() const { return static_cast<int>(*this); }
     inline PieceType type() const { return m_Type; };
     inline PieceColor color() const { return m_Color; };
+    char symbol() const;
 
     inline bool is_white() const { return m_Color == PieceColor::White; }
     inline bool is_black() const { return m_Color == PieceColor::Black; }
@@ -85,34 +86,7 @@ class Piece {
     inline bool is_pawn() const { return m_Type == PieceType::Pawn; }
     inline bool is_none() const { return value() == 0; }
 
-    operator char() {
-        char raw;
-        switch (m_Type) {
-        case PieceType::Rook:
-            raw = 'r';
-            break;
-        case PieceType::Knight:
-            raw = 'n';
-            break;
-        case PieceType::Bishop:
-            raw = 'b';
-            break;
-        case PieceType::Queen:
-            raw = 'q';
-            break;
-        case PieceType::King:
-            raw = 'k';
-            break;
-        case PieceType::Pawn:
-            raw = 'p';
-            break;
-        default:
-            raw = (char)0;
-            break;
-        }
-
-        return (m_Color == PieceColor::White) ? std::toupper(raw) : raw;
-    }
+    operator char() const { return symbol(); }
 
     operator int() const { return static_cast<int>(m_Type) | static_cast<int>(m_Color); }
 };

@@ -1,6 +1,7 @@
 #include <pch.hpp>
 
 #include "game/board.hpp"
+#include "game/coord.hpp"
 #include "game/move.hpp"
 
 Move::Move(int start_square, int target_square) { m_Compact = start_square | target_square << 6; }
@@ -34,7 +35,7 @@ Move::Move(Ref<Board> board, const std::string& move_uci) {
         } else if (std::abs(start_coord.rank_idx() - target_coord.rank_idx()) == 2) {
             flag = PAWN_TWO_UP_FLAG;
         } else if ((start_coord.file_idx() != target_coord.file_idx()) &&
-                   board->piece_at(target) == Piece::none()) {
+                   board->piece_at(target).value() == Piece::none()) {
             flag = EN_PASSANT_CAPTURE_FLAG;
         }
     } else if (moved_piece.type() == PieceType::King) {

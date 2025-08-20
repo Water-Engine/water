@@ -3,46 +3,7 @@
 #include "bitboard/bitboard.hpp"
 
 #include "game/board.hpp"
-
-// ================ COORD ================
-
-Coord::Coord(const std::string& square_string) {
-    if (square_string.length() != 2) {
-        m_FileIdx = -1;
-        m_RankIdx = -1;
-    }
-
-    std::string lowered = str::to_lower(square_string);
-    m_FileIdx = str::char_idx(str::from_view(FILES), lowered[0]);
-    m_RankIdx = str::char_idx(str::from_view(RANKS), lowered[1]);
-}
-
-bool Coord::valid_square_idx() const {
-    int square_idx = square_idx_unchecked();
-    return (square_idx >= 0 && square_idx <= 63);
-}
-
-bool Coord::valid_square_idx(int square_idx) {
-    Coord c(square_idx);
-    return c.valid_square_idx();
-}
-
-std::string Coord::as_str() const {
-    if (!valid_square_idx()) {
-        return std::string();
-    }
-
-    char file_name = FILES[m_FileIdx];
-    char rank_name = RANKS[m_RankIdx];
-
-    char combined[3] = {file_name, rank_name, '\0'};
-    return std::string(combined);
-}
-
-std::string Coord::as_str(int square_idx) {
-    Coord c(square_idx);
-    return c.as_str();
-}
+#include "game/coord.hpp"
 
 // ================ POSITION INFO ================
 
@@ -194,9 +155,52 @@ void Board::reset() {
     m_HalfmoveClock = 0;
 }
 
-std::string Board::to_string() {
+std::string Board::diagram(bool black_at_top, bool include_fen, bool include_hash) const {
     std::ostringstream oss;
-    oss << m_AllMoves.size();
+    int last_move_square = -1;
+    if (m_AllMoves.size() > 0) {
+        last_move_square = m_AllMoves[m_AllMoves.size() - 1].target_square();
+    }
+
+    for (int y = 0; y < 8; y++) {
+        int rank_idx = black_at_top ? 7 - y : y;
+        oss << "+---+---+---+---+---+---+---+---+\n";
+        for (int x = 0; x < 8; x++) {
+            int file_idx = black_at_top ? x : 7 - x;
+            Coord square_coord(file_idx, rank_idx);
+            if (!square_coord.valid_square_idx()) {
+                continue;
+            }
+
+            int square_idx = square_coord.square_idx();
+            bool highlight = square_idx == last_move_square;
+            const Piece& piece = m_StoredPieces[square_idx];
+
+            if (highlight) {
+                oss << std::format("|({})", (char)piece);
+            } else {
+                oss << std::format("| {} ", (char)piece);
+            }
+        }
+
+        oss << std::format("| {}\n", rank_idx + 1);
+    }
+
+    oss << "+---+---+---+---+---+---+---+---+\n";
+    if (black_at_top) {
+        oss << "  a   b   c   d   e   f   g   h  \n\n";
+    } else {
+        oss << "  h   g   f   e   d   c   b   a  \n\n";
+    }
+
+    if (include_fen) {
+        oss << std::format("Fen         : {}\n", "Not implemented");
+    }
+
+    if (include_hash) {
+        oss << std::format("Hash        : {}\n", "Not implemented");
+    }
+
     return oss.str();
 }
 

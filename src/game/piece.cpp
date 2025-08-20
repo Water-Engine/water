@@ -79,3 +79,32 @@ Piece::Piece(char c) {
     m_Color = p.m_Color;
     m_Type = p.m_Type;
 }
+
+char Piece::symbol() const {
+    char raw;
+    switch (m_Type) {
+    case PieceType::Rook:
+        raw = 'r';
+        break;
+    case PieceType::Knight:
+        raw = 'n';
+        break;
+    case PieceType::Bishop:
+        raw = 'b';
+        break;
+    case PieceType::Queen:
+        raw = 'q';
+        break;
+    case PieceType::King:
+        raw = 'k';
+        break;
+    case PieceType::Pawn:
+        raw = 'p';
+        break;
+    default:
+        raw = ' ';
+        break;
+    }
+
+    return (m_Color == PieceColor::White) ? std::toupper(raw) : raw;
+}

@@ -2,6 +2,7 @@
 #define WATER_PCH
 
 // I/O
+#include <cstring>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -13,6 +14,8 @@
 #include <cassert>
 #include <chrono>
 #include <climits>
+#include <concepts>
+#include <format>
 #include <fstream>
 #include <functional>
 #include <iomanip>
