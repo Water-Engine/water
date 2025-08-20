@@ -557,10 +557,11 @@ class InstrumentationTimer {
     void stop() {
         auto end_timepoint = std::chrono::steady_clock::now();
         auto high_res_start = FloatingPointMicroseconds{m_StartTimepoint.time_since_epoch()};
-        auto elapsed_time = std::chrono::time_point_cast<std::chrono::microseconds>(end_timepoint)
-                               .time_since_epoch() -
-                           std::chrono::time_point_cast<std::chrono::microseconds>(m_StartTimepoint)
-                               .time_since_epoch();
+        auto elapsed_time =
+            std::chrono::time_point_cast<std::chrono::microseconds>(end_timepoint)
+                .time_since_epoch() -
+            std::chrono::time_point_cast<std::chrono::microseconds>(m_StartTimepoint)
+                .time_since_epoch();
 
         Instrumentor::get().write_profile(
             {m_Name, high_res_start, elapsed_time, std::this_thread::get_id()});
