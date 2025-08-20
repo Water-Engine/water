@@ -56,6 +56,8 @@ class Board {
     Bitboard m_QueenBB;
     Bitboard m_KingBB;
 
+    Bitboard m_AllPieceBB;
+
     GameState m_State;
     bool m_WhiteToMove;
 
@@ -81,7 +83,6 @@ class Board {
         return is_white_to_move() ? PieceColor::Black : PieceColor::White;
     }
 
-    Bitboard all_pieces() const;
     Piece piece_at(int square_idx);
     void make_move(Move move);
 

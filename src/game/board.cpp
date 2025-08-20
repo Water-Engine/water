@@ -130,6 +130,8 @@ void Board::load_from_position(const PositionInfo& pos) {
             m_PawnBB.set_bit(i);
         }
     }
+
+    m_AllPieceBB = m_WhiteBB | m_BlackBB;
 }
 
 void Board::reset() {
@@ -145,6 +147,8 @@ void Board::reset() {
     m_RookBB.clear();
     m_QueenBB.clear();
     m_KingBB.clear();
+
+    m_AllPieceBB.clear();
 
     m_State = GameState{};
     m_WhiteToMove = true;
@@ -202,10 +206,6 @@ std::string Board::diagram(bool black_at_top, bool include_fen, bool include_has
     }
 
     return oss.str();
-}
-
-Bitboard Board::all_pieces() const {
-    return m_RookBB | m_KnightBB | m_BishopBB | m_KingBB | m_QueenBB | m_PawnBB;
 }
 
 Piece Board::piece_at(int square_idx) {
