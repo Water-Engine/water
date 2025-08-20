@@ -160,4 +160,7 @@ endif
 fmt:
 	clang-format -i $(FMT_SRCS)
 
-.PHONY: default install all dist release debug test run run-dist run-release run-debug clean fmt
+fmt-check:
+	@clang-format --dry-run --Werror $(FMT_SRCS)
+
+.PHONY: default install all dist release debug test run run-dist run-release run-debug clean fmt fmt-check

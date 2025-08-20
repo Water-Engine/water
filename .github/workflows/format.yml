@@ -1,0 +1,33 @@
+name: format
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+    paths:
+      - 'Makefile'
+      - 'src/**'
+      - 'include/**'
+      - 'tests/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'Makefile'
+      - 'src/**'
+      - 'include/**'
+      - 'tests/**'
+
+jobs:
+  fmt-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install Clang-Format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Check formatting
+        run: make fmt-check
