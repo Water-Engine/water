@@ -177,13 +177,13 @@ std::string Board::diagram(bool black_at_top, bool include_fen, bool include_has
             const Piece& piece = m_StoredPieces[square_idx];
 
             if (highlight) {
-                oss << std::format("|({})", (char)piece);
+                oss << fmt::interpolate("|({})", (char)piece);
             } else {
-                oss << std::format("| {} ", (char)piece);
+                oss << fmt::interpolate("| {} ", (char)piece);
             }
         }
 
-        oss << std::format("| {}\n", rank_idx + 1);
+        oss << fmt::interpolate("| {}\n", rank_idx + 1);
     }
 
     oss << "+---+---+---+---+---+---+---+---+\n";
@@ -194,11 +194,11 @@ std::string Board::diagram(bool black_at_top, bool include_fen, bool include_has
     }
 
     if (include_fen) {
-        oss << std::format("Fen         : {}\n", "Not implemented");
+        oss << fmt::interpolate("Fen         : {}\n", "Not implemented");
     }
 
     if (include_hash) {
-        oss << std::format("Hash        : {}\n", "Not implemented");
+        oss << fmt::interpolate("Hash        : {}\n", "Not implemented");
     }
 
     return oss.str();

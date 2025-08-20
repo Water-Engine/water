@@ -96,6 +96,13 @@ class fmt {
         std::cout << format(s, args...) << std::endl;
     }
 
+    template <typename... Args>
+    static std::string interpolate(const std::string& s, const Args&... args) {
+        std::ostringstream oss;
+        oss << format(s, args...);
+        return oss.str();
+    }
+
     template <typename T> static void print(const T& value) {
         std::cout << to_string_custom(value);
     }
