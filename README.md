@@ -15,9 +15,6 @@ make -j4 run
 - Clang-format
 - Catch2 (included in this repository)
 
-# License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 # Building water
 The project's build system uses C++20 and GNU Make, and it is recommended that you run make with the flag `-j4` to run batch jobs. The following targets are supported:
 - `default`: Builds the release configuration (default)
