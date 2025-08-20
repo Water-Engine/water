@@ -45,8 +45,9 @@ class fmt {
             oss << "[";
             bool first = true;
             for (const auto& el : value) {
-                if (!first)
+                if (!first) {
                     oss << ", ";
+                }
                 oss << to_string_custom(el);
                 first = false;
             }
@@ -128,8 +129,9 @@ class fmt {
                  oss << to_string_custom(args);
              }
 
-             if constexpr (sizeof...(args) > 1)
+             if constexpr (sizeof...(args) > 1) {
                  oss << ",";
+             }
              index = comma + 1;
          }()),
          ...);
