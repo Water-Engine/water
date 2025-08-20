@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/**'
+      - '.github/workflows/**'
       - 'Makefile'
       - 'src/**'
       - 'include/**'
@@ -12,7 +12,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - '.github/**'
+      - '.github/workflows/**'
       - 'Makefile'
       - 'src/**'
       - 'include/**'

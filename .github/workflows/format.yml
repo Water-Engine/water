@@ -6,7 +6,7 @@ on:
       - main
       - 'feature/**'
     paths:
-      - '.github/**'
+      - '.github/workflows/**'
       - 'Makefile'
       - 'src/**'
       - 'include/**'
@@ -15,7 +15,7 @@ on:
     branches:
       - main
     paths:
-      - '.github/**'
+      - '.github/workflows/**'
       - 'Makefile'
       - 'src/**'
       - 'include/**'
