@@ -33,6 +33,7 @@ The project's build system uses C++20 and GNU Make, and it is recommended that y
 - `run-debug`: Build and run the debug binary
 - `clean`: Remove object files, dependency files, and binary
 - `fmt`: Format all source and header files using clang-format
+- `fmt-check`: Validates formatting rules without altering project files
 
 # Testing
 This project uses unit tests to verify the correctness of the engine’s foundation and functionality. To run tests, simply call `make test`. The [Catch2](https://github.com/catchorg/Catch2) framework is used, and the amalgamated files are compiled directly into the test executable, resulting in longer initial build times.  

@@ -14,6 +14,7 @@
 #include <chrono>
 #include <climits>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <memory>
 #include <mutex>
@@ -28,6 +29,8 @@
 #include <deque>
 #include <optional>
 #include <span>
+#include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
