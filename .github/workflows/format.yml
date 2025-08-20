@@ -6,7 +6,7 @@ on:
       - main
       - 'feature/**'
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/format.yml'
       - 'Makefile'
       - 'src/**'
       - 'include/**'
@@ -15,7 +15,7 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/format.yml'
       - 'Makefile'
       - 'src/**'
       - 'include/**'
