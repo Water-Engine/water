@@ -2,7 +2,7 @@
 
 #include "bitboard/bitboard.hpp"
 
-const uint64_t A_FILE = 0x8080808080808080;
+constexpr uint64_t A_FILE = 0x8080808080808080;
 
 class Board;
 

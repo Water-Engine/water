@@ -36,6 +36,8 @@ ParseResult Engine::process_line(const std::string& line) {
     if (cmd_lead == "uci") {
         fmt::println("id name Water 0.0.1");
         fmt::println("id author Trevor Swan");
+        fmt::println("id author Blake Watson");
+        fmt::println("id author Sean Neafsey");
         fmt::println("uciok");
     } else if (cmd_lead == "isready") {
         fmt::println("readyok");

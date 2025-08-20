@@ -43,14 +43,6 @@ class Coord {
     static std::string as_str(int square_idx);
 };
 
-/*
- * General Reading:
- * Bitboard information: https://www.chessprogramming.org/Bitboards#The_Board_of_Sets
- * High-level Overview:
- * https://dev.to/namanvashistha/building-a-modern-chess-engine-a-deep-dive-into-bitboard-based-move-generation-345d
- * FEN notation: https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
- */
-
 class PositionInfo {
   private:
     std::string m_Fen;
@@ -108,10 +100,7 @@ class Board {
     void reset();
 
   public:
-    Board()
-        : m_StartPos(), m_StoredPieces(), m_WhiteBB(), m_BlackBB(), m_PawnBB(), m_KnightBB(),
-          m_BishopBB(), m_RookBB(), m_QueenBB(), m_KingBB(), m_State(), m_WhiteToMove(true),
-          m_StateHistory(), m_AllMoves(), m_HalfmoveClock(0) {};
+    Board() {};
 
     bool is_white_to_move() const { return m_WhiteToMove; }
     PieceColor friendly_color() const {

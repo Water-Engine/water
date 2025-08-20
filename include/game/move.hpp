@@ -2,18 +2,18 @@
 
 #include "game/piece.hpp"
 
-const uint16_t START_SQUARE_MASK = 0b0000000000111111;
-const uint16_t TARGET_SQUARE_MASK = 0b0000111111000000;
+constexpr uint16_t START_SQUARE_MASK = 0b0000000000111111;
+constexpr uint16_t TARGET_SQUARE_MASK = 0b0000111111000000;
 
-const int NO_FLAG = 0b0000;
-const int EN_PASSANT_CAPTURE_FLAG = 0b0001;
-const int CASTLE_FLAG = 0b0010;
-const int PAWN_TWO_UP_FLAG = 0b0011;
+constexpr int NO_FLAG = 0b0000;
+constexpr int EN_PASSANT_CAPTURE_FLAG = 0b0001;
+constexpr int CASTLE_FLAG = 0b0010;
+constexpr int PAWN_TWO_UP_FLAG = 0b0011;
 
-const int QUEEN_PROMOTION_FLAG = 0b0100;
-const int BISHOP_PROMOTION_FLAG = 0b0101;
-const int KNIGHT_PROMOTION_FLAG = 0b0110;
-const int ROOK_PROMOTION_FLAG = 0b0111;
+constexpr int QUEEN_PROMOTION_FLAG = 0b0100;
+constexpr int BISHOP_PROMOTION_FLAG = 0b0101;
+constexpr int KNIGHT_PROMOTION_FLAG = 0b0110;
+constexpr int ROOK_PROMOTION_FLAG = 0b0111;
 
 class Board;
 
