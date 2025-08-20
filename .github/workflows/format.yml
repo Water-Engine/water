@@ -1,4 +1,4 @@
-name: format
+name: Formatting
 
 on:
   push:
@@ -21,13 +21,13 @@ on:
 
 jobs:
   fmt-check:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Install Clang-Format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Install Toolchain
+        run: choco install mingw make -y
 
       - name: Check formatting
         run: make fmt-check
