@@ -5,6 +5,7 @@
     - [ ] Piece
     - [ ] Coord
     - [ ] Board
+
 - [ x ] Knight move validation - naive (Precomputed locations)
 - [ ] Rook move validation - naive (magics for ortho sliders & blockers)
 - [ ] Bishop move validation - naive (magics for diag sliders & blockers)
