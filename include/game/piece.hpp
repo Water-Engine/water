@@ -71,6 +71,11 @@ class Piece {
         return static_cast<int>(PieceColor::Black) | static_cast<int>(PieceType::Pawn);
     }
 
+    inline void clear() {
+        m_Type = PieceType::None;
+        m_Color = PieceColor::White;
+    }
+
     inline int value() const { return static_cast<int>(*this); }
     inline PieceType type() const { return m_Type; };
     inline PieceColor color() const { return m_Color; };

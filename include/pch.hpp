@@ -2,6 +2,7 @@
 #define WATER_PCH
 
 // I/O
+#include <csignal>
 #include <cstring>
 #include <iostream>
 #include <sstream>

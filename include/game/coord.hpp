@@ -29,4 +29,10 @@ class Coord {
 
     std::string as_str() const;
     static std::string as_str(int square_idx);
+
+    friend bool operator==(const Coord& a, const Coord& b) {
+        return a.square_idx_unchecked() == b.square_idx_unchecked();
+    }
+
+    operator int() const { return square_idx(); }
 };

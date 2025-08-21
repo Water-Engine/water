@@ -41,6 +41,8 @@ class PositionInfo {
     friend class Board;
 };
 
+class Coord;
+
 class Board {
   private:
     PositionInfo m_StartPos;
@@ -71,6 +73,16 @@ class Board {
     void reset();
 
     std::string diagram(bool black_at_top, bool include_fen = true, bool include_hash = true) const;
+
+    bool make_rook_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
+                        Piece piece_to);
+    bool make_knight_move(Coord start_coord, Coord target_coord, Piece piece_from, Piece piece_to);
+    bool make_bishop_move(Coord start_coord, Coord target_coord, Piece piece_from, Piece piece_to);
+    bool make_queen_move(Coord start_coord, Coord target_coord, Piece piece_from, Piece piece_to);
+    bool make_king_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
+                        Piece piece_to);
+    bool make_pawn_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
+                        Piece piece_to);
 
   public:
     Board() {};
