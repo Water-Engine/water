@@ -1,23 +1,24 @@
-// Code taken from https://www.chessprogramming.org/Looking_for_Magics to generate Rook and Bishop magic numbers
+// Code taken from https://www.chessprogramming.org/Looking_for_Magics to generate Rook and Bishop
+// magic numbers. The main function and formatting were updated for easier use.
 #include <stdio.h>
 #include <stdlib.h>
 
 #define USE_32_BIT_MULTIPLICATIONS
 
-typedef unsigned long long uint64_t;
+typedef unsigned long long uint64;
 
-uint64_t random_uint64() {
-    uint64_t u1, u2, u3, u4;
-    u1 = (uint64_t)(rand()) & 0xFFFF;
-    u2 = (uint64_t)(rand()) & 0xFFFF;
-    u3 = (uint64_t)(rand()) & 0xFFFF;
-    u4 = (uint64_t)(rand()) & 0xFFFF;
+uint64 random_uint64() {
+    uint64 u1, u2, u3, u4;
+    u1 = (uint64)(rand()) & 0xFFFF;
+    u2 = (uint64)(rand()) & 0xFFFF;
+    u3 = (uint64)(rand()) & 0xFFFF;
+    u4 = (uint64)(rand()) & 0xFFFF;
     return u1 | (u2 << 16) | (u3 << 32) | (u4 << 48);
 }
 
-uint64_t random_uint64_fewbits() { return random_uint64() & random_uint64() & random_uint64(); }
+uint64 random_uint64_fewbits() { return random_uint64() & random_uint64() & random_uint64(); }
 
-int count_1s(uint64_t b) {
+int count_1s(uint64 b) {
     int r;
     for (r = 0; b; r++, b &= b - 1)
         ;
@@ -29,16 +30,16 @@ const int BitTable[64] = {63, 30, 3,  32, 25, 41, 22, 33, 15, 50, 42, 13, 11, 53
                           62, 31, 40, 4,  49, 5,  52, 26, 60, 6,  23, 44, 46, 27, 56, 16,
                           7,  39, 48, 24, 59, 14, 12, 55, 38, 28, 58, 20, 37, 17, 36, 8};
 
-int pop_1st_bit(uint64_t* bb) {
-    uint64_t b = *bb ^ (*bb - 1);
+int pop_1st_bit(uint64* bb) {
+    uint64 b = *bb ^ (*bb - 1);
     unsigned int fold = (unsigned)((b & 0xffffffff) ^ (b >> 32));
     *bb &= (*bb - 1);
     return BitTable[(fold * 0x783a9b23) >> 26];
 }
 
-uint64_t index_to_uint64(int index, int bits, uint64_t m) {
+uint64 index_to_uint64(int index, int bits, uint64 m) {
     int i, j;
-    uint64_t result = 0ULL;
+    uint64 result = 0ULL;
     for (i = 0; i < bits; i++) {
         j = pop_1st_bit(&m);
         if (index & (1 << i))
@@ -47,8 +48,8 @@ uint64_t index_to_uint64(int index, int bits, uint64_t m) {
     return result;
 }
 
-uint64_t rmask(int sq) {
-    uint64_t result = 0ULL;
+uint64 rmask(int sq) {
+    uint64 result = 0ULL;
     int rk = sq / 8, fl = sq % 8, r, f;
     for (r = rk + 1; r <= 6; r++)
         result |= (1ULL << (fl + r * 8));
@@ -61,8 +62,8 @@ uint64_t rmask(int sq) {
     return result;
 }
 
-uint64_t bmask(int sq) {
-    uint64_t result = 0ULL;
+uint64 bmask(int sq) {
+    uint64 result = 0ULL;
     int rk = sq / 8, fl = sq % 8, r, f;
     for (r = rk + 1, f = fl + 1; r <= 6 && f <= 6; r++, f++)
         result |= (1ULL << (f + r * 8));
@@ -75,8 +76,8 @@ uint64_t bmask(int sq) {
     return result;
 }
 
-uint64_t ratt(int sq, uint64_t block) {
-    uint64_t result = 0ULL;
+uint64 ratt(int sq, uint64 block) {
+    uint64 result = 0ULL;
     int rk = sq / 8, fl = sq % 8, r, f;
     for (r = rk + 1; r <= 7; r++) {
         result |= (1ULL << (fl + r * 8));
@@ -101,8 +102,8 @@ uint64_t ratt(int sq, uint64_t block) {
     return result;
 }
 
-uint64_t batt(int sq, uint64_t block) {
-    uint64_t result = 0ULL;
+uint64 batt(int sq, uint64 block) {
+    uint64 result = 0ULL;
     int rk = sq / 8, fl = sq % 8, r, f;
     for (r = rk + 1, f = fl + 1; r <= 7 && f <= 7; r++, f++) {
         result |= (1ULL << (f + r * 8));
@@ -127,7 +128,7 @@ uint64_t batt(int sq, uint64_t block) {
     return result;
 }
 
-int transform(uint64_t b, uint64_t magic, int bits) {
+int transform(uint64 b, uint64 magic, int bits) {
 #if defined(USE_32_BIT_MULTIPLICATIONS)
     return (unsigned)((int)b * (int)magic ^ (int)(b >> 32) * (int)(magic >> 32)) >> (32 - bits);
 #else
@@ -135,8 +136,8 @@ int transform(uint64_t b, uint64_t magic, int bits) {
 #endif
 }
 
-uint64_t find_magic(int sq, int m, int bishop) {
-    uint64_t mask, b[4096], a[4096], used[4096], magic;
+uint64 find_magic(int sq, int m, int bishop) {
+    uint64 mask, b[4096], a[4096], used[4096], magic;
     int i, j, k, n, fail;
 
     mask = bishop ? bmask(sq) : rmask(sq);
@@ -178,7 +179,7 @@ int BBits[64] = {6, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 
 // Adapted from wiki to write to a file like the other scripts
 int main() {
     srand(29426028);
-    FILE *f = fopen("generated.txt", "w");
+    FILE* f = fopen("generated.txt", "w");
     if (!f) {
         perror("fopen");
         return 1;
@@ -187,7 +188,7 @@ int main() {
 
     fprintf(f, "constexpr uint64_t ROOK_MAGICS[64] = {");
     for (int square = 0; square < 64; square++) {
-        fprintf(f, "0x%016llxULL", (unsigned long long)find_magic(square, RBits[square], 0));
+        fprintf(f, "0x%016llXULL", (unsigned long long)find_magic(square, RBits[square], 0));
         if (square < 63) {
             fprintf(f, ", ");
         }
@@ -196,7 +197,7 @@ int main() {
 
     fprintf(f, "constexpr uint64_t BISHOP_MAGICS[64] = {");
     for (int square = 0; square < 64; square++) {
-        fprintf(f, "0x%016llxULL", (unsigned long long)find_magic(square, BBits[square], 1));
+        fprintf(f, "0x%016llXULL", (unsigned long long)find_magic(square, BBits[square], 1));
         if (square < 63) {
             fprintf(f, ", ");
         }
