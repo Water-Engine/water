@@ -2,6 +2,10 @@
 
 #include "bot.hpp"
 
+constexpr std::array<std::string_view, 3> POSITION_LABELS = {"position", "fen", "moves"};
+constexpr std::array<std::string_view, 7> GO_LABELS = {"go",   "movetime", "wtime",    "btime",
+                                                       "winc", "binc",     "movestogo"};
+
 enum class ParseResult {
     SUCCESS = 0,
     EXIT = 1,
