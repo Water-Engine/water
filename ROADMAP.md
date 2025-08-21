@@ -1,12 +1,11 @@
 # Core Roadmap
 - [ ] Unit tests for core
-    - [ x ] Launcher
+    - [x] Launcher
     - [ ] Move
     - [ ] Piece
     - [ ] Coord
     - [ ] Board
-
-- [ x ] Knight move validation - naive (Precomputed locations)
+- [x] Knight move validation - naive (Precomputed locations)
 - [ ] Rook move validation - naive (magics for ortho sliders & blockers)
 - [ ] Bishop move validation - naive (magics for diag sliders & blockers)
 - [ ] Queen move validation - naive (bitwise or of bishops and rooks)
