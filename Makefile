@@ -163,4 +163,15 @@ fmt:
 fmt-check:
 	@clang-format --dry-run --Werror $(FMT_SRCS)
 
-.PHONY: default install all dist release debug test run run-dist run-release run-debug clean fmt fmt-check
+# ================ SLIDER GENERATOR ================
+
+SLIDER_BIN := scripts/slider_generators$(EXE)
+
+sliders: $(SLIDER_BIN)
+	@$(SLIDER_BIN)
+
+$(SLIDER_BIN): scripts/slider_generators.c
+	@$(call MKDIR,$(BIN_ROOT))
+	gcc -std=c11 $< -o $@
+
+.PHONY: default install all dist release debug test run run-dist run-release run-debug clean fmt fmt-check sliders
