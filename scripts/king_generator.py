@@ -1,15 +1,6 @@
-def generate_knight_moves():
+def generate_king_moves():
     knight_moves = [0] * 64
-    offsets = [
-        (2, 1),
-        (2, -1),
-        (-2, 1),
-        (-2, -1),
-        (1, 2),
-        (1, -2),
-        (-1, 2),
-        (-1, -2),
-    ]
+    offsets = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
 
     for sq in range(64):
         rank, file = divmod(sq, 8)
@@ -25,16 +16,16 @@ def generate_knight_moves():
     return knight_moves
 
 
-knight_moves = generate_knight_moves()
+king_moves = generate_king_moves()
 
 
 def make_header():
     with open("generated.txt", "w") as f:
         f.write("#pragma once\n\n")
-        f.write("constexpr uint64_t KNIGHT_MOVES[64] = { ")
-        for i, bb in enumerate(knight_moves):
+        f.write("constexpr uint64_t KING_MOVES[64] = { ")
+        for i, bb in enumerate(king_moves):
             f.write(f"0x{bb:016X}ULL")
-            if i < len(knight_moves) - 1:
+            if i < len(king_moves) - 1:
                 f.write(", ")
         f.write(" };")
 
