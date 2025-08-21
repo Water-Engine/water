@@ -99,6 +99,7 @@ class Board {
     void make_move(Move move);
 
     Result<void, std::string> load_from_fen(const std::string& fen);
+    Result<void, std::string> load_startpos();
     std::string to_string() const { return diagram(m_WhiteToMove); };
 
     friend std::ostream& operator<<(std::ostream& os, const Board& board) {

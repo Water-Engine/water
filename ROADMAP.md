@@ -1,5 +1,6 @@
 # Core Roadmap
-- [ ] Unit tests for core game
+- [ ] Unit tests for core
+    - [ x ] Launcher
     - [ ] Move
     - [ ] Piece
     - [ ] Coord

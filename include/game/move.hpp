@@ -28,7 +28,7 @@ class Move {
     uint16_t m_Compact;
 
   public:
-    Move() = default;
+    Move() : m_Compact(0) {};
     Move(uint16_t value) : m_Compact(value) {}
     Move(int start_square, int target_square);
     Move(int start_square, int target_square, int move_flag);

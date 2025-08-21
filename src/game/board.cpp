@@ -362,3 +362,7 @@ Result<void, std::string> Board::load_from_fen(const std::string& fen) {
     load_from_position(maybe_pos.unwrap());
     return Result<void, std::string>();
 }
+
+Result<void, std::string> Board::load_startpos() {
+    return load_from_fen(str::from_view(STARTING_FEN));
+}

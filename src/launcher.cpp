@@ -98,7 +98,7 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
         think_time_ms = try_get_labeled_int(message, "movetime", GO_LABELS).unwrap_or(0);
     } else {
         int time_remaining_white_ms = try_get_labeled_int(message, "wtime", GO_LABELS).unwrap_or(0);
-        int time_remaining_black_ms = try_get_labeled_int(message, "wtime", GO_LABELS).unwrap_or(0);
+        int time_remaining_black_ms = try_get_labeled_int(message, "btime", GO_LABELS).unwrap_or(0);
         int increment_white_ms = try_get_labeled_int(message, "winc", GO_LABELS).unwrap_or(0);
         int increment_black_ms = try_get_labeled_int(message, "binc", GO_LABELS).unwrap_or(0);
 
