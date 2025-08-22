@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define USE_32_BIT_MULTIPLICATIONS
+// Do not uncomment me unless you know exactly what will happen and work around it in the engine
+// #define USE_32_BIT_MULTIPLICATIONS
 
 typedef unsigned long long uint64;
 
@@ -176,7 +177,8 @@ int BBits[64] = {6, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 
                  5, 5, 5, 5, 7, 9, 9, 7, 5, 5, 5, 5, 7, 9, 9, 7, 5, 5, 5, 5, 7, 7,
                  7, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 6};
 
-// Adapted from wiki to write to a file like the other scripts
+// Adapted from wiki to write to a file like the other scripts, as well as include the shifts (64 -
+// occupancy bits)
 int main() {
     srand(29426028);
     FILE* f = fopen("generated.txt", "w");
@@ -186,7 +188,7 @@ int main() {
     }
     fprintf(f, "#pragma once\n\n");
 
-    fprintf(f, "constexpr uint64_t ROOK_MAGICS[64] = {");
+    fprintf(f, "inline constexpr uint64_t ROOK_MAGICS[64] = {");
     for (int square = 0; square < 64; square++) {
         fprintf(f, "0x%016llXULL", (unsigned long long)find_magic(square, RBits[square], 0));
         if (square < 63) {
@@ -195,9 +197,27 @@ int main() {
     }
     fprintf(f, "};\n\n");
 
-    fprintf(f, "constexpr uint64_t BISHOP_MAGICS[64] = {");
+    fprintf(f, "inline constexpr uint64_t BISHOP_MAGICS[64] = {");
     for (int square = 0; square < 64; square++) {
         fprintf(f, "0x%016llXULL", (unsigned long long)find_magic(square, BBits[square], 1));
+        if (square < 63) {
+            fprintf(f, ", ");
+        }
+    }
+    fprintf(f, "};\n\n");
+
+    fprintf(f, "inline constexpr int ROOK_SHIFTS[64] = {");
+    for (int square = 0; square < 64; square++) {
+        fprintf(f, "%d", 64 - RBits[square]);
+        if (square < 63) {
+            fprintf(f, ", ");
+        }
+    }
+    fprintf(f, "};\n\n");
+
+    fprintf(f, "inline constexpr int BISHOP_SHIFTS[64] = {");
+    for (int square = 0; square < 64; square++) {
+        fprintf(f, "%d", 64 - BBits[square]);
         if (square < 63) {
             fprintf(f, ", ");
         }

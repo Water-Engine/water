@@ -23,6 +23,7 @@ class Knight {
     Knight() = delete;
     Knight(const Knight&) = delete;
 
-    static Bitboard avaialable_squares(int square_idx);
-    static bool can_move_to(int knight_square_idx, int other_square_idx);
+    static Bitboard attacked_squares(int square_idx, [[maybe_unused]] const Bitboard& bb);
+    static bool can_move_to(int knight_square_idx, int other_square_idx,
+                            [[maybe_unused]] const Bitboard& bb);
 };

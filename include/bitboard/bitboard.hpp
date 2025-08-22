@@ -9,6 +9,7 @@ class Bitboard {
     Bitboard(uint64_t value) : m_BBoard(value) {};
 
     void set_bit(int bit_to_set);
+    void clear_bit(int bit_to_set);
     void toggle_bit(int bit_to_set);
     void toggle_bits(int first_bit, int second_bit);
 
@@ -25,8 +26,14 @@ class Bitboard {
     friend Bitboard operator|(const Bitboard& a, const Bitboard& b) {
         return Bitboard(a.m_BBoard | b.m_BBoard);
     }
+    friend Bitboard operator|(const Bitboard& a, const uint64_t& value) {
+        return a | Bitboard(value);
+    }
     friend Bitboard operator&(const Bitboard& a, const Bitboard& b) {
         return Bitboard(a.m_BBoard & b.m_BBoard);
+    }
+    friend Bitboard operator&(const Bitboard& a, const uint64_t& value) {
+        return a & Bitboard(value);
     }
     friend Bitboard operator+(const Bitboard& a, const Bitboard& b) {
         return Bitboard(a.m_BBoard + b.m_BBoard);
@@ -36,6 +43,9 @@ class Bitboard {
     }
     friend Bitboard operator*(const Bitboard& a, const Bitboard& b) {
         return Bitboard(a.m_BBoard * b.m_BBoard);
+    }
+    friend Bitboard operator*(const Bitboard& a, const uint64_t& value) {
+        return a * Bitboard(value);
     }
 
     operator uint64_t() { return m_BBoard; }

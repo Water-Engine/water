@@ -7,7 +7,7 @@
 
 #include "generator/pawn.hpp"
 
-template <PieceColor Color> inline Bitboard Pawn::attacked_squares(int square_idx) {
+template <PieceColor Color> Bitboard Pawn::attacked_squares(int square_idx) {
     if (!Coord::valid_square_idx(square_idx)) {
         return Bitboard(0);
     }
@@ -19,8 +19,7 @@ template <PieceColor Color> inline Bitboard Pawn::attacked_squares(int square_id
     }
 }
 
-template <PieceColor Color>
-inline bool Pawn::can_attack(int pawn_square_idx, int other_square_idx) {
+template <PieceColor Color> bool Pawn::can_attack(int pawn_square_idx, int other_square_idx) {
     if (!Coord::valid_square_idx(pawn_square_idx) || !Coord::valid_square_idx(other_square_idx)) {
         return false;
     }

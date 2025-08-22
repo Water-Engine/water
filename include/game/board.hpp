@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/coord.hpp"
 #include "game/move.hpp"
 #include "game/piece.hpp"
 #include "game/state.hpp"
@@ -41,7 +42,11 @@ class PositionInfo {
     friend class Board;
 };
 
-class Coord;
+template <typename T>
+concept BasicPrecomputedValidator = requires(T t, int from, int to, const Bitboard& bb) {
+    { T::can_move_to(from, to, bb) } -> std::convertible_to<bool>;
+    { T::attacked_squares(from, bb) } -> std::convertible_to<Bitboard>;
+};
 
 class Board {
   private:
@@ -74,15 +79,17 @@ class Board {
 
     std::string diagram(bool black_at_top, bool include_fen = true, bool include_hash = true) const;
 
-    bool make_rook_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
-                        Piece piece_to);
-    bool make_knight_move(Coord start_coord, Coord target_coord, Piece piece_from, Piece piece_to);
-    bool make_bishop_move(Coord start_coord, Coord target_coord, Piece piece_from, Piece piece_to);
-    bool make_queen_move(Coord start_coord, Coord target_coord, Piece piece_from, Piece piece_to);
     bool make_king_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
                         Piece piece_to);
     bool make_pawn_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
                         Piece piece_to);
+
+    template <BasicPrecomputedValidator Validator>
+    bool make_basic_precomputed_move(Coord start_coord, Coord target_coord, Piece piece_from,
+                                     Piece piece_to, Bitboard& piece_bb);
+
+    void move_piece(Bitboard& piece_bb, int from, int to, Piece piece);
+    void remove_piece_at(int square_idx);
 
   public:
     Board() {};

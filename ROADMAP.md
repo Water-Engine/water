@@ -6,9 +6,9 @@
     - [ ] Coord
     - [ ] Board
 - [x] Knight move validation - naive (Precomputed locations)
-- [ ] Rook move validation - naive (magics for ortho sliders & blockers)
-- [ ] Bishop move validation - naive (magics for diag sliders & blockers)
-- [ ] Queen move validation - naive (bitwise or of bishops and rooks)
+- [x] Rook move validation - naive (magics for ortho sliders & blockers)
+- [x] Bishop move validation - naive (magics for diag sliders & blockers)
+- [x] Queen move validation - naive (bitwise or of bishops and rooks)
 - [ ] King move validation (check, double check, etc.)
 - [ ] Pawn move validation (most complex piece)
 - [ ] Pseudo legal moves vs. legal moves

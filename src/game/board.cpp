@@ -3,9 +3,11 @@
 #include "bitboard/bitboard.hpp"
 
 #include "game/board.hpp"
-#include "game/coord.hpp"
 
+#include "generator/king.hpp"
 #include "generator/knight.hpp"
+#include "generator/pawn.hpp"
+#include "generator/sliders.hpp"
 
 // ================ POSITION INFO ================
 
@@ -214,70 +216,6 @@ std::string Board::diagram(bool black_at_top, bool include_fen, bool include_has
     return oss.str();
 }
 
-bool Board::make_rook_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
-                           Piece piece_to) {
-    PROFILE_FUNCTION();
-    fmt::println("A rook is trying to move, but not implemented");
-    return false;
-}
-
-bool Board::make_knight_move(Coord start_coord, Coord target_coord, Piece piece_from,
-                             Piece piece_to) {
-    PROFILE_FUNCTION();
-    int knight_idx = start_coord.square_idx();
-    int target_idx = target_coord.square_idx();
-    if (!Knight::can_move_to(knight_idx, target_idx)) {
-        return false;
-    }
-
-    Bitboard attack_mask = Knight::avaialable_squares(knight_idx);
-    Bitboard overlap = attack_mask & m_AllPieceBB;
-
-    if (overlap.bit_value_at(target_idx) == 0) {
-        // We can make this move without thinking of captures or friendly pieces
-        m_KnightBB.toggle_bits(knight_idx, target_idx);
-        if (piece_from.is_white()) {
-            m_WhiteBB.toggle_bits(knight_idx, target_idx);
-        } else {
-            m_BlackBB.toggle_bits(knight_idx, target_idx);
-        }
-    } else {
-        // The knight is now trying to capture, but cannot take its friend
-        if (piece_from.color() == piece_to.color()) {
-            return false;
-        }
-
-        if (piece_from.is_white()) {
-            m_WhiteBB.toggle_bit(knight_idx);
-            m_BlackBB.toggle_bit(target_idx);
-        } else {
-            m_BlackBB.toggle_bit(knight_idx);
-            m_WhiteBB.toggle_bit(target_idx);
-        }
-    }
-
-    m_AllPieceBB.toggle_bits(knight_idx, target_idx);
-    m_StoredPieces[knight_idx].clear();
-    m_StoredPieces[target_idx] =
-        piece_from.is_white() ? Piece::white_knight() : Piece::black_knight();
-
-    return true;
-}
-
-bool Board::make_bishop_move(Coord start_coord, Coord target_coord, Piece piece_from,
-                             Piece piece_to) {
-    PROFILE_FUNCTION();
-    fmt::println("A bishop is trying to move, but not implemented");
-    return false;
-}
-
-bool Board::make_queen_move(Coord start_coord, Coord target_coord, Piece piece_from,
-                            Piece piece_to) {
-    PROFILE_FUNCTION();
-    fmt::println("A queen is trying to move, but not implemented");
-    return false;
-}
-
 bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
                            Piece piece_to) {
     PROFILE_FUNCTION();
@@ -290,6 +228,94 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
     PROFILE_FUNCTION();
     fmt::println("A pawn is trying to move, but not implemented");
     return false;
+}
+
+template <BasicPrecomputedValidator Validator>
+bool Board::make_basic_precomputed_move(Coord start_coord, Coord target_coord, Piece piece_from,
+                                        Piece piece_to, Bitboard& piece_bb) {
+    int piece_idx = start_coord.square_idx();
+    int target_idx = target_coord.square_idx();
+
+    // Validate move request
+    if (!Validator::can_move_to(piece_idx, target_idx, m_AllPieceBB)) {
+        return false;
+    }
+
+    // We cannot capture a friendly piece
+    if (piece_from.color() == piece_to.color() && m_AllPieceBB.bit_value_at(target_idx) == 1) {
+        return false;
+    }
+
+    move_piece(piece_bb, piece_idx, target_idx, piece_from);
+    return true;
+}
+
+void Board::move_piece(Bitboard& piece_bb, int from, int to, Piece piece) {
+    piece_bb.clear_bit(from);
+    piece_bb.set_bit(to);
+
+    if (piece.is_white()) {
+        m_WhiteBB.clear_bit(from);
+        m_WhiteBB.set_bit(to);
+
+        if (m_BlackBB.bit_value_at(to) == 1) {
+            remove_piece_at(to);
+        }
+    } else {
+        m_BlackBB.clear_bit(from);
+        m_BlackBB.set_bit(to);
+
+        if (m_WhiteBB.bit_value_at(to) == 1) {
+            remove_piece_at(to);
+        }
+    }
+
+    m_AllPieceBB.clear_bit(from);
+    m_AllPieceBB.set_bit(to);
+
+    m_StoredPieces[from].clear();
+    m_StoredPieces[to] = piece;
+}
+
+void Board::remove_piece_at(int square_idx) {
+    Piece piece = m_StoredPieces[square_idx];
+    if (piece.is_none()) {
+        return;
+    }
+
+    PieceColor color = piece.color();
+    PieceType type = piece.type();
+
+    if (color == PieceColor::White) {
+        m_WhiteBB.clear_bit(square_idx);
+    } else {
+        m_BlackBB.clear_bit(square_idx);
+    }
+
+    switch (type) {
+    case PieceType::Rook:
+        m_RookBB.clear_bit(square_idx);
+        break;
+    case PieceType::Knight:
+        m_KnightBB.clear_bit(square_idx);
+        break;
+    case PieceType::Bishop:
+        m_BishopBB.clear_bit(square_idx);
+        break;
+    case PieceType::Queen:
+        m_QueenBB.clear_bit(square_idx);
+        break;
+    case PieceType::King:
+        m_KingBB.clear_bit(square_idx);
+        break;
+    case PieceType::Pawn:
+        m_PawnBB.clear_bit(square_idx);
+        break;
+    default:
+        break;
+    }
+
+    m_StoredPieces[square_idx].clear();
 }
 
 Piece Board::piece_at(int square_idx) {
@@ -323,16 +349,20 @@ void Board::make_move(Move move) {
     bool was_valid;
     switch (piece_start.type()) {
     case PieceType::Rook:
-        was_valid = make_rook_move(start_coord, target_coord, move_flag, piece_start, piece_target);
+        was_valid = make_basic_precomputed_move<Rook>(start_coord, target_coord, piece_start,
+                                                      piece_target, m_RookBB);
         break;
     case PieceType::Knight:
-        was_valid = make_knight_move(start_coord, target_coord, piece_start, piece_target);
+        was_valid = make_basic_precomputed_move<Knight>(start_coord, target_coord, piece_start,
+                                                        piece_target, m_KnightBB);
         break;
     case PieceType::Bishop:
-        was_valid = make_bishop_move(start_coord, target_coord, piece_start, piece_target);
+        was_valid = make_basic_precomputed_move<Bishop>(start_coord, target_coord, piece_start,
+                                                        piece_target, m_BishopBB);
         break;
     case PieceType::Queen:
-        was_valid = make_queen_move(start_coord, target_coord, piece_start, piece_target);
+        was_valid = make_basic_precomputed_move<Queen>(start_coord, target_coord, piece_start,
+                                                       piece_target, m_QueenBB);
         break;
     case PieceType::King:
         was_valid = make_king_move(start_coord, target_coord, move_flag, piece_start, piece_target);
