@@ -15,8 +15,7 @@ Coord::Coord(const std::string& square_string) {
 }
 
 bool Coord::valid_square_idx() const {
-    int square_idx = square_idx_unchecked();
-    return (square_idx >= 0 && square_idx <= 63);
+    return m_FileIdx >= 0 && m_FileIdx < 8 && m_RankIdx >= 0 && m_RankIdx < 8;
 }
 
 bool Coord::valid_square_idx(int square_idx) {

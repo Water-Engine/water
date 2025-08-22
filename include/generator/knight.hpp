@@ -1,5 +1,7 @@
 #pragma once
 
+#include "game/piece.hpp"
+
 constexpr uint64_t KNIGHT_MOVES[64] = {
     0x0000000000020400ULL, 0x0000000000050800ULL, 0x00000000000A1100ULL, 0x0000000000142200ULL,
     0x0000000000284400ULL, 0x0000000000508800ULL, 0x0000000000A01000ULL, 0x0000000000402000ULL,
@@ -23,7 +25,8 @@ class Knight {
     Knight() = delete;
     Knight(const Knight&) = delete;
 
-    static Bitboard attacked_squares(int square_idx, [[maybe_unused]] const Bitboard& bb);
+    static Bitboard attacked_squares(int square_idx, [[maybe_unused]] const Bitboard& bb = 0);
     static bool can_move_to(int knight_square_idx, int other_square_idx,
-                            [[maybe_unused]] const Bitboard& bb);
+                            [[maybe_unused]] const Bitboard& bb = 0);
+    inline static PieceType as_piece_type() { return PieceType::Knight; }
 };

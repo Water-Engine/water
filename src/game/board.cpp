@@ -219,7 +219,52 @@ std::string Board::diagram(bool black_at_top, bool include_fen, bool include_has
 bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
                            Piece piece_to) {
     PROFILE_FUNCTION();
-    fmt::println("A king is trying to move, but not implemented");
+    if (move_flag != NO_FLAG && move_flag != CASTLE_FLAG) {
+        return false;
+    }
+
+    Bitboard opponent_rays = opponent_attack_rays();
+    if (move_flag == NO_FLAG) {
+        move_piece(m_KingBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
+        if (piece_from.is_white()) {
+            m_State.white_lost_kingside_right();
+            m_State.white_lost_queenside_right();
+        } else {
+            m_State.black_lost_kingside_right();
+            m_State.black_lost_queenside_right();
+        }
+        return true;
+    } else if (move_flag == CASTLE_FLAG) {
+        bool king_side = target_coord > start_coord;
+
+        if (piece_from.is_white()) {
+            if (king_side && !m_State.can_white_kingside()) {
+                return false;
+            } else if (!m_State.can_white_queenside()) {
+                return false;
+            }
+        } else {
+            if (king_side && !m_State.can_black_kingside()) {
+                return false;
+            } else if (!m_State.can_black_queenside()) {
+                return false;
+            }
+        }
+
+        int king_path[3];
+        int path_len = 0;
+
+        if (king_side) {
+            king_path[0] = start_coord.square_idx() + 1;
+            king_path[1] = start_coord.square_idx() + 2;
+            path_len = 2;
+        } else {
+            king_path[0] = start_coord.square_idx() - 1;
+            king_path[1] = start_coord.square_idx() - 2;
+            king_path[2] = start_coord.square_idx() - 3;
+            path_len = 3;
+        }
+    }
     return false;
 }
 
@@ -230,7 +275,7 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
     return false;
 }
 
-template <BasicPrecomputedValidator Validator>
+template <PrecomputedValidator Validator>
 bool Board::make_basic_precomputed_move(Coord start_coord, Coord target_coord, Piece piece_from,
                                         Piece piece_to, Bitboard& piece_bb) {
     int piece_idx = start_coord.square_idx();
@@ -283,16 +328,16 @@ void Board::remove_piece_at(int square_idx) {
         return;
     }
 
-    PieceColor color = piece.color();
-    PieceType type = piece.type();
+    PieceColor occupied_piece_color = piece.color();
+    PieceType occupied_piece_type = piece.type();
 
-    if (color == PieceColor::White) {
+    if (occupied_piece_color == PieceColor::White) {
         m_WhiteBB.clear_bit(square_idx);
     } else {
         m_BlackBB.clear_bit(square_idx);
     }
 
-    switch (type) {
+    switch (occupied_piece_type) {
     case PieceType::Rook:
         m_RookBB.clear_bit(square_idx);
         break;
@@ -328,24 +373,21 @@ Piece Board::piece_at(int square_idx) {
 
 void Board::make_move(Move move) {
     PROFILE_FUNCTION();
-    Coord target_coord(move.target_square());
-    Coord start_coord(move.start_square());
-    Piece piece_start = piece_at(start_coord.square_idx());
-    Piece piece_target = piece_at(target_coord.square_idx());
-    int move_flag = move.flag();
 
-    // piece move handlers assume valid start and end coords
-    if (piece_start.is_none() || start_coord == target_coord) {
-        return;
-    } else if (!start_coord.valid_square_idx() || !target_coord.valid_square_idx()) {
-        return;
-    } else if (piece_start.color() != (m_WhiteToMove ? PieceColor::White : PieceColor::Black)) {
+    // piece move handlers assume legality and valid start and end coords
+    auto maybe_validated_move = is_legal_move(move);
+    if (maybe_validated_move.is_none()) {
         return;
     }
 
-    // the start piece must exist at this point and thus has a color, so piece move helpers'
-    // assumptions are valid
-    PieceColor start_color = piece_start.color();
+    auto validated = maybe_validated_move.unwrap();
+    Coord start_coord = validated.StartCoord;
+    Coord target_coord = validated.TargetCoord;
+    Piece piece_start = validated.PieceStart;
+    Piece piece_target = validated.PieceTarget;
+    int move_flag = validated.MoveFlag;
+
+    // The legal has transcendended pseaudo-legality
     bool was_valid;
     switch (piece_start.type()) {
     case PieceType::Rook:

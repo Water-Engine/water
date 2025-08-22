@@ -1,5 +1,7 @@
 #pragma once
 
+#include "game/piece.hpp"
+
 constexpr uint64_t KING_MOVES[64] = {
     0x0000000000000302ULL, 0x0000000000000705ULL, 0x0000000000000E0AULL, 0x0000000000001C14ULL,
     0x0000000000003828ULL, 0x0000000000007050ULL, 0x000000000000E0A0ULL, 0x000000000000C040ULL,
@@ -23,6 +25,8 @@ class King {
     King() = delete;
     King(const King&) = delete;
 
-    static Bitboard attacked_squares(int square_idx);
-    static bool can_move_to(int king_square_idx, int other_square_idx);
+    static Bitboard attacked_squares(int square_idx, [[maybe_unused]] const Bitboard& = 0);
+    static bool can_move_to(int king_square_idx, int other_square_idx,
+                            [[maybe_unused]] const Bitboard& = 0);
+    inline static PieceType as_piece_type() { return PieceType::King; }
 };

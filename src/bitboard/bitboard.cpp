@@ -10,8 +10,10 @@ void Bitboard::set_bit(int bit_to_set) {
         return;
     }
 
-    m_BBoard |= (1ULL << bit_to_set);
+    set_bit_unchecked(bit_to_set);
 }
+
+void Bitboard::set_bit_unchecked(int bit_to_set) { m_BBoard |= (1ULL << bit_to_set); }
 
 void Bitboard::clear_bit(int bit_to_set) {
     if (bit_to_set < 0 || bit_to_set > 63) {
@@ -34,6 +36,15 @@ void Bitboard::toggle_bits(int first_bit, int second_bit) {
     toggle_bit(second_bit);
 }
 
+bool Bitboard::contains_square(int square_idx) const {
+    int at = bit_value_at(square_idx);
+    if (at == -1) {
+        return false;
+    }
+
+    return at != 0;
+}
+
 int Bitboard::pop_lsb(uint64_t& value) {
     if (value == 0) {
         return -1;
@@ -45,7 +56,7 @@ int Bitboard::pop_lsb(uint64_t& value) {
     return index;
 }
 
-int Bitboard::bit_value_at(int index) {
+int Bitboard::bit_value_at(int index) const {
     if (!Coord::valid_square_idx(index)) {
         return -1;
     }

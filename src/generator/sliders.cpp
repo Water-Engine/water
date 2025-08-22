@@ -14,9 +14,8 @@ Bitboard Rook::attacked_squares(int square_idx, const Bitboard& occupancy) {
         return Bitboard(0);
     }
 
-    Bitboard relevant = occupancy & ROOK_MASKS[square_idx];
-    uint64_t index = (relevant * ROOK_MAGICS[square_idx]) >> (uint64_t)ROOK_SHIFTS[square_idx];
-    return ROOK_ATTACKS[square_idx][index];
+    Magics& magics = Magics::instance();
+    return magics.get_rook_attacks(square_idx, occupancy);
 }
 
 bool Rook::can_move_to(int rook_square_idx, int other_square_idx, const Bitboard& occupancy) {
@@ -35,10 +34,8 @@ Bitboard Bishop::attacked_squares(int square_idx, const Bitboard& occupancy) {
         return Bitboard(0);
     }
 
-    Bitboard relevant = occupancy & BISHOP_MASKS[square_idx];
-    uint64_t index = (relevant * BISHOP_MAGICS[square_idx]) >> (uint64_t)BISHOP_SHIFTS[square_idx];
-    Bitboard b = BISHOP_ATTACKS[square_idx][index];
-    return BISHOP_ATTACKS[square_idx][index];
+    Magics& magics = Magics::instance();
+    return magics.get_bishop_attacks(square_idx, occupancy);
 }
 
 bool Bishop::can_move_to(int bishop_square_idx, int other_square_idx, const Bitboard& occupancy) {

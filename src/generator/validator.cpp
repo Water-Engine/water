@@ -1,16 +1,129 @@
 #include <pch.hpp>
 
-#include "generator/validator.hpp"
-
 #include "game/board.hpp"
+#include "game/coord.hpp"
+#include "game/piece.hpp"
 
-Validator::Validator(Ref<Board> board) : m_Board(board) {
-    Bitboard all_pieces = board->m_AllPieceBB;
-    if (board->is_white_to_move()) {
-        m_FriendlyPieces = board->m_WhiteBB & all_pieces;
-        m_EnemyPieces = board->m_BlackBB & all_pieces;
+#include "generator/king.hpp"
+#include "generator/knight.hpp"
+#include "generator/pawn.hpp"
+#include "generator/sliders.hpp"
+
+bool Board::move_leaves_self_checked(Coord start_coord, Coord target_coord, Piece piece_start,
+                                     Piece piece_target) {
+    bool result = false;
+    // Only two cases need to be considered, either the king moves, or another piece moves
+    if (piece_start.is_king()) {
+        // We just need the full opponent attack mask and to check its value at target_coord
+        return is_square_attacked(target_coord.square_idx(),
+                                  piece_start.is_white() ? PieceColor::Black : PieceColor::White);
     } else {
-        m_FriendlyPieces = board->m_BlackBB & all_pieces;
-        m_EnemyPieces = board->m_WhiteBB & all_pieces;
+        // Here, the piece needs to be 'moved', just clear the start_coord bit temporary, check rays
+        // with current king, and reset the cleared bit
+        m_AllPieceBB.toggle_bit(start_coord.square_idx());
+        result = king_in_check(piece_start.color());
+        m_AllPieceBB.toggle_bit(start_coord.square_idx());
     }
+    return result;
+}
+
+Option<ValidatedMove> Board::is_legal_move(const Move& move) {
+    Coord target_coord(move.target_square());
+    Coord start_coord(move.start_square());
+    Piece piece_start = piece_at(start_coord.square_idx());
+    Piece piece_target = piece_at(target_coord.square_idx());
+    int flag = move.flag();
+
+    if (piece_start.is_none() || start_coord == target_coord) {
+        return Option<ValidatedMove>();
+    } else if (!start_coord.valid_square_idx() || !target_coord.valid_square_idx()) {
+        return Option<ValidatedMove>();
+    } else if (piece_start.color() != (m_WhiteToMove ? PieceColor::White : PieceColor::Black)) {
+        return Option<ValidatedMove>();
+    }
+
+    if (move_leaves_self_checked(start_coord, target_coord, piece_start, piece_target)) {
+        return Option<ValidatedMove>();
+    }
+
+    return Option<ValidatedMove>(
+        ValidatedMove{start_coord, target_coord, piece_start, piece_target, flag});
+}
+
+Bitboard Board::pawn_attack_rays(bool is_piece_white) const {
+    Bitboard color_bb = is_piece_white ? m_WhiteBB : m_BlackBB;
+    Bitboard to_ray_cast = m_PawnBB & color_bb;
+
+    Bitboard attacks = 0ULL;
+    while (to_ray_cast) {
+        int index = to_ray_cast.pop_lsb();
+        if (is_piece_white) {
+            attacks |= Pawn::attacked_squares<PieceColor::White>(index, m_AllPieceBB);
+        } else {
+            attacks |= Pawn::attacked_squares<PieceColor::Black>(index, m_AllPieceBB);
+        }
+    }
+    return attacks;
+}
+
+template <PrecomputedValidator Validator>
+Bitboard Board::non_pawn_attack_rays(bool is_piece_white) const {
+    Bitboard color_bb = is_piece_white ? m_WhiteBB : m_BlackBB;
+    Bitboard to_ray_cast;
+    switch (Validator::as_piece_type()) {
+    case PieceType::Rook:
+        to_ray_cast = m_RookBB & color_bb;
+        break;
+    case PieceType::Knight:
+        to_ray_cast = m_KnightBB & color_bb;
+        break;
+    case PieceType::Bishop:
+        to_ray_cast = m_BishopBB & color_bb;
+        break;
+    case PieceType::Queen:
+        to_ray_cast = m_QueenBB & color_bb;
+        break;
+    case PieceType::King:
+        to_ray_cast = m_KingBB & color_bb;
+        break;
+    case PieceType::Pawn:
+        to_ray_cast = m_PawnBB & color_bb;
+        break;
+    default:
+        return Bitboard(0);
+    }
+
+    Bitboard attacks = 0ULL;
+    while (to_ray_cast) {
+        int index = to_ray_cast.pop_lsb();
+        attacks |= Validator::attacked_squares(index, m_AllPieceBB);
+    }
+    return attacks;
+}
+
+Bitboard Board::calculate_attack_rays(bool for_white_pieces) const {
+    Bitboard attacks = 0ULL;
+
+    attacks |= non_pawn_attack_rays<Rook>(for_white_pieces);
+    attacks |= non_pawn_attack_rays<Knight>(for_white_pieces);
+    attacks |= non_pawn_attack_rays<Bishop>(for_white_pieces);
+    attacks |= non_pawn_attack_rays<Queen>(for_white_pieces);
+    attacks |= non_pawn_attack_rays<King>(for_white_pieces);
+    attacks |= pawn_attack_rays(for_white_pieces);
+
+    return attacks;
+}
+
+bool Board::is_square_attacked(int square_idx, PieceColor by_color) const {
+    auto attacked = calculate_attack_rays(by_color == PieceColor::White);
+    return attacked.contains_square(square_idx);
+}
+
+bool Board::king_in_check(PieceColor color) const {
+    // There should only ever be a single king per player, so we will naievly jus pop the lsb from a
+    // copy
+    Bitboard friendly_king = m_KingBB & (color == PieceColor::White ? m_WhiteBB : m_BlackBB);
+    int friendly_king_square = friendly_king.pop_lsb();
+    return is_square_attacked(friendly_king_square,
+                              color == PieceColor::White ? PieceColor::Black : PieceColor::White);
 }

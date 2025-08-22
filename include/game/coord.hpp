@@ -10,7 +10,7 @@ class Coord {
 
   public:
     Coord() : m_FileIdx(-1), m_RankIdx(-1) {}
-    Coord(int file_idx, int rank_idx) : m_FileIdx(file_idx), m_RankIdx(rank_idx) {}
+    constexpr Coord(int file_idx, int rank_idx) : m_FileIdx(file_idx), m_RankIdx(rank_idx) {}
 
     Coord(const std::string& square_string);
     Coord(int square) : m_FileIdx(file_from_square(square)), m_RankIdx(rank_from_square(square)) {}
@@ -35,4 +35,16 @@ class Coord {
     }
 
     operator int() const { return square_idx(); }
+
+    friend Coord operator+(const Coord& a, const Coord& b) {
+        return Coord(a.m_FileIdx + b.m_FileIdx, a.m_RankIdx + b.m_RankIdx);
+    }
+
+    friend Coord operator-(const Coord& a, const Coord& b) {
+        return Coord(a.m_FileIdx - b.m_FileIdx, a.m_RankIdx - b.m_RankIdx);
+    }
+
+    friend Coord operator*(const Coord& a, int scalar) {
+        return Coord(a.m_FileIdx * scalar, a.m_RankIdx * scalar);
+    }
 };

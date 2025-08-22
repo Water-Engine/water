@@ -13,6 +13,8 @@ constexpr std::string_view STARTING_FEN =
 constexpr std::string_view FILES = "abcdefgh";
 constexpr std::string_view RANKS = "12345678";
 
+// ================ POSITION INFORMATION ================
+
 class PositionInfo {
   private:
     std::string m_Fen;
@@ -42,10 +44,21 @@ class PositionInfo {
     friend class Board;
 };
 
+// ================ BOARD ================
+
+struct ValidatedMove {
+    Coord StartCoord;
+    Coord TargetCoord;
+    Piece PieceStart;
+    Piece PieceTarget;
+    int MoveFlag;
+};
+
 template <typename T>
-concept BasicPrecomputedValidator = requires(T t, int from, int to, const Bitboard& bb) {
+concept PrecomputedValidator = requires(T t, int from, int to, const Bitboard& bb) {
     { T::can_move_to(from, to, bb) } -> std::convertible_to<bool>;
     { T::attacked_squares(from, bb) } -> std::convertible_to<Bitboard>;
+    { T::as_piece_type() } -> std::convertible_to<PieceType>;
 };
 
 class Board {
@@ -84,12 +97,15 @@ class Board {
     bool make_pawn_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
                         Piece piece_to);
 
-    template <BasicPrecomputedValidator Validator>
+    template <PrecomputedValidator Validator>
     bool make_basic_precomputed_move(Coord start_coord, Coord target_coord, Piece piece_from,
                                      Piece piece_to, Bitboard& piece_bb);
 
     void move_piece(Bitboard& piece_bb, int from, int to, Piece piece);
     void remove_piece_at(int square_idx);
+
+    bool move_leaves_self_checked(Coord start_coord, Coord target_coord, Piece piece_start,
+                                  Piece piece_target);
 
   public:
     Board() {};
@@ -101,6 +117,20 @@ class Board {
     PieceColor opponent_color() const {
         return is_white_to_move() ? PieceColor::Black : PieceColor::White;
     }
+
+    Option<ValidatedMove> is_legal_move(const Move& move);
+    Bitboard pawn_attack_rays(bool is_piece_white) const;
+    template <PrecomputedValidator Validator>
+    Bitboard non_pawn_attack_rays(bool is_piece_white) const;
+
+    Bitboard calculate_attack_rays(bool for_white_pieces) const;
+    Bitboard friendly_attack_rays() const { return calculate_attack_rays(m_WhiteToMove); };
+    Bitboard opponent_attack_rays() const { return calculate_attack_rays(!m_WhiteToMove); };
+
+    /// Important Distinction: Pass in the color of the attacker to this function!
+    bool is_square_attacked(int square_idx, PieceColor by_color) const;
+
+    bool king_in_check(PieceColor color) const;
 
     Piece piece_at(int square_idx);
     void make_move(Move move);

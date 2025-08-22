@@ -1,202 +1,56 @@
-MAX_ROOK_ATTACKS = 4096
-MAX_BISHOP_ATTACKS = 512
+ROOK_MAGICS = [
+    468374916371625120,   18428729537625841661, 2531023729696186408,  6093370314119450896,
+    13830552789156493815, 16134110446239088507, 12677615322350354425, 5404321144167858432,
+    2111097758984580,     18428720740584907710, 17293734603602787839, 4938760079889530922,
+    7699325603589095390,  9078693890218258431,  578149610753690728,   9496543503900033792,
+    1155209038552629657,  9224076274589515780,  1835781998207181184,  509120063316431138,
+    16634043024132535807, 18446673631917146111, 9623686630121410312,  4648737361302392899,
+    738591182849868645,   1732936432546219272,  2400543327507449856,  5188164365601475096,
+    10414575345181196316, 1162492212166789136,  9396848738060210946,  622413200109881612,
+    7998357718131801918,  7719627227008073923,  16181433497662382080, 18441958655457754079,
+    1267153596645440,     18446726464209379263, 1214021438038606600,  4650128814733526084,
+    9656144899867951104,  18444421868610287615, 3695311799139303489,  10597006226145476632,
+    18436046904206950398, 18446726472933277663, 3458977943764860944,  39125045590687766,
+    9227453435446560384,  6476955465732358656,  1270314852531077632,  2882448553461416064,
+    11547238928203796481, 1856618300822323264,  2573991788166144,     4936544992551831040,
+    13690941749405253631, 15852669863439351807, 18302628748190527413, 12682135449552027479,
+    13830554446930287982, 18302628782487371519, 7924083509981736956,  4734295326018586370,
+]
 
-NUM_SQUARES = 64
+BISHOP_MAGICS = [
+    16509839532542417919, 14391803910955204223, 1848771770702627364,  347925068195328958,
+    5189277761285652493,  3750937732777063343,  18429848470517967340, 17870072066711748607,
+    16715520087474960373, 2459353627279607168,  7061705824611107232,  8089129053103260512,
+    7414579821471224013,  9520647030890121554,  17142940634164625405, 9187037984654475102,
+    4933695867036173873,  3035992416931960321,  15052160563071165696, 5876081268917084809,
+    1153484746652717320,  6365855841584713735,  2463646859659644933,  1453259901463176960,
+    9808859429721908488,  2829141021535244552,  576619101540319252,   5804014844877275314,
+    4774660099383771136,  328785038479458864,   2360590652863023124,  569550314443282,
+    17563974527758635567, 11698101887533589556, 5764964460729992192,  6953579832080335136,
+    1318441160687747328,  8090717009753444376,  16751172641200572929, 5558033503209157252,
+    17100156536247493656, 7899286223048400564,  4845135427956654145,  2368485888099072,
+    2399033289953272320,  6976678428284034058,  3134241565013966284,  8661609558376259840,
+    17275805361393991679, 15391050065516657151, 11529206229534274423, 9876416274250600448,
+    16432792402597134585, 11975705497012863580, 11457135419348969979, 9763749252098620046,
+    16960553411078512574, 15563877356819111679, 14994736884583272463, 9441297368950544394,
+    14537646123432199168, 9888547162215157388,  18140215579194907366, 18374682062228545019,
+]
 
-
-set_bit = lambda sq: 1 << sq
-rank_of = lambda sq: sq // 8
-file_of = lambda sq: sq % 8
-
-
-def rook_mask(sq):
-    rank, file = rank_of(sq), file_of(sq)
-    mask = 0
-    for r in range(rank + 1, 7):
-        mask |= set_bit(r * 8 + file)
-    for r in range(rank - 1, 0, -1):
-        mask |= set_bit(r * 8 + file)
-    for f in range(file + 1, 7):
-        mask |= set_bit(rank * 8 + f)
-    for f in range(file - 1, 0, -1):
-        mask |= set_bit(rank * 8 + f)
-    return mask
-
-
-def bishop_mask(sq):
-    rank, file = rank_of(sq), file_of(sq)
-    mask = 0
-    for r, f in zip(range(rank + 1, 7), range(file + 1, 7)):
-        mask |= set_bit(r * 8 + f)
-    for r, f in zip(range(rank + 1, 7), range(file - 1, 0, -1)):
-        mask |= set_bit(r * 8 + f)
-    for r, f in zip(range(rank - 1, 0, -1), range(file + 1, 7)):
-        mask |= set_bit(r * 8 + f)
-    for r, f in zip(range(rank - 1, 0, -1), range(file - 1, 0, -1)):
-        mask |= set_bit(r * 8 + f)
-    return mask
-
-
-def bits_in_mask(mask):
-    return bin(mask).count("1")
-
-
-def set_occupancy(index, bits_in_mask, mask):
-    occupancy = 0
-    bit_index = 0
-    for i in range(64):
-        if mask & (1 << i):
-            if index & (1 << bit_index):
-                occupancy |= 1 << i
-            bit_index += 1
-    return occupancy
-
-
-def rook_attacks_on_the_fly(sq, blockers):
-    attacks = 0
-    rank, file = rank_of(sq), file_of(sq)
-    for r in range(rank + 1, 8):
-        attacks |= set_bit(r * 8 + file)
-        if blockers & set_bit(r * 8 + file):
-            break
-    for r in range(rank - 1, -1, -1):
-        attacks |= set_bit(r * 8 + file)
-        if blockers & set_bit(r * 8 + file):
-            break
-    for f in range(file + 1, 8):
-        attacks |= set_bit(rank * 8 + f)
-        if blockers & set_bit(rank * 8 + f):
-            break
-    for f in range(file - 1, -1, -1):
-        attacks |= set_bit(rank * 8 + f)
-        if blockers & set_bit(rank * 8 + f):
-            break
-    return attacks
-
-
-def bishop_attacks_on_the_fly(sq, blockers):
-    attacks = 0
-    rank, file = rank_of(sq), file_of(sq)
-    r, f = rank + 1, file + 1
-    while r <= 7 and f <= 7:
-        attacks |= set_bit(r * 8 + f)
-        if blockers & set_bit(r * 8 + f):
-            break
-        r += 1
-        f += 1
-    r, f = rank + 1, file - 1
-    while r <= 7 and f >= 0:
-        attacks |= set_bit(r * 8 + f)
-        if blockers & set_bit(r * 8 + f):
-            break
-        r += 1
-        f -= 1
-    r, f = rank - 1, file + 1
-    while r >= 0 and f <= 7:
-        attacks |= set_bit(r * 8 + f)
-        if blockers & set_bit(r * 8 + f):
-            break
-        r -= 1
-        f += 1
-    r, f = rank - 1, file - 1
-    while r >= 0 and f >= 0:
-        attacks |= set_bit(r * 8 + f)
-        if blockers & set_bit(r * 8 + f):
-            break
-        r -= 1
-        f -= 1
-    return attacks
-
-
-def generate_attack_table(mask_func, attack_func):
-    table = []
-    for sq in range(NUM_SQUARES):
-        mask = mask_func(sq)
-        bits = bits_in_mask(mask)
-        occupancy_count = 1 << bits
-        sq_table = []
-        for index in range(occupancy_count):
-            blockers = set_occupancy(index, bits, mask)
-            sq_table.append(attack_func(sq, blockers))
-        table.append(sq_table)
-    return table
-
-
-def dump_2d_array_cpp(f, name, table, max_number):
-    f.write(f"inline constexpr uint64_t {name}[][{max_number}] = {{\n")
-    for sq_table in table:
-        f.write("  {")
-        f.write(", ".join(f"0x{val:016X}ULL" for val in sq_table))
-        f.write("},\n")
-    f.write("};\n\n")
-    
-
-def rook_mask(sq):
-    rank = sq // 8
-    file = sq % 8
-    mask = 0
-
-    for r in range(rank + 1, 7):
-        mask |= set_bit(r * 8 + file)
-    for r in range(rank - 1, 0, -1):
-        mask |= set_bit(r * 8 + file)
-    for f in range(file + 1, 7):
-        mask |= set_bit(rank * 8 + f)
-    for f in range(file - 1, 0, -1):
-        mask |= set_bit(rank * 8 + f)
-
-    return mask
-
-def bishop_mask(sq):
-    rank = sq // 8
-    file = sq % 8
-    mask = 0
-
-    for r, f in zip(range(rank + 1, 7), range(file + 1, 7)):
-        mask |= set_bit(r * 8 + f)
-    for r, f in zip(range(rank + 1, 7), range(file - 1, 0, -1)):
-        mask |= set_bit(r * 8 + f)
-    for r, f in zip(range(rank - 1, 0, -1), range(file + 1, 7)):
-        mask |= set_bit(r * 8 + f)
-    for r, f in zip(range(rank - 1, 0, -1), range(file - 1, 0, -1)):
-        mask |= set_bit(r * 8 + f)
-
-    return mask
-
-
-def generate_masks():
-    rook_masks = [rook_mask(sq) for sq in range(64)]
-    bishop_masks = [bishop_mask(sq) for sq in range(64)]
-    return rook_masks, bishop_masks
-
-
-def make_header():
-    rook_masks, bishop_masks = generate_masks()
-    rook_attacks = generate_attack_table(rook_mask, rook_attacks_on_the_fly)
-    bishop_attacks = generate_attack_table(bishop_mask, bishop_attacks_on_the_fly)
-
-    with open("generated.txt", "w") as f:
+def to_hex():
+    with open('generated.txt', 'w') as f:
         f.write("#pragma once\n\n")
-        
-        # Rook masks
-        f.write("inline constexpr uint64_t ROOK_MASKS[64] = {")
-        for i, m in enumerate(rook_masks):
-            f.write(f"0x{m:016X}ULL")
-            if i < 63:
-                f.write(", ")
-        f.write("};\n\n")
-
-        # Bishop masks
-        f.write("inline constexpr uint64_t BISHOP_MASKS[64] = {")
-        for i, m in enumerate(bishop_masks):
-            f.write(f"0x{m:016X}ULL")
-            if i < 63:
+        f.write("inline constexpr uint64_t ROOK_MAGICS[64] = {")
+        for i, rm in enumerate(ROOK_MAGICS):
+            f.write(f"0x{rm:016X}ULL")
+            if i != 63:
                 f.write(", ")
         f.write("};\n\n")
         
-        # Attacks
-        dump_2d_array_cpp(f, "ROOK_ATTACKS", rook_attacks, MAX_ROOK_ATTACKS)
-        dump_2d_array_cpp(f, "BISHOP_ATTACKS", bishop_attacks, MAX_BISHOP_ATTACKS)
-
-
-make_header()
+        f.write("inline constexpr uint64_t BISHOP_MAGICS[64] = {")
+        for i, rm in enumerate(BISHOP_MAGICS):
+            f.write(f"0x{rm:016X}ULL")
+            if i != 63:
+                f.write(", ")
+        f.write("};\n\n")
+        
+to_hex()
