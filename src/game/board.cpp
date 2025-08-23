@@ -233,7 +233,7 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
         }
 
         if (piece_from.color() == piece_to.color() &&
-            m_AllPieceBB.bit_value_at(target_coord.square_idx()) == 1) {
+            m_AllPieceBB.contains_square(target_coord.square_idx())) {
             return false;
         }
 
@@ -284,7 +284,7 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
             rook_clear[1] = king_from - 2;
             rook_clear[2] = king_from - 3;
         }
-        for (int i = 0; i < rook_clear_len; ++i) {
+        for (int i = 0; i < rook_clear_len; i++) {
             if (m_AllPieceBB.contains_square(rook_clear[i])) {
                 return false;
             }
@@ -339,9 +339,47 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
         return false;
     }
 
+    if (piece_from.is_white() && !Pawn::can_move_to<PieceColor::White>(start_coord.square_idx(),
+                                                                       target_coord.square_idx())) {
+        return false;
+    } else if (piece_from.is_black() && !Pawn::can_move_to<PieceColor::Black>(
+                                            start_coord.square_idx(), target_coord.square_idx())) {
+        return false;
+    }
+
     if (move_flag == NO_FLAG) {
+        if (piece_from.color() == piece_to.color() &&
+            m_AllPieceBB.contains_square(target_coord.square_idx())) {
+            return false;
+        }
+
+        move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
+    } else if (move_flag == PAWN_TWO_UP_FLAG) {
+        if (piece_from.color() == piece_to.color() &&
+            m_AllPieceBB.contains_square(target_coord.square_idx())) {
+            return false;
+        }
+
+        int ep_square = start_coord.square_idx() + (piece_from.is_white() ? 8 : -8);
+        if (m_AllPieceBB.contains_square(ep_square)) {
+            return false;
+        }
+
+        m_State.set_ep(ep_square);
         move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
     } else if (move_flag == EN_PASSANT_CAPTURE_FLAG) {
+        int old_ep_square = m_State.pop_ep_square();
+
+        // Handle ep side of moves
+        if (old_ep_square == start_coord.square_idx()) {
+            const Bitboard& opponents_pieces = piece_from.is_white() ? m_BlackBB : m_WhiteBB;
+            if (!opponents_pieces.contains_square(target_coord.square_idx())) {
+                return false;
+            }
+        } else {
+            // Fallback to basic captures, diagonal moves must attack an enemy piece, but we know it
+            // is a valid attack square due to passing can_move_to checks
+        }
     }
 
     return true;
