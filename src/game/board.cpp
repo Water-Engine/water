@@ -65,11 +65,14 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
     // Castling rights
     if (str::contains(castling_rights, 'K')) {
         wck = true;
-    } else if (str::contains(castling_rights, 'Q')) {
+    }
+    if (str::contains(castling_rights, 'Q')) {
         wcq = true;
-    } else if (str::contains(castling_rights, 'k')) {
+    }
+    if (str::contains(castling_rights, 'k')) {
         bck = true;
-    } else if (str::contains(castling_rights, 'q')) {
+    }
+    if (str::contains(castling_rights, 'q')) {
         bcq = true;
     }
 
@@ -225,18 +228,22 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
 
     Bitboard opponent_rays = opponent_attack_rays();
     if (move_flag == NO_FLAG) {
-        move_piece(m_KingBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
-        if (piece_from.is_white()) {
-            m_State.white_lost_kingside_right();
-            m_State.white_lost_queenside_right();
-        } else {
-            m_State.black_lost_kingside_right();
-            m_State.black_lost_queenside_right();
+        if (!King::can_move_to(start_coord.square_idx(), target_coord.square_idx())) {
+            return false;
         }
-        return true;
-    } else if (move_flag == CASTLE_FLAG) {
-        bool king_side = target_coord > start_coord;
 
+        if (piece_from.color() == piece_to.color() &&
+            m_AllPieceBB.bit_value_at(target_coord.square_idx()) == 1) {
+            return false;
+        }
+
+        move_piece(m_KingBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
+    } else if (move_flag == CASTLE_FLAG) {
+        const int king_from = start_coord.square_idx();
+        const int king_to = target_coord.square_idx();
+        const bool king_side = (king_to > king_from);
+
+        // 1. Catsling rights must be valid
         if (piece_from.is_white()) {
             if (king_side && !m_State.can_white_kingside()) {
                 return false;
@@ -251,33 +258,99 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
             }
         }
 
-        int king_path[3];
-        int path_len = 0;
-
-        if (king_side) {
-            king_path[0] = start_coord.square_idx() + 1;
-            king_path[1] = start_coord.square_idx() + 2;
-            path_len = 2;
-        } else {
-            king_path[0] = start_coord.square_idx() - 1;
-            king_path[1] = start_coord.square_idx() - 2;
-            king_path[2] = start_coord.square_idx() - 3;
-            path_len = 3;
+        // 2. King cannot castle out of a check
+        if (king_in_check(piece_from.color())) {
+            return false;
         }
+
+        // 3. A castling move cannot pass through attacked squares
+        int king_path[2];
+        king_path[0] = king_from + (king_side ? 1 : -1);
+        king_path[1] = king_from + (king_side ? 2 : -2);
+        for (int i = 0; i < 2; i++) {
+            if (opponent_rays.contains_square(king_path[i])) {
+                return false;
+            }
+        }
+
+        // 4. All squares between rook and king must be empty
+        int rook_clear_len = king_side ? 2 : 3;
+        int rook_clear[3];
+        if (king_side) {
+            rook_clear[0] = king_from + 1;
+            rook_clear[1] = king_from + 2;
+        } else {
+            rook_clear[0] = king_from - 1;
+            rook_clear[1] = king_from - 2;
+            rook_clear[2] = king_from - 3;
+        }
+        for (int i = 0; i < rook_clear_len; ++i) {
+            if (m_AllPieceBB.contains_square(rook_clear[i])) {
+                return false;
+            }
+        }
+
+        // Extra validation is needed since there is a second piece type moving
+        int rook_from, rook_to;
+        if (piece_from.is_white()) {
+            if (king_side) {
+                rook_from = Square::H1;
+                rook_to = Square::F1;
+            } else {
+                rook_from = Square::A1;
+                rook_to = Square::D1;
+            }
+        } else {
+            if (king_side) {
+                rook_from = Square::H8;
+                rook_to = Square::F8;
+            } else {
+                rook_from = Square::A8;
+                rook_to = Square::D8;
+            }
+        }
+
+        Piece rook_piece = m_StoredPieces[rook_from];
+        if (!rook_piece.is_rook() || rook_piece.color() != piece_from.color()) {
+            return false;
+        }
+
+        // Now move the pieces
+        move_piece(m_KingBB, king_from, king_to, piece_from);
+        move_piece(m_RookBB, rook_from, rook_to, rook_piece);
     }
-    return false;
+
+    // Any king move that makes it this far will invalidate its castling rights
+    if (piece_from.is_white()) {
+        m_State.white_lost_kingside_right();
+        m_State.white_lost_queenside_right();
+    } else {
+        m_State.black_lost_kingside_right();
+        m_State.black_lost_queenside_right();
+    }
+    return true;
 }
 
 bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
                            Piece piece_to) {
     PROFILE_FUNCTION();
-    fmt::println("A pawn is trying to move, but not implemented");
-    return false;
+    if (move_flag != NO_FLAG && move_flag != EN_PASSANT_CAPTURE_FLAG &&
+        move_flag != PAWN_TWO_UP_FLAG) {
+        return false;
+    }
+
+    if (move_flag == NO_FLAG) {
+        move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
+    } else if (move_flag == EN_PASSANT_CAPTURE_FLAG) {
+    }
+
+    return true;
 }
 
 template <PrecomputedValidator Validator>
 bool Board::make_basic_precomputed_move(Coord start_coord, Coord target_coord, Piece piece_from,
                                         Piece piece_to, Bitboard& piece_bb) {
+    PROFILE_FUNCTION();
     int piece_idx = start_coord.square_idx();
     int target_idx = target_coord.square_idx();
 
@@ -292,10 +365,29 @@ bool Board::make_basic_precomputed_move(Coord start_coord, Coord target_coord, P
     }
 
     move_piece(piece_bb, piece_idx, target_idx, piece_from);
+
+    // If were moving a rook, then we have to update castling rights
+    if (piece_from.is_rook()) {
+        if (piece_from.is_white()) {
+            if (m_State.can_white_kingside() && start_coord.square_idx() == Square::H1) {
+                m_State.white_lost_kingside_right();
+            } else if (m_State.can_white_queenside() && start_coord.square_idx() == Square::A1) {
+                m_State.white_lost_queenside_right();
+            }
+        } else {
+            if (m_State.can_black_kingside() && start_coord.square_idx() == Square::H8) {
+                m_State.black_lost_kingside_right();
+            } else if (m_State.can_black_queenside() && start_coord.square_idx() == Square::A8) {
+                m_State.black_lost_queenside_right();
+            }
+        }
+    }
+
     return true;
 }
 
 void Board::move_piece(Bitboard& piece_bb, int from, int to, Piece piece) {
+    PROFILE_FUNCTION();
     piece_bb.clear_bit(from);
     piece_bb.set_bit(to);
 
@@ -323,6 +415,7 @@ void Board::move_piece(Bitboard& piece_bb, int from, int to, Piece piece) {
 }
 
 void Board::remove_piece_at(int square_idx) {
+    PROFILE_FUNCTION();
     Piece piece = m_StoredPieces[square_idx];
     if (piece.is_none()) {
         return;
@@ -421,6 +514,7 @@ void Board::make_move(Move move) {
     }
 
     m_AllMoves.push_back(move);
+    m_StateHistory.push_back(m_State);
     m_WhiteToMove = !m_WhiteToMove;
 }
 

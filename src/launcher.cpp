@@ -11,7 +11,7 @@
 void launch() {
     std::string line;
     Engine e;
-    Magics& magics = Magics::instance();
+    Magics::instance();
 
     while (std::getline(std::cin, line)) {
         if (e.process_line(line) != ParseResult::SUCCESS) {

@@ -39,7 +39,8 @@ Move::Move(Ref<Board> board, const std::string& move_uci) {
             flag = EN_PASSANT_CAPTURE_FLAG;
         }
     } else if (moved_piece.type() == PieceType::King) {
-        if (std::abs(start_coord.file_idx() - target_coord.file_idx()) > 1) {
+        if (std::abs(start_coord.file_idx() - target_coord.file_idx()) == 2 &&
+            start_coord.rank_idx() == target_coord.rank_idx()) {
             flag = CASTLE_FLAG;
         }
     }

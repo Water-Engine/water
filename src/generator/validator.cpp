@@ -11,7 +11,6 @@
 
 bool Board::move_leaves_self_checked(Coord start_coord, Coord target_coord, Piece piece_start,
                                      Piece piece_target) {
-    bool result = false;
     // Only two cases need to be considered, either the king moves, or another piece moves
     if (piece_start.is_king()) {
         // We just need the full opponent attack mask and to check its value at target_coord
@@ -21,10 +20,21 @@ bool Board::move_leaves_self_checked(Coord start_coord, Coord target_coord, Piec
         // Here, the piece needs to be 'moved', just clear the start_coord bit temporary, check rays
         // with current king, and reset the cleared bit
         m_AllPieceBB.toggle_bit(start_coord.square_idx());
-        result = king_in_check(piece_start.color());
+        bool captured = false;
+        if (!piece_target.is_none()) {
+            m_AllPieceBB.toggle_bit(target_coord.square_idx());
+            captured = true;
+        }
+
+        bool result = king_in_check(piece_start.color());
+
         m_AllPieceBB.toggle_bit(start_coord.square_idx());
+        if (captured) {
+            m_AllPieceBB.toggle_bit(target_coord.square_idx());
+        }
+
+        return result;
     }
-    return result;
 }
 
 Option<ValidatedMove> Board::is_legal_move(const Move& move) {
@@ -72,22 +82,22 @@ Bitboard Board::non_pawn_attack_rays(bool is_piece_white) const {
     Bitboard to_ray_cast;
     switch (Validator::as_piece_type()) {
     case PieceType::Rook:
-        to_ray_cast = m_RookBB & color_bb;
+        to_ray_cast = m_AllPieceBB & m_RookBB & color_bb;
         break;
     case PieceType::Knight:
-        to_ray_cast = m_KnightBB & color_bb;
+        to_ray_cast = m_AllPieceBB & m_KnightBB & color_bb;
         break;
     case PieceType::Bishop:
-        to_ray_cast = m_BishopBB & color_bb;
+        to_ray_cast = m_AllPieceBB & m_BishopBB & color_bb;
         break;
     case PieceType::Queen:
-        to_ray_cast = m_QueenBB & color_bb;
+        to_ray_cast = m_AllPieceBB & m_QueenBB & color_bb;
         break;
     case PieceType::King:
-        to_ray_cast = m_KingBB & color_bb;
+        to_ray_cast = m_AllPieceBB & m_KingBB & color_bb;
         break;
     case PieceType::Pawn:
-        to_ray_cast = m_PawnBB & color_bb;
+        to_ray_cast = m_AllPieceBB & m_PawnBB & color_bb;
         break;
     default:
         return Bitboard(0);
