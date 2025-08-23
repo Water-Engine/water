@@ -11,7 +11,7 @@ class Rook {
 
     static Bitboard attacked_squares(int square_idx, const Bitboard& occupancy);
     static bool can_move_to(int rook_square_idx, int other_square_idx, const Bitboard& occupancy);
-    inline static PieceType as_piece_type() { return PieceType::Rook; }
+    constexpr inline static PieceType as_piece_type() { return PieceType::Rook; }
 };
 
 class Bishop {
@@ -21,7 +21,7 @@ class Bishop {
 
     static Bitboard attacked_squares(int square_idx, const Bitboard& occupancy);
     static bool can_move_to(int bishop_square_idx, int other_square_idx, const Bitboard& occupancy);
-    inline static PieceType as_piece_type() { return PieceType::Bishop; }
+    constexpr inline static PieceType as_piece_type() { return PieceType::Bishop; }
 };
 
 class Queen {
@@ -31,5 +31,5 @@ class Queen {
 
     static Bitboard attacked_squares(int square_idx, const Bitboard& occupancy);
     static bool can_move_to(int queen_square_idx, int other_square_idx, const Bitboard& occupancy);
-    inline static PieceType as_piece_type() { return PieceType::Queen; }
+    constexpr inline static PieceType as_piece_type() { return PieceType::Queen; }
 };

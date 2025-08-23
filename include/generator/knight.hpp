@@ -28,5 +28,5 @@ class Knight {
     static Bitboard attacked_squares(int square_idx, [[maybe_unused]] const Bitboard& bb = 0);
     static bool can_move_to(int knight_square_idx, int other_square_idx,
                             [[maybe_unused]] const Bitboard& bb = 0);
-    inline static PieceType as_piece_type() { return PieceType::Knight; }
+    constexpr inline static PieceType as_piece_type() { return PieceType::Knight; }
 };

@@ -15,7 +15,7 @@ bool Board::move_leaves_self_checked(Coord start_coord, Coord target_coord, Piec
     if (piece_start.is_king()) {
         // We just need the full opponent attack mask and to check its value at target_coord
         return is_square_attacked(target_coord.square_idx(),
-                                  piece_start.is_white() ? PieceColor::Black : PieceColor::White);
+                                  piece_start.is_white() ? PieceColor::White : PieceColor::Black);
     } else {
         // Here, the piece needs to be 'moved', just clear the start_coord bit temporary, check rays
         // with current king, and reset the cleared bit
@@ -35,6 +35,62 @@ bool Board::move_leaves_self_checked(Coord start_coord, Coord target_coord, Piec
 
         return result;
     }
+}
+
+bool Board::can_capture_ep(bool is_white) {
+    int ep_square = m_State.get_ep_square();
+    if (ep_square == -1) {
+        return false;
+    }
+
+    int rank = Coord::rank_from_square(ep_square);
+    int file = Coord::file_from_square(ep_square);
+
+    if (is_white) {
+        if (rank != 5) {
+            return false;
+        }
+
+        // check left pawn
+        if (file > 0) {
+            // one down-left
+            int from = ep_square - 9;
+            if (m_PawnBB.contains_square(from) && piece_at(from).is_white()) {
+                return true;
+            }
+        }
+        // check right pawn
+        if (file < 7) {
+            // one down-right
+            int from = ep_square - 7;
+            if (m_PawnBB.contains_square(from) && piece_at(from).is_white()) {
+                return true;
+            }
+        }
+    } else {
+        if (rank != 2) {
+            return false;
+        }
+
+        // check left pawn
+        if (file > 0) {
+            // one up-left
+            int from = ep_square + 7;
+            if (m_PawnBB.contains_square(from) && piece_at(from).is_black()) {
+                return true;
+            }
+        }
+        // check right pawn
+        if (file < 7) {
+            // one up-right
+            int from = ep_square + 9;
+            if (m_PawnBB.contains_square(from) && piece_at(from).is_black()) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 Option<ValidatedMove> Board::is_legal_move(const Move& move) {

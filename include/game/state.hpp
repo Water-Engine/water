@@ -8,12 +8,17 @@ class GameState {
     bool m_BlackCastleQueenside;
 
     int m_EpSquare;
+    int m_HalfmoveClock;
+
+    bool m_LastMoveWasCapture;
+    bool m_LastMoveWasPawnMove;
 
   public:
     GameState() = default;
-    GameState(bool wck, bool wcq, bool bck, bool bcq, int ep_square)
+    GameState(bool wck, bool wcq, bool bck, bool bcq, int ep_square, int hmc)
         : m_WhiteCastleKingside(wck), m_WhiteCastleQueenside(wcq), m_BlackCastleKingside(bck),
-          m_BlackCastleQueenside(bcq), m_EpSquare(ep_square) {}
+          m_BlackCastleQueenside(bcq), m_EpSquare(ep_square), m_HalfmoveClock(hmc),
+          m_LastMoveWasCapture(false), m_LastMoveWasPawnMove(false) {}
 
     bool can_white_kingside() const { return m_WhiteCastleKingside; }
     bool can_black_kingside() const { return m_BlackCastleKingside; }
@@ -31,8 +36,28 @@ class GameState {
         return previous;
     }
 
+    int halfmove_clock() const { return m_HalfmoveClock; }
+    bool was_last_move_capture() const { return m_LastMoveWasCapture; }
+    bool was_last_move_pawn() const { return m_LastMoveWasPawnMove; }
+    void indicate_pawn_move() { m_LastMoveWasPawnMove = true; }
+    void indicate_capture() { m_LastMoveWasCapture = true; }
+    void reset_halfmove_clock() {
+        m_HalfmoveClock = 0;
+        m_LastMoveWasCapture = false;
+        m_LastMoveWasPawnMove = false;
+    }
+
+    void try_reset_halfmove_clock() {
+        if (m_LastMoveWasCapture || m_LastMoveWasPawnMove) {
+            reset_halfmove_clock();
+        } else {
+            m_HalfmoveClock += 1;
+        }
+    }
+
     void clear_ep() { m_EpSquare = -1; }
     void set_ep(int ep_square) { m_EpSquare = ep_square; }
+    int get_ep_square() const { return m_EpSquare; }
 };
 
 class Zobrist {

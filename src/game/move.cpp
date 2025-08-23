@@ -36,7 +36,7 @@ Move::Move(Ref<Board> board, const std::string& move_uci) {
             flag = PAWN_TWO_UP_FLAG;
         } else if ((start_coord.file_idx() != target_coord.file_idx()) &&
                    board->piece_at(target).value() == Piece::none()) {
-            flag = EN_PASSANT_CAPTURE_FLAG;
+            flag = PAWN_CAPTURE_FLAG;
         }
     } else if (moved_piece.type() == PieceType::King) {
         if (std::abs(start_coord.file_idx() - target_coord.file_idx()) == 2 &&

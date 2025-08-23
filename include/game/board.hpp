@@ -84,9 +84,7 @@ class Board {
     std::deque<GameState> m_StateHistory;
     std::vector<Move> m_AllMoves;
 
-    int m_HalfmoveClock;
-
-  private:
+    private:
     void load_from_position(const PositionInfo& pos);
     void reset();
 
@@ -106,6 +104,8 @@ class Board {
 
     bool move_leaves_self_checked(Coord start_coord, Coord target_coord, Piece piece_start,
                                   Piece piece_target);
+
+    bool can_capture_ep(bool is_white);
 
   public:
     Board() {};

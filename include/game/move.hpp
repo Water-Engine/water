@@ -6,7 +6,7 @@ constexpr uint16_t START_SQUARE_MASK = 0b0000000000111111;
 constexpr uint16_t TARGET_SQUARE_MASK = 0b0000111111000000;
 
 constexpr int NO_FLAG = 0b0000;
-constexpr int EN_PASSANT_CAPTURE_FLAG = 0b0001;
+constexpr int PAWN_CAPTURE_FLAG = 0b0001;
 constexpr int CASTLE_FLAG = 0b0010;
 constexpr int PAWN_TWO_UP_FLAG = 0b0011;
 

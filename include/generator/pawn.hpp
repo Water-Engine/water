@@ -148,5 +148,5 @@ class Pawn {
         return b.bit_value_at(other_square_idx) == 1;
     }
 
-    inline static PieceType as_piece_type() { return PieceType::Pawn; }
+    constexpr inline static PieceType as_piece_type() { return PieceType::Pawn; }
 };

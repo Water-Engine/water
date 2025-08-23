@@ -11,7 +11,6 @@
 
 // ================ POSITION INFO ================
 
-// Example: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen) {
     PROFILE_FUNCTION();
     auto sections = str::split(fen);
@@ -104,11 +103,10 @@ void Board::load_from_position(const PositionInfo& pos) {
     reset();
 
     m_AllMoves.reserve(pos.m_MoveClock);
-    m_HalfmoveClock = pos.m_HalfmoveClock;
-
     m_StartPos = pos;
-    m_State = GameState(pos.m_WhiteCastleKingside, pos.m_WhiteCastleQueenside,
-                        pos.m_BlackCastleKingside, pos.m_BlackCastleQueenside, pos.m_EpSquare);
+    m_State =
+        GameState(pos.m_WhiteCastleKingside, pos.m_WhiteCastleQueenside, pos.m_BlackCastleKingside,
+                  pos.m_BlackCastleQueenside, pos.m_EpSquare, pos.m_HalfmoveClock);
 
     m_StateHistory.emplace_back(m_State);
     m_StoredPieces = pos.m_Squares;
@@ -165,8 +163,6 @@ void Board::reset() {
 
     m_StateHistory.clear();
     m_AllMoves.clear();
-
-    m_HalfmoveClock = 0;
 }
 
 std::string Board::diagram(bool black_at_top, bool include_fen, bool include_hash) const {
@@ -334,8 +330,7 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
 bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
                            Piece piece_to) {
     PROFILE_FUNCTION();
-    if (move_flag != NO_FLAG && move_flag != EN_PASSANT_CAPTURE_FLAG &&
-        move_flag != PAWN_TWO_UP_FLAG) {
+    if (move_flag != NO_FLAG && move_flag != PAWN_CAPTURE_FLAG && move_flag != PAWN_TWO_UP_FLAG) {
         return false;
     }
 
@@ -367,21 +362,33 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
 
         m_State.set_ep(ep_square);
         move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
-    } else if (move_flag == EN_PASSANT_CAPTURE_FLAG) {
-        int old_ep_square = m_State.pop_ep_square();
+    } else if (move_flag == PAWN_CAPTURE_FLAG) {
+        int old_ep_square = m_State.get_ep_square();
 
         // Handle ep side of moves
-        if (old_ep_square == start_coord.square_idx()) {
-            const Bitboard& opponents_pieces = piece_from.is_white() ? m_BlackBB : m_WhiteBB;
-            if (!opponents_pieces.contains_square(target_coord.square_idx())) {
+        if (old_ep_square == target_coord.square_idx()) {
+            if (!can_capture_ep(piece_from.color() == PieceColor::White)) {
                 return false;
             }
+
+            // Move and capture involved pawns
+            int captured_pawn_square = old_ep_square + (piece_from.is_white() ? -8 : 8);
+            remove_piece_at(captured_pawn_square);
+            move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
         } else {
             // Fallback to basic captures, diagonal moves must attack an enemy piece, but we know it
             // is a valid attack square due to passing can_move_to checks
+            if (piece_from.color() == piece_to.color()) {
+                return false;
+            } else if ((int)piece_at(target_coord.square_idx()) == Piece::none()) {
+                return false;
+            }
+
+            move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
         }
     }
 
+    m_State.indicate_pawn_move();
     return true;
 }
 
@@ -405,7 +412,7 @@ bool Board::make_basic_precomputed_move(Coord start_coord, Coord target_coord, P
     move_piece(piece_bb, piece_idx, target_idx, piece_from);
 
     // If were moving a rook, then we have to update castling rights
-    if (piece_from.is_rook()) {
+    if constexpr (Validator::as_piece_type() == PieceType::Rook) {
         if (piece_from.is_white()) {
             if (m_State.can_white_kingside() && start_coord.square_idx() == Square::H1) {
                 m_State.white_lost_kingside_right();
@@ -492,6 +499,7 @@ void Board::remove_piece_at(int square_idx) {
     }
 
     m_StoredPieces[square_idx].clear();
+    m_State.indicate_capture();
 }
 
 Piece Board::piece_at(int square_idx) {
@@ -551,6 +559,7 @@ void Board::make_move(Move move) {
         return;
     }
 
+    m_State.try_reset_halfmove_clock();
     m_AllMoves.push_back(move);
     m_StateHistory.push_back(m_State);
     m_WhiteToMove = !m_WhiteToMove;
