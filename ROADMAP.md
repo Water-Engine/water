@@ -9,9 +9,9 @@
 - [x] Rook move validation - naive (magics for ortho sliders & blockers)
 - [x] Bishop move validation - naive (magics for diag sliders & blockers)
 - [x] Queen move validation - naive (bitwise or of bishops and rooks)
-- [x] King move validation (check, double check, etc.)
+- [ ] King move validation (check, double check, etc.)
 - [x] Pawn move validation (most complex piece)
-- [x] Pseudo legal moves vs. legal moves
+- [ ] Pseudo legal moves vs. legal moves
 - [ ] Perft testing
 
 # Search Core
