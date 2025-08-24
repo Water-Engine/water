@@ -50,8 +50,6 @@ Result<void, std::string> Bot::think_timed(int time_ms) {
     }
     fmt::println("{} moves total.", moves.size());
 
-    
-
     return Result<void, std::string>::Err(
         fmt::interpolate("I want to think for {} ms, but I can't yet :(", time_ms));
 }

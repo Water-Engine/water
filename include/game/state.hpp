@@ -61,7 +61,7 @@ class GameState {
         m_CapturedPieceType = piece.type();
         indicate_capture();
     }
-    
+
     inline bool was_piece_captured() const { return m_CapturedPieceType != PieceType::None; }
     inline PieceType captured_piece_type() const { return m_CapturedPieceType; }
 
