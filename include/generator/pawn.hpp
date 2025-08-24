@@ -131,8 +131,7 @@ class Pawn {
         }
     }
 
-    template <PieceColor Color>
-    inline static Bitboard all_available_squares(int square_idx) {
+    template <PieceColor Color> inline static Bitboard all_available_squares(int square_idx) {
         Bitboard b;
         if constexpr (Color == PieceColor::White) {
             b = Bitboard(WHITE_PAWN_ATTACKS[square_idx] | WHITE_PAWN_SINGLE[square_idx] |
@@ -142,11 +141,11 @@ class Pawn {
                          BLACK_PAWN_DOUBLE[square_idx]);
         }
         return b;
-    } 
+    }
 
     template <PieceColor Color>
     inline static bool can_move_to(int pawn_square_idx, int other_square_idx,
-                            [[maybe_unused]] const Bitboard& = 0) {
+                                   [[maybe_unused]] const Bitboard& = 0) {
         if (!Coord::valid_square_idx(pawn_square_idx) ||
             !Coord::valid_square_idx(other_square_idx)) {
             return false;

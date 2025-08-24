@@ -2,9 +2,9 @@
 
 #include "bitboard/bitboard.hpp"
 
+#include "game/board.hpp"
 #include "game/move.hpp"
 #include "game/piece.hpp"
-#include "game/board.hpp"
 
 #include "generator/pawn.hpp"
 

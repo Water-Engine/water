@@ -164,6 +164,10 @@ fmt:
 fmt-check:
 	@clang-format --dry-run --Werror $(FMT_SRCS)
 
+CLOC_EXCLUDE_FILE := .rgignore
+cloc:
+	cloc . --exclude-list-file=$(CLOC_EXCLUDE_FILE)
+
 # ================ SLIDER GENERATOR ================
 
 SLIDER_BIN := scripts/slider_generators$(EXE)
@@ -175,4 +179,4 @@ $(SLIDER_BIN): scripts/slider_generators.c
 	@$(call MKDIR,$(BIN_ROOT))
 	$(C) -std=c11 $< -o $@
 
-.PHONY: default install all dist release debug test run run-dist run-release run-debug clean fmt fmt-check sliders
+.PHONY: default install all dist release debug test run run-dist run-release run-debug clean fmt fmt-check cloc sliders

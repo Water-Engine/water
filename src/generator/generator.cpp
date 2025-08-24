@@ -15,7 +15,8 @@ void Generator::generate_knight_moves(Bitboard& relevant_knight_bb, std::vector<
     }
 }
 
-void Generator::generate_bishop_moves(Bitboard& relevant_bishop_bb, const Bitboard& occupancy, std::vector<Move>& out) {
+void Generator::generate_bishop_moves(Bitboard& relevant_bishop_bb, const Bitboard& occupancy,
+                                      std::vector<Move>& out) {
     while (relevant_bishop_bb != 0) {
         int bishop_idx = relevant_bishop_bb.pop_lsb();
         Bitboard attacked = Bishop::attacked_squares(bishop_idx, occupancy);
@@ -23,7 +24,8 @@ void Generator::generate_bishop_moves(Bitboard& relevant_bishop_bb, const Bitboa
     }
 }
 
-void Generator::generate_rook_moves(Bitboard& relevant_rook_bb, const Bitboard& occupancy, std::vector<Move>& out) {
+void Generator::generate_rook_moves(Bitboard& relevant_rook_bb, const Bitboard& occupancy,
+                                    std::vector<Move>& out) {
     while (relevant_rook_bb != 0) {
         int rook_idx = relevant_rook_bb.pop_lsb();
         Bitboard attacked = Rook::attacked_squares(rook_idx, occupancy);
@@ -31,7 +33,8 @@ void Generator::generate_rook_moves(Bitboard& relevant_rook_bb, const Bitboard& 
     }
 }
 
-void Generator::generate_queen_moves(Bitboard& relevant_queen_bb, const Bitboard& occupancy, std::vector<Move>& out) {
+void Generator::generate_queen_moves(Bitboard& relevant_queen_bb, const Bitboard& occupancy,
+                                     std::vector<Move>& out) {
     while (relevant_queen_bb != 0) {
         int queen_idx = relevant_queen_bb.pop_lsb();
         Bitboard attacked = Queen::attacked_squares(queen_idx, occupancy);
