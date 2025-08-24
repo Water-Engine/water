@@ -330,10 +330,6 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
 bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
                            Piece piece_to) {
     PROFILE_FUNCTION();
-    if (move_flag != NO_FLAG && move_flag != PAWN_CAPTURE_FLAG && move_flag != PAWN_TWO_UP_FLAG) {
-        return false;
-    }
-
     if (piece_from.is_white() && !Pawn::can_move_to<PieceColor::White>(start_coord.square_idx(),
                                                                        target_coord.square_idx())) {
         return false;
@@ -434,22 +430,26 @@ bool Board::make_basic_precomputed_move(Coord start_coord, Coord target_coord, P
 void Board::move_piece(Bitboard& piece_bb, int from, int to, Piece piece) {
     PROFILE_FUNCTION();
     piece_bb.clear_bit(from);
+
+    // If there is an enemy piece on the target, remove it BEFORE placing the new piece
+    if (piece.is_white()) {
+        if (m_BlackBB.bit_value_at(to) == 1) {
+            remove_piece_at(to);
+        }
+    } else {
+        if (m_WhiteBB.bit_value_at(to) == 1) {
+            remove_piece_at(to);
+        }
+    }
+
     piece_bb.set_bit(to);
 
     if (piece.is_white()) {
         m_WhiteBB.clear_bit(from);
         m_WhiteBB.set_bit(to);
-
-        if (m_BlackBB.bit_value_at(to) == 1) {
-            remove_piece_at(to);
-        }
     } else {
         m_BlackBB.clear_bit(from);
         m_BlackBB.set_bit(to);
-
-        if (m_WhiteBB.bit_value_at(to) == 1) {
-            remove_piece_at(to);
-        }
     }
 
     m_AllPieceBB.clear_bit(from);
@@ -558,6 +558,10 @@ void Board::make_move(Move move) {
     if (!was_valid) {
         return;
     }
+
+    fmt::println("All Queens:\n{}", m_QueenBB.as_square_board_str());
+    fmt::println("White Queens:\n{}", (m_QueenBB & m_WhiteBB).as_square_board_str());
+    fmt::println("Black Queens:\n{}", (m_QueenBB & m_BlackBB).as_square_board_str());
 
     m_State.try_reset_halfmove_clock();
     m_AllMoves.push_back(move);

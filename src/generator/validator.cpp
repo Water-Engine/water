@@ -14,8 +14,7 @@ bool Board::move_leaves_self_checked(Coord start_coord, Coord target_coord, Piec
     // Only two cases need to be considered, either the king moves, or another piece moves
     if (piece_start.is_king()) {
         // We just need the full opponent attack mask and to check its value at target_coord
-        return is_square_attacked(target_coord.square_idx(),
-                                  piece_start.is_white() ? PieceColor::White : PieceColor::Black);
+        return is_square_attacked(target_coord.square_idx(), piece_start.color());
     } else {
         // Here, the piece needs to be 'moved', just clear the start_coord bit temporary, check rays
         // with current king, and reset the cleared bit
@@ -93,7 +92,7 @@ bool Board::can_capture_ep(bool is_white) {
     return false;
 }
 
-Option<ValidatedMove> Board::is_legal_move(const Move& move) {
+Option<ValidatedMove> Board::is_legal_move(const Move& move, bool deep_verify) {
     Coord target_coord(move.target_square());
     Coord start_coord(move.start_square());
     Piece piece_start = piece_at(start_coord.square_idx());
@@ -116,7 +115,8 @@ Option<ValidatedMove> Board::is_legal_move(const Move& move) {
         ValidatedMove{start_coord, target_coord, piece_start, piece_target, flag});
 }
 
-Bitboard Board::pawn_attack_rays(bool is_piece_white) const {
+Bitboard Board::pawn_attack_rays(PieceColor attacker_color) const {
+    bool is_piece_white = attacker_color == PieceColor::White;
     Bitboard color_bb = is_piece_white ? m_WhiteBB : m_BlackBB;
     Bitboard to_ray_cast = m_PawnBB & color_bb;
 
@@ -133,7 +133,8 @@ Bitboard Board::pawn_attack_rays(bool is_piece_white) const {
 }
 
 template <PrecomputedValidator Validator>
-Bitboard Board::non_pawn_attack_rays(bool is_piece_white) const {
+Bitboard Board::non_pawn_attack_rays(PieceColor attacker_color) const {
+    bool is_piece_white = attacker_color == PieceColor::White;
     Bitboard color_bb = is_piece_white ? m_WhiteBB : m_BlackBB;
     Bitboard to_ray_cast;
     switch (Validator::as_piece_type()) {
@@ -167,29 +168,28 @@ Bitboard Board::non_pawn_attack_rays(bool is_piece_white) const {
     return attacks;
 }
 
-Bitboard Board::calculate_attack_rays(bool for_white_pieces) const {
+Bitboard Board::calculate_attack_rays(PieceColor attacker_color) const {
     Bitboard attacks = 0ULL;
 
-    attacks |= non_pawn_attack_rays<Rook>(for_white_pieces);
-    attacks |= non_pawn_attack_rays<Knight>(for_white_pieces);
-    attacks |= non_pawn_attack_rays<Bishop>(for_white_pieces);
-    attacks |= non_pawn_attack_rays<Queen>(for_white_pieces);
-    attacks |= non_pawn_attack_rays<King>(for_white_pieces);
-    attacks |= pawn_attack_rays(for_white_pieces);
+    attacks |= non_pawn_attack_rays<Rook>(attacker_color);
+    attacks |= non_pawn_attack_rays<Knight>(attacker_color);
+    attacks |= non_pawn_attack_rays<Bishop>(attacker_color);
+    attacks |= non_pawn_attack_rays<Queen>(attacker_color);
+    attacks |= non_pawn_attack_rays<King>(attacker_color);
+    attacks |= pawn_attack_rays(attacker_color);
 
     return attacks;
 }
 
-bool Board::is_square_attacked(int square_idx, PieceColor by_color) const {
-    auto attacked = calculate_attack_rays(by_color == PieceColor::White);
+bool Board::is_square_attacked(int square_idx, PieceColor occupied_color) const {
+    auto attacked = calculate_attack_rays(opposite_color(occupied_color));
     return attacked.contains_square(square_idx);
 }
 
-bool Board::king_in_check(PieceColor color) const {
+bool Board::king_in_check(PieceColor king_color) const {
     // There should only ever be a single king per player, so we will naievly jus pop the lsb from a
     // copy
-    Bitboard friendly_king = m_KingBB & (color == PieceColor::White ? m_WhiteBB : m_BlackBB);
+    Bitboard friendly_king = m_KingBB & (king_color == PieceColor::White ? m_WhiteBB : m_BlackBB);
     int friendly_king_square = friendly_king.pop_lsb();
-    return is_square_attacked(friendly_king_square,
-                              color == PieceColor::White ? PieceColor::Black : PieceColor::White);
+    return is_square_attacked(friendly_king_square, king_color);
 }

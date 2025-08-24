@@ -15,6 +15,10 @@ enum class PieceColor : uint8_t {
     Black = 8,
 };
 
+constexpr inline PieceColor opposite_color(PieceColor color) {
+    return (color == PieceColor::White) ? PieceColor::Black : PieceColor::White;
+}
+
 class Piece {
   private:
     PieceType m_Type;

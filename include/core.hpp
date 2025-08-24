@@ -53,6 +53,8 @@ class fmt {
             }
             oss << "]";
             return oss.str();
+        } else if constexpr (std::is_same_v<std::remove_cv_t<T>, bool>) {
+            return value ? "true" : "false";
         } else {
             std::ostringstream oss;
             oss << value;

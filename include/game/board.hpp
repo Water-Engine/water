@@ -84,7 +84,7 @@ class Board {
     std::deque<GameState> m_StateHistory;
     std::vector<Move> m_AllMoves;
 
-    private:
+  private:
     void load_from_position(const PositionInfo& pos);
     void reset();
 
@@ -118,19 +118,23 @@ class Board {
         return is_white_to_move() ? PieceColor::Black : PieceColor::White;
     }
 
-    Option<ValidatedMove> is_legal_move(const Move& move);
-    Bitboard pawn_attack_rays(bool is_piece_white) const;
+    /// Important: Calling deep_verify will check the entire move legality including move_flags
+    Option<ValidatedMove> is_legal_move(const Move& move, bool deep_verify = false);
+    Bitboard pawn_attack_rays(PieceColor attacker_color) const;
     template <PrecomputedValidator Validator>
-    Bitboard non_pawn_attack_rays(bool is_piece_white) const;
+    Bitboard non_pawn_attack_rays(PieceColor attacker_color) const;
 
-    Bitboard calculate_attack_rays(bool for_white_pieces) const;
-    Bitboard friendly_attack_rays() const { return calculate_attack_rays(m_WhiteToMove); };
-    Bitboard opponent_attack_rays() const { return calculate_attack_rays(!m_WhiteToMove); };
+    Bitboard calculate_attack_rays(PieceColor attacker_color) const;
+    Bitboard friendly_attack_rays() const {
+        return calculate_attack_rays(m_WhiteToMove ? PieceColor::White : PieceColor::Black);
+    };
+    Bitboard opponent_attack_rays() const {
+        return calculate_attack_rays(!m_WhiteToMove ? PieceColor::White : PieceColor::Black);
+    };
 
-    /// Important Distinction: Pass in the color of the attacker to this function!
-    bool is_square_attacked(int square_idx, PieceColor by_color) const;
+    bool is_square_attacked(int square_idx, PieceColor occupied_color) const;
 
-    bool king_in_check(PieceColor color) const;
+    bool king_in_check(PieceColor king_color) const;
 
     Piece piece_at(int square_idx);
     void make_move(Move move);
