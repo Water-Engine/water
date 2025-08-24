@@ -3,8 +3,8 @@
 #include "bot.hpp"
 
 constexpr std::array<std::string_view, 3> POSITION_LABELS = {"position", "fen", "moves"};
-constexpr std::array<std::string_view, 7> GO_LABELS = {"go",   "movetime", "wtime",    "btime",
-                                                       "winc", "binc",     "movestogo"};
+constexpr std::array<std::string_view, 8> GO_LABELS = {"go",   "movetime", "wtime",     "btime",
+                                                       "winc", "binc",     "movestogo", "perft"};
 
 enum class ParseResult {
     SUCCESS = 0,

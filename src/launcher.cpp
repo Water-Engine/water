@@ -100,6 +100,11 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
     int think_time_ms;
     if (str::contains(message, "movetime")) {
         think_time_ms = try_get_labeled_int(message, "movetime", GO_LABELS).unwrap_or(0);
+    } else if (str::contains(message, "perft")) {
+        int depth = std::abs(try_get_labeled_int(message, "perft", GO_LABELS).unwrap_or(1));
+        uint64_t nodes = m_Bot->perft(depth);
+        fmt::println("Perft test of depth {} found {} nodes", depth, nodes);
+        return Result<void, std::string>();
     } else {
         int time_remaining_white_ms = try_get_labeled_int(message, "wtime", GO_LABELS).unwrap_or(0);
         int time_remaining_black_ms = try_get_labeled_int(message, "btime", GO_LABELS).unwrap_or(0);

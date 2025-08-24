@@ -645,6 +645,8 @@ void Board::make_move(const Move& move, bool in_search) {
         return;
     }
 
+    m_State.set_moved_piece(piece_start);
+
     m_State.try_reset_halfmove_clock();
     m_StateHistory.push_back(m_State);
     m_WhiteToMove = !m_WhiteToMove;
@@ -659,6 +661,9 @@ void Board::unmake_move(const Move& move, bool in_search) {
         return;
     }
 
+    // Pop the last state first, since it contains all info for this move
+    auto last_state = m_StateHistory.back();
+
     m_WhiteToMove = !m_WhiteToMove;
     bool undoing_white = m_WhiteToMove;
 
@@ -666,46 +671,41 @@ void Board::unmake_move(const Move& move, bool in_search) {
     int moved_to = move.target_square();
     int moved_flag = move.flag();
 
-    if (!Coord::valid_square_idx(moved_from) || !Coord::valid_square_idx(moved_to)) {
-        return;
-    }
-
-    bool undoing_ep = m_State.was_ep_captured();
+    bool undoing_ep = last_state.was_ep_captured();
     bool undoing_promotion = move.is_promotion();
-    bool undoing_capture =
-        m_State.was_last_move_capture() && m_State.captured_piece_type() != PieceType::None;
+    bool undoing_capture = last_state.captured_piece_type() != PieceType::None;
 
-    Piece moved_piece =
-        undoing_promotion ? Piece(PieceType::Pawn, friendly_color()) : m_StoredPieces[moved_to];
+    Piece moved_piece = last_state.get_moved_piece();
     auto moved_piece_type = moved_piece.type();
-    auto captured_piece_type = m_State.captured_piece_type();
+    Piece captured_piece = last_state.captured_piece();
+    auto captured_piece_type = captured_piece.type();
 
+    // Undo promotion
     if (undoing_promotion) {
         Piece promoted_piece = m_StoredPieces[moved_to];
-        Piece pawn_piece(PieceType::Pawn, friendly_color());
 
         get_piece_bb(promoted_piece.type()).clear_bit_unchecked(moved_to);
         get_piece_bb(moved_piece.type()).set_bit_unchecked(moved_to);
         m_StoredPieces[moved_to] = moved_piece;
     }
 
+    // Undo capture
     if (undoing_capture) {
         int captured_square = moved_to;
-        Piece captured_piece(captured_piece_type, opponent_color());
-
         if (undoing_ep) {
             captured_square = moved_to + (undoing_white ? -8 : 8);
         }
 
         get_piece_bb(captured_piece_type).set_bit_unchecked(captured_square);
-        if (opponent_color() == PieceColor::White) {
+        m_StoredPieces[captured_square] = captured_piece;
+        if (captured_piece.is_white()) {
             m_WhiteBB.set_bit(captured_square);
         } else {
             m_BlackBB.set_bit(captured_square);
         }
-        m_StoredPieces[captured_square] = captured_piece;
     }
 
+    // Undo king moves / castling
     if (moved_piece.is_king()) {
         m_KingBB.clear_bit(moved_to);
         m_KingBB.set_bit(moved_from);
@@ -717,11 +717,9 @@ void Board::unmake_move(const Move& move, bool in_search) {
                                      : (undoing_white ? Square::A1 : Square::A8);
             int rook_to = kingside ? moved_to - 1 : moved_to + 1;
 
-            // clear rook from castled position
             get_piece_bb(PieceType::Rook).clear_bit_unchecked(rook_to);
             m_StoredPieces[rook_to] = Piece::none();
 
-            // restore rook to original square
             get_piece_bb(PieceType::Rook).set_bit_unchecked(rook_from);
             m_StoredPieces[rook_from] = rook_piece;
 
@@ -735,12 +733,12 @@ void Board::unmake_move(const Move& move, bool in_search) {
         }
     }
 
-    // Always move piece back (unless it was handled above)
-    if (!undoing_promotion && moved_flag != CASTLE_FLAG) {
+    // Undo normal piece moves
+    if (!undoing_promotion && moved_flag != CASTLE_FLAG && moved_piece_type != PieceType::None) {
         get_piece_bb(moved_piece_type).clear_bit_unchecked(moved_to);
         get_piece_bb(moved_piece_type).set_bit_unchecked(moved_from);
 
-        m_StoredPieces[moved_to] = Piece::none();
+        m_StoredPieces[moved_to].clear();
         m_StoredPieces[moved_from] = moved_piece;
 
         if (undoing_white) {

@@ -17,6 +17,8 @@ class GameState {
 
     bool m_WasEpCaptured;
     PieceType m_CapturedPieceType;
+    Piece m_CapturedPiece;
+    Piece m_MovedPiece;
 
   public:
     GameState() = default;
@@ -59,10 +61,12 @@ class GameState {
 
     inline void capture_piece(const Piece& piece) {
         m_CapturedPieceType = piece.type();
+        m_CapturedPiece = piece;
         indicate_capture();
     }
 
     inline bool was_piece_captured() const { return m_CapturedPieceType != PieceType::None; }
+    inline Piece captured_piece() const { return m_CapturedPiece; }
     inline PieceType captured_piece_type() const { return m_CapturedPieceType; }
 
     inline void capture_ep() { m_WasEpCaptured = true; }
@@ -71,6 +75,9 @@ class GameState {
     inline void clear_ep() { m_EpSquare = -1; }
     inline void set_ep(int ep_square) { m_EpSquare = ep_square; }
     inline int get_ep_square() const { return m_EpSquare; }
+
+    inline void set_moved_piece(Piece moved) { m_MovedPiece = moved; }
+    inline Piece get_moved_piece() const { return m_MovedPiece; }
 };
 
 class Zobrist {

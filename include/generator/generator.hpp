@@ -232,4 +232,12 @@ class Generator {
         all_moves.filter(board);
         return all_moves;
     }
+
+    inline static MoveList generate(Board& board) {
+        if (board.is_white_to_move()) {
+            return generate<PieceColor::White>(board);
+        } else {
+            return generate<PieceColor::Black>(board);
+        }
+    }
 };

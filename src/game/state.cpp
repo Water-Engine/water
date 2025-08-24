@@ -6,4 +6,6 @@ GameState::GameState(bool wck, bool wcq, bool bck, bool bcq, int ep_square, int 
     : m_WhiteCastleKingside(wck), m_WhiteCastleQueenside(wcq), m_BlackCastleKingside(bck),
       m_BlackCastleQueenside(bcq), m_EpSquare(ep_square), m_HalfmoveClock(hmc),
       m_LastMoveWasCapture(false), m_LastMoveWasPawnMove(false), m_WasEpCaptured(false),
-      m_CapturedPieceType(PieceType::None) {}
+      m_CapturedPieceType(PieceType::None),
+      m_CapturedPiece(Piece(PieceType::None, PieceColor::White)),
+      m_MovedPiece(Piece(PieceType::None, PieceColor::White)) {}

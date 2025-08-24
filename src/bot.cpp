@@ -39,17 +39,46 @@ int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black
 
 Result<void, std::string> Bot::think_timed(int time_ms) {
     MoveList moves;
-    if (m_Board->is_white_to_move()) {
-        moves = Generator::generate<PieceColor::White>(*m_Board);
-    } else {
-        moves = Generator::generate<PieceColor::Black>(*m_Board);
-    }
+    // if (m_Board->is_white_to_move()) {
+    //     moves = Generator::generate<PieceColor::White>(*m_Board);
+    // } else {
+    //     moves = Generator::generate<PieceColor::Black>(*m_Board);
+    // }
 
-    for (const auto& move : moves) {
-        fmt::println("Move: {}, flag = {}", move.to_uci(), Move::str_from_flag(move.flag()));
-    }
-    fmt::println("{} moves total.", moves.size());
+    // for (const auto& move : moves) {
+    //     fmt::println("Move: {}, flag = {}", move.to_uci(), Move::str_from_flag(move.flag()));
+    // }
+    // fmt::println("{} moves total.", moves.size());
+
+    // int random_idx = std::rand() % moves.size();
+    // auto to_move = moves[random_idx];
+    // fmt::println("Before Make Move:\n{}", m_Board->to_string());
+    // fmt::println("Making Move: {}", to_move.to_uci());
+    // m_Board->make_move(to_move);
+
+    // fmt::println("After Make Move:\n{}", m_Board->to_string());
+    // fmt::println("Unmaking Move: {}", to_move.to_uci());
+    // m_Board->unmake_move(to_move);
+
+    // fmt::println("After Unmake Move:\n{}", m_Board->to_string());
 
     return Result<void, std::string>::Err(
         fmt::interpolate("I want to think for {} ms, but I can't yet :(", time_ms));
+}
+
+uint64_t Bot::perft(int depth) {
+    if (depth == 0) {
+        return 1;
+    }
+
+    uint64_t nodes = 0;
+    auto moves = Generator::generate(*m_Board);
+
+    for (auto& move : moves) {
+        m_Board->make_move(move);
+        nodes += perft(depth - 1);
+        m_Board->unmake_move(move);
+    }
+
+    return nodes;
 }

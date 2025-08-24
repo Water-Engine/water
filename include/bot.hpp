@@ -11,7 +11,7 @@ class Bot {
     bool m_Thinking;
 
   public:
-    Bot() : m_Board(CreateRef<Board>()), m_Thinking(false) {}
+    Bot() : m_Board(CreateRef<Board>()), m_Thinking(false) { m_Board->load_startpos(); }
 
     void new_game();
     void stop_thinking() { m_Thinking = false; };
@@ -22,6 +22,8 @@ class Bot {
     int choose_think_time(int time_remaining_white_ms, int time_remaining_black_ms,
                           int increment_white_ms, int increment_black_ms);
     Result<void, std::string> think_timed(int time_ms);
+
+    uint64_t perft(int depth);
 
     std::string board_str() { return m_Board->to_string(); }
 };
