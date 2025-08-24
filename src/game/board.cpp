@@ -239,18 +239,26 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
         const int king_to = target_coord.square_idx();
         const bool king_side = (king_to > king_from);
 
-        // 1. Catsling rights must be valid
+        // 1. Castling rights must be valid
         if (piece_from.is_white()) {
-            if (king_side && !m_State.can_white_kingside()) {
-                return false;
-            } else if (!m_State.can_white_queenside()) {
-                return false;
+            if (king_side) {
+                if (!m_State.can_white_kingside()) {
+                    return false;
+                }
+            } else {
+                if (!m_State.can_white_queenside()) {
+                    return false;
+                }
             }
         } else {
-            if (king_side && !m_State.can_black_kingside()) {
-                return false;
-            } else if (!m_State.can_black_queenside()) {
-                return false;
+            if (king_side) {
+                if (!m_State.can_black_kingside()) {
+                    return false;
+                }
+            } else {
+                if (!m_State.can_black_queenside()) {
+                    return false;
+                }
             }
         }
 
@@ -338,6 +346,13 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
         return false;
     }
 
+    // Pawns must promote if reaching last rank
+    int target_rank = target_coord.rank_idx();
+    if ((piece_from.is_white() && target_rank == 7 && !Move::is_promotion(move_flag)) ||
+        (piece_from.is_black() && target_rank == 0 && !Move::is_promotion(move_flag))) {
+        return false;
+    }
+
     if (move_flag == NO_FLAG) {
         if (piece_from.color() == piece_to.color() &&
             m_AllPieceBB.contains_square(target_coord.square_idx())) {
@@ -382,6 +397,37 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
 
             move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
         }
+    } else if (Move::is_promotion(move_flag)) {
+        // 1. Ensure the target square is a promotion rank
+        int target_idx = target_coord.square_idx();
+        bool valid_promotion_rank =
+            (piece_from.is_white() && target_idx >= 56 && target_idx <= 63) ||
+            (piece_from.is_black() && target_idx >= 0 && target_idx <= 7);
+        if (!valid_promotion_rank) {
+            return false;
+        }
+
+        // 2. Ensure capture rules are respected if it's a capture promotion
+        if (piece_from.color() == piece_to.color() && m_AllPieceBB.contains_square(target_idx)) {
+            return false;
+        }
+
+        // 3. Determine promotion piece
+        Piece promotion_piece = Move::promotion_piece(move_flag, piece_from.color());
+        if (promotion_piece.type() == PieceType::Pawn ||
+            promotion_piece.type() == PieceType::King ||
+            promotion_piece.type() == PieceType::None) {
+            return false;
+        }
+
+        // 4. Remove pawn and add promoted piece
+        remove_piece_at(start_coord.square_idx());
+        if (piece_to.type() != PieceType::None) {
+            remove_piece_at(target_idx);
+        }
+        add_piece(promotion_piece, target_idx);
+    } else {
+        return false;
     }
 
     m_State.indicate_pawn_move();
@@ -510,6 +556,45 @@ Piece Board::piece_at(int square_idx) {
     return m_StoredPieces[square_idx];
 }
 
+void Board::add_piece(Piece piece, int square_idx) {
+    if (!Coord::valid_square_idx(square_idx)) {
+        return;
+    }
+
+    m_StoredPieces[square_idx] = piece;
+
+    switch (piece.type()) {
+    case PieceType::Pawn:
+        m_PawnBB.set_bit_unchecked(square_idx);
+        break;
+    case PieceType::Knight:
+        m_KnightBB.set_bit_unchecked(square_idx);
+        break;
+    case PieceType::Bishop:
+        m_BishopBB.set_bit_unchecked(square_idx);
+        break;
+    case PieceType::Rook:
+        m_RookBB.set_bit_unchecked(square_idx);
+        break;
+    case PieceType::Queen:
+        m_QueenBB.set_bit_unchecked(square_idx);
+        break;
+    case PieceType::King:
+        m_KingBB.set_bit_unchecked(square_idx);
+        break;
+    default:
+        break;
+    }
+
+    if (piece.is_white()) {
+        m_WhiteBB.set_bit_unchecked(square_idx);
+    } else {
+        m_BlackBB.set_bit_unchecked(square_idx);
+    }
+
+    m_AllPieceBB.set_bit_unchecked(square_idx);
+}
+
 void Board::make_move(Move move) {
     PROFILE_FUNCTION();
 
@@ -526,7 +611,7 @@ void Board::make_move(Move move) {
     Piece piece_target = validated.PieceTarget;
     int move_flag = validated.MoveFlag;
 
-    // The legal has transcendended pseaudo-legality
+    // The move has transendendid pseudo-legality
     bool was_valid;
     switch (piece_start.type()) {
     case PieceType::Rook:
@@ -558,10 +643,6 @@ void Board::make_move(Move move) {
     if (!was_valid) {
         return;
     }
-
-    fmt::println("All Queens:\n{}", m_QueenBB.as_square_board_str());
-    fmt::println("White Queens:\n{}", (m_QueenBB & m_WhiteBB).as_square_board_str());
-    fmt::println("Black Queens:\n{}", (m_QueenBB & m_BlackBB).as_square_board_str());
 
     m_State.try_reset_halfmove_clock();
     m_AllMoves.push_back(move);

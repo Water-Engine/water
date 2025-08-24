@@ -48,10 +48,8 @@ Move::Move(Ref<Board> board, const std::string& move_uci) {
     m_Compact = start | target << 6 | flag << 12;
 }
 
-bool Move::is_promotion() const { return flag() >= QUEEN_PROMOTION_FLAG; }
-
-PieceType Move::promotion_type() const {
-    switch (flag()) {
+PieceType Move::promotion_type(int flag) {
+    switch (flag) {
     case QUEEN_PROMOTION_FLAG:
         return PieceType::Queen;
     case BISHOP_PROMOTION_FLAG:
@@ -63,6 +61,15 @@ PieceType Move::promotion_type() const {
     default:
         return PieceType::None;
     }
+}
+
+Piece Move::promotion_piece(int flag, PieceColor color) {
+    auto promotion = promotion_type(flag);
+    if (promotion == PieceType::None) {
+        return Piece::none();
+    }
+
+    return Piece(promotion, color);
 }
 
 int Move::flag_from_promotion_char(char c) {

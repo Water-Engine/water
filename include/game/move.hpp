@@ -38,8 +38,12 @@ class Move {
     int target_square() const { return (m_Compact & TARGET_SQUARE_MASK) >> 6; }
     int flag() const { return m_Compact >> 12; }
 
-    bool is_promotion() const;
-    PieceType promotion_type() const;
+    inline bool is_promotion() const { return is_promotion(flag()); };
+    inline static bool is_promotion(int flag) { return flag >= QUEEN_PROMOTION_FLAG; }
+    inline PieceType promotion_type() const { return promotion_type(flag()); }
+    static PieceType promotion_type(int flag);
+
+    static Piece promotion_piece(int flag, PieceColor color);
 
     static int flag_from_promotion_char(char c);
     static std::string str_from_promotion_flag(int flag);
