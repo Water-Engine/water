@@ -386,6 +386,7 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
             int captured_pawn_square = old_ep_square + (piece_from.is_white() ? -8 : 8);
             remove_piece_at(captured_pawn_square);
             move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
+            m_State.capture_ep();
         } else {
             // Fallback to basic captures, diagonal moves must attack an enemy piece, but we know it
             // is a valid attack square due to passing can_move_to checks
@@ -545,7 +546,7 @@ void Board::remove_piece_at(int square_idx) {
     }
 
     m_StoredPieces[square_idx].clear();
-    m_State.indicate_capture();
+    m_State.capture_piece(piece);
 }
 
 Piece Board::piece_at(int square_idx) const {
@@ -595,7 +596,7 @@ void Board::add_piece(Piece piece, int square_idx) {
     m_AllPieceBB.set_bit_unchecked(square_idx);
 }
 
-void Board::make_move(Move move) {
+void Board::make_move(const Move& move, bool in_search) {
     PROFILE_FUNCTION();
 
     // piece move handlers assume legality and valid start and end coords
@@ -645,13 +646,120 @@ void Board::make_move(Move move) {
     }
 
     m_State.try_reset_halfmove_clock();
-    m_AllMoves.push_back(move);
     m_StateHistory.push_back(m_State);
     m_WhiteToMove = !m_WhiteToMove;
+
+    if (!in_search) {
+        m_AllMoves.push_back(move);
+    }
 }
 
-void Board::unmake_move(Move move) {
-    
+void Board::unmake_move(const Move& move, bool in_search) {
+    if (!contains(m_AllMoves, move)) {
+        return;
+    }
+
+    m_WhiteToMove = !m_WhiteToMove;
+    bool undoing_white = m_WhiteToMove;
+
+    int moved_from = move.start_square();
+    int moved_to = move.target_square();
+    int moved_flag = move.flag();
+
+    if (!Coord::valid_square_idx(moved_from) || !Coord::valid_square_idx(moved_to)) {
+        return;
+    }
+
+    bool undoing_ep = m_State.was_ep_captured();
+    bool undoing_promotion = move.is_promotion();
+    bool undoing_capture =
+        m_State.was_last_move_capture() && m_State.captured_piece_type() != PieceType::None;
+
+    Piece moved_piece =
+        undoing_promotion ? Piece(PieceType::Pawn, friendly_color()) : m_StoredPieces[moved_to];
+    auto moved_piece_type = moved_piece.type();
+    auto captured_piece_type = m_State.captured_piece_type();
+
+    if (undoing_promotion) {
+        Piece promoted_piece = m_StoredPieces[moved_to];
+        Piece pawn_piece(PieceType::Pawn, friendly_color());
+
+        get_piece_bb(promoted_piece.type()).clear_bit_unchecked(moved_to);
+        get_piece_bb(moved_piece.type()).set_bit_unchecked(moved_to);
+        m_StoredPieces[moved_to] = moved_piece;
+    }
+
+    if (undoing_capture) {
+        int captured_square = moved_to;
+        Piece captured_piece(captured_piece_type, opponent_color());
+
+        if (undoing_ep) {
+            captured_square = moved_to + (undoing_white ? -8 : 8);
+        }
+
+        get_piece_bb(captured_piece_type).set_bit_unchecked(captured_square);
+        if (opponent_color() == PieceColor::White) {
+            m_WhiteBB.set_bit(captured_square);
+        } else {
+            m_BlackBB.set_bit(captured_square);
+        }
+        m_StoredPieces[captured_square] = captured_piece;
+    }
+
+    if (moved_piece.is_king()) {
+        m_KingBB.clear_bit(moved_to);
+        m_KingBB.set_bit(moved_from);
+
+        if (moved_flag == CASTLE_FLAG) {
+            Piece rook_piece(PieceType::Rook, friendly_color());
+            bool kingside = moved_to == Square::G1 || moved_to == Square::G8;
+            int rook_from = kingside ? (undoing_white ? Square::H1 : Square::H8)
+                                     : (undoing_white ? Square::A1 : Square::A8);
+            int rook_to = kingside ? moved_to - 1 : moved_to + 1;
+
+            // clear rook from castled position
+            get_piece_bb(PieceType::Rook).clear_bit_unchecked(rook_to);
+            m_StoredPieces[rook_to] = Piece::none();
+
+            // restore rook to original square
+            get_piece_bb(PieceType::Rook).set_bit_unchecked(rook_from);
+            m_StoredPieces[rook_from] = rook_piece;
+
+            if (friendly_color() == PieceColor::White) {
+                m_WhiteBB.clear_bit(rook_to);
+                m_WhiteBB.set_bit(rook_from);
+            } else {
+                m_BlackBB.clear_bit(rook_to);
+                m_BlackBB.set_bit(rook_from);
+            }
+        }
+    }
+
+    // Always move piece back (unless it was handled above)
+    if (!undoing_promotion && moved_flag != CASTLE_FLAG) {
+        get_piece_bb(moved_piece_type).clear_bit_unchecked(moved_to);
+        get_piece_bb(moved_piece_type).set_bit_unchecked(moved_from);
+
+        m_StoredPieces[moved_to] = Piece::none();
+        m_StoredPieces[moved_from] = moved_piece;
+
+        if (undoing_white) {
+            m_WhiteBB.clear_bit(moved_to);
+            m_WhiteBB.set_bit(moved_from);
+        } else {
+            m_BlackBB.clear_bit(moved_to);
+            m_BlackBB.set_bit(moved_from);
+        }
+    }
+
+    m_AllPieceBB = m_WhiteBB | m_BlackBB;
+
+    if (!in_search) {
+        m_AllMoves.pop_back();
+    }
+
+    m_StateHistory.pop_back();
+    m_State = m_StateHistory.back();
 }
 
 Result<void, std::string> Board::load_from_fen(const std::string& fen) {
@@ -663,6 +771,25 @@ Result<void, std::string> Board::load_from_fen(const std::string& fen) {
 
     load_from_position(maybe_pos.unwrap());
     return Result<void, std::string>();
+}
+
+Bitboard& Board::get_piece_bb(PieceType piece_type) {
+    switch (piece_type) {
+    case PieceType::Pawn:
+        return get_piece_bb<PieceType::Pawn>();
+    case PieceType::Knight:
+        return get_piece_bb<PieceType::Knight>();
+    case PieceType::Bishop:
+        return get_piece_bb<PieceType::Bishop>();
+    case PieceType::Rook:
+        return get_piece_bb<PieceType::Rook>();
+    case PieceType::Queen:
+        return get_piece_bb<PieceType::Queen>();
+    case PieceType::King:
+        return get_piece_bb<PieceType::King>();
+    default:
+        return get_piece_bb<PieceType::None>();
+    }
 }
 
 Result<void, std::string> Board::load_startpos() {

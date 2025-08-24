@@ -45,6 +45,13 @@ Result<void, std::string> Bot::think_timed(int time_ms) {
         moves = Generator::generate<PieceColor::Black>(*m_Board);
     }
 
+    for (const auto& move : moves) {
+        fmt::println("Move: {}, flag = {}", move.to_uci(), Move::str_from_flag(move.flag()));
+    }
+    fmt::println("{} moves total.", moves.size());
+
+    
+
     return Result<void, std::string>::Err(
         fmt::interpolate("I want to think for {} ms, but I can't yet :(", time_ms));
 }

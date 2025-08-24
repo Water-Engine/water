@@ -102,6 +102,29 @@ std::string Move::str_from_promotion_flag(int flag) {
     }
 }
 
+std::string Move::str_from_flag(int flag) {
+    switch (flag) {
+    case NO_FLAG:
+        return std::string("No flag");
+    case PAWN_CAPTURE_FLAG:
+        return std::string("Pawn capture flag");
+    case CASTLE_FLAG:
+        return std::string("Castle flag");
+    case PAWN_TWO_UP_FLAG:
+        return std::string("Pawn double push");
+    case QUEEN_PROMOTION_FLAG:
+        return std::string("Queen promotion");
+    case BISHOP_PROMOTION_FLAG:
+        return std::string("Bishop promotion");
+    case KNIGHT_PROMOTION_FLAG:
+        return std::string("Knight promotion");
+    case ROOK_PROMOTION_FLAG:
+        return std::string("Rook promotion");
+    default:
+        return std::string("Unknown");
+    }
+}
+
 std::string Move::to_uci() const {
     std::string start_square_name = Coord(start_square()).as_str();
     std::string target_square_name = Coord(target_square()).as_str();

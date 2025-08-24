@@ -10,6 +10,7 @@ class Bitboard {
 
     void set_bit(int bit_to_set);
     void set_bit_unchecked(int bit_to_set);
+    void clear_bit_unchecked(int bit_to_set);
     void clear_bit(int bit_to_set);
     void toggle_bit(int bit_to_set);
     void toggle_bits(int first_bit, int second_bit);

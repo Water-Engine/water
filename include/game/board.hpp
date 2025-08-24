@@ -61,6 +61,17 @@ concept PrecomputedValidator = requires(T t, int from, int to, const Bitboard& b
     { T::as_piece_type() } -> std::convertible_to<PieceType>;
 };
 
+class illegal_board_access : public std::exception {
+  private:
+    std::string message;
+
+  public:
+    illegal_board_access() = delete;
+    explicit illegal_board_access(const std::string& msg) : message(msg) {}
+
+    const char* what() const noexcept override { return message.c_str(); }
+};
+
 class Board {
   private:
     PositionInfo m_StartPos;
@@ -116,6 +127,25 @@ class Board {
 
     bool can_capture_ep(bool is_white) const;
 
+    Bitboard& get_piece_bb(PieceType piece_type);
+    template <PieceType Type> inline Bitboard& get_piece_bb() {
+        if constexpr (Type == PieceType::Pawn) {
+            return m_PawnBB;
+        } else if constexpr (Type == PieceType::Knight) {
+            return m_KnightBB;
+        } else if constexpr (Type == PieceType::Bishop) {
+            return m_BishopBB;
+        } else if constexpr (Type == PieceType::Rook) {
+            return m_RookBB;
+        } else if constexpr (Type == PieceType::Queen) {
+            return m_QueenBB;
+        } else if constexpr (Type == PieceType::King) {
+            return m_KingBB;
+        } else {
+            throw illegal_board_access("No bitboard associated for PieceType::None");
+        }
+    }
+
   public:
     Board() {};
 
@@ -156,8 +186,8 @@ class Board {
 
     Piece piece_at(int square_idx) const;
     void add_piece(Piece piece, int square_idx);
-    void make_move(Move move);
-    void unmake_move(Move move);
+    void make_move(const Move& move, bool in_search = false);
+    void unmake_move(const Move& move, bool in_search = false);
 
     Result<void, std::string> load_from_fen(const std::string& fen);
     Result<void, std::string> load_startpos();

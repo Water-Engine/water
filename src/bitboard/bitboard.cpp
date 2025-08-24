@@ -20,6 +20,10 @@ void Bitboard::clear_bit(int bit_to_set) {
         return;
     }
 
+    clear_bit_unchecked(bit_to_set);
+}
+
+void Bitboard::clear_bit_unchecked(int bit_to_set) {
     m_BBoard &= ~(1ULL << bit_to_set);
 }
 
