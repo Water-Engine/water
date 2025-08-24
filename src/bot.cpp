@@ -38,14 +38,13 @@ int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black
 }
 
 Result<void, std::string> Bot::think_timed(int time_ms) {
-    std::vector<Move> moves;
+    MoveList moves;
     if (m_Board->is_white_to_move()) {
         moves = Generator::generate<PieceColor::White>(*m_Board);
     } else {
         moves = Generator::generate<PieceColor::Black>(*m_Board);
     }
 
-    DBG(moves.size());
     return Result<void, std::string>::Err(
         fmt::interpolate("I want to think for {} ms, but I can't yet :(", time_ms));
 }

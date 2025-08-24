@@ -81,7 +81,7 @@ class Board {
     GameState m_State;
     bool m_WhiteToMove;
 
-    std::deque<GameState> m_StateHistory;
+    std::vector<GameState> m_StateHistory;
     std::vector<Move> m_AllMoves;
 
   private:
@@ -143,6 +143,16 @@ class Board {
 
     bool is_square_attacked(int square_idx, PieceColor occupied_color) const;
     bool king_in_check(PieceColor king_color) const;
+
+    inline bool occupied(int square_idx) const { return m_AllPieceBB.contains_square(square_idx); }
+
+    inline bool occupied_by_enemy(int square_idx, PieceColor friendly_color) const {
+        if (friendly_color == PieceColor::White) {
+            return m_BlackBB.contains_square(square_idx);
+        } else {
+            return m_WhiteBB.contains_square(square_idx);
+        }
+    }
 
     Piece piece_at(int square_idx) const;
     void add_piece(Piece piece, int square_idx);
