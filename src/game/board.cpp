@@ -650,6 +650,10 @@ void Board::make_move(Move move) {
     m_WhiteToMove = !m_WhiteToMove;
 }
 
+void Board::unmake_move(Move move) {
+    
+}
+
 Result<void, std::string> Board::load_from_fen(const std::string& fen) {
     PROFILE_FUNCTION();
     auto maybe_pos = PositionInfo::from_fen(fen);

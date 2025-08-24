@@ -157,6 +157,7 @@ class Board {
     Piece piece_at(int square_idx) const;
     void add_piece(Piece piece, int square_idx);
     void make_move(Move move);
+    void unmake_move(Move move);
 
     Result<void, std::string> load_from_fen(const std::string& fen);
     Result<void, std::string> load_startpos();
