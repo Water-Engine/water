@@ -100,13 +100,13 @@ class Board {
                                      Piece piece_to, Bitboard& piece_bb);
 
     bool validate_king_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
-                            Piece piece_to);
+                            Piece piece_to) const;
     bool validate_pawn_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
-                            Piece piece_to);
+                            Piece piece_to) const;
 
     template <PrecomputedValidator Validator>
     bool validate_basic_precomputed_move(Coord start_coord, Coord target_coord, Piece piece_from,
-                                         Piece piece_to);
+                                         Piece piece_to) const;
 
     void move_piece(Bitboard& piece_bb, int from, int to, Piece piece);
     void remove_piece_at(int square_idx);
@@ -114,7 +114,7 @@ class Board {
     bool move_leaves_self_checked(Coord start_coord, Coord target_coord, int move_flag,
                                   Piece piece_start, Piece piece_target);
 
-    bool can_capture_ep(bool is_white);
+    bool can_capture_ep(bool is_white) const;
 
   public:
     Board() {};
@@ -144,7 +144,7 @@ class Board {
     bool is_square_attacked(int square_idx, PieceColor occupied_color) const;
     bool king_in_check(PieceColor king_color) const;
 
-    Piece piece_at(int square_idx);
+    Piece piece_at(int square_idx) const;
     void add_piece(Piece piece, int square_idx);
     void make_move(Move move);
 
@@ -156,4 +156,6 @@ class Board {
         os << board.to_string();
         return os;
     }
+
+    friend class Generator;
 };

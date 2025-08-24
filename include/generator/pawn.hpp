@@ -1,5 +1,8 @@
 #pragma once
 
+#include "bitboard/bitboard.hpp"
+
+#include "game/coord.hpp"
 #include "game/piece.hpp"
 
 constexpr uint64_t WHITE_PAWN_ATTACKS[64] = {
@@ -116,7 +119,7 @@ class Pawn {
     Pawn(const Pawn&) = delete;
 
     template <PieceColor Color>
-    static Bitboard attacked_squares(int square_idx, [[maybe_unused]] const Bitboard& = 0) {
+    inline static Bitboard attacked_squares(int square_idx, [[maybe_unused]] const Bitboard& = 0) {
         if (!Coord::valid_square_idx(square_idx)) {
             return Bitboard(0);
         }
@@ -129,21 +132,27 @@ class Pawn {
     }
 
     template <PieceColor Color>
-    static bool can_move_to(int pawn_square_idx, int other_square_idx,
+    inline static Bitboard all_available_squares(int square_idx) {
+        Bitboard b;
+        if constexpr (Color == PieceColor::White) {
+            b = Bitboard(WHITE_PAWN_ATTACKS[square_idx] | WHITE_PAWN_SINGLE[square_idx] |
+                         WHITE_PAWN_DOUBLE[square_idx]);
+        } else {
+            b = Bitboard(BLACK_PAWN_ATTACKS[square_idx] | BLACK_PAWN_SINGLE[square_idx] |
+                         BLACK_PAWN_DOUBLE[square_idx]);
+        }
+        return b;
+    } 
+
+    template <PieceColor Color>
+    inline static bool can_move_to(int pawn_square_idx, int other_square_idx,
                             [[maybe_unused]] const Bitboard& = 0) {
         if (!Coord::valid_square_idx(pawn_square_idx) ||
             !Coord::valid_square_idx(other_square_idx)) {
             return false;
         }
 
-        Bitboard b;
-        if constexpr (Color == PieceColor::White) {
-            b = Bitboard(WHITE_PAWN_ATTACKS[pawn_square_idx] | WHITE_PAWN_SINGLE[pawn_square_idx] |
-                         WHITE_PAWN_DOUBLE[pawn_square_idx]);
-        } else {
-            b = Bitboard(BLACK_PAWN_ATTACKS[pawn_square_idx] | BLACK_PAWN_SINGLE[pawn_square_idx] |
-                         BLACK_PAWN_DOUBLE[pawn_square_idx]);
-        }
+        auto b = all_available_squares<Color>(pawn_square_idx);
 
         return b.bit_value_at(other_square_idx) == 1;
     }

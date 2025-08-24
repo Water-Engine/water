@@ -1,5 +1,7 @@
 #pragma once
 
+#include "bitboard/bitboard.hpp"
+
 #include "game/piece.hpp"
 
 constexpr uint64_t KNIGHT_MOVES[64] = {

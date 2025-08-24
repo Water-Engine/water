@@ -2,6 +2,9 @@
 
 #include "game/board.hpp"
 
+constexpr bool USE_MAX_THINKING_TIME = false;
+constexpr int MAX_THINK_TIME_MS = 2500;
+
 class Bot {
   private:
     Ref<Board> m_Board;

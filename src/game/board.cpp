@@ -548,7 +548,7 @@ void Board::remove_piece_at(int square_idx) {
     m_State.indicate_capture();
 }
 
-Piece Board::piece_at(int square_idx) {
+Piece Board::piece_at(int square_idx) const {
     if (!Coord::valid_square_idx(square_idx)) {
         return Piece::none();
     }

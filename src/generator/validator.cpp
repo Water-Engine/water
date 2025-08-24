@@ -43,7 +43,7 @@ bool Board::move_leaves_self_checked(Coord start_coord, Coord target_coord, int 
     }
 }
 
-bool Board::can_capture_ep(bool is_white) {
+bool Board::can_capture_ep(bool is_white) const {
     int ep_square = m_State.get_ep_square();
     if (ep_square == -1) {
         return false;
@@ -76,6 +76,8 @@ bool Board::can_capture_ep(bool is_white) {
         }
     }
 
+    Bitboard all_piece_bb = m_AllPieceBB;
+
     auto test_ep = [&](int from) -> bool {
         if (from == -1) {
             return false;
@@ -87,14 +89,14 @@ bool Board::can_capture_ep(bool is_white) {
 
         // Temporarily remove both the moving pawn and the captured pawn
         int captured_square = ep_square + (is_white ? -8 : 8);
-        m_AllPieceBB.toggle_bit(from);
-        m_AllPieceBB.toggle_bit(captured_square);
+        all_piece_bb.toggle_bit(from);
+        all_piece_bb.toggle_bit(captured_square);
 
         bool leaves_king_checked = king_in_check(p.color());
 
         // Restore the bits
-        m_AllPieceBB.toggle_bit(from);
-        m_AllPieceBB.toggle_bit(captured_square);
+        all_piece_bb.toggle_bit(from);
+        all_piece_bb.toggle_bit(captured_square);
 
         return !leaves_king_checked;
     };
@@ -247,7 +249,7 @@ bool Board::king_in_check(PieceColor king_color) const {
 // Note: These are copied from board.cpp, with the actual movements being removed
 
 bool Board::validate_king_move(Coord start_coord, Coord target_coord, int move_flag,
-                               Piece piece_from, Piece piece_to) {
+                               Piece piece_from, Piece piece_to) const {
     PROFILE_FUNCTION();
     if (move_flag != NO_FLAG && move_flag != CASTLE_FLAG) {
         return false;
@@ -350,7 +352,7 @@ bool Board::validate_king_move(Coord start_coord, Coord target_coord, int move_f
 }
 
 bool Board::validate_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
-                               Piece piece_from, Piece piece_to) {
+                               Piece piece_from, Piece piece_to) const {
     PROFILE_FUNCTION();
     if (piece_from.is_white() && !Pawn::can_move_to<PieceColor::White>(start_coord.square_idx(),
                                                                        target_coord.square_idx())) {
@@ -431,7 +433,7 @@ bool Board::validate_pawn_move(Coord start_coord, Coord target_coord, int move_f
 
 template <PrecomputedValidator Validator>
 bool Board::validate_basic_precomputed_move(Coord start_coord, Coord target_coord, Piece piece_from,
-                                            Piece piece_to) {
+                                            Piece piece_to) const {
     PROFILE_FUNCTION();
     int piece_idx = start_coord.square_idx();
     int target_idx = target_coord.square_idx();

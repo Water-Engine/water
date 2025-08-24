@@ -1,8 +1,9 @@
 #pragma once
 
-#include "game/piece.hpp"
-
+#include "bitboard/bitboard.hpp"
 #include "bitboard/magics.hpp"
+
+#include "game/piece.hpp"
 
 class Rook {
   public:
