@@ -18,10 +18,19 @@ class GameState {
     bool m_WasEpCaptured;
     PieceType m_CapturedPieceType;
     Piece m_CapturedPiece;
+
     Piece m_MovedPiece;
+    int m_MovedFrom;
+    int m_MovedTo;
+    int m_MoveFlag;
+
+    // For castling only
+    Piece m_RookPiece;
+    int m_RookFrom;
+    int m_RookTo;
 
   public:
-    GameState() = default;
+    GameState();
     GameState(bool wck, bool wcq, bool bck, bool bcq, int ep_square, int hmc);
 
     inline bool can_white_kingside() const { return m_WhiteCastleKingside; }
@@ -78,6 +87,26 @@ class GameState {
 
     inline void set_moved_piece(Piece moved) { m_MovedPiece = moved; }
     inline Piece get_moved_piece() const { return m_MovedPiece; }
+
+    inline void set_moved_from(int idx) { m_MovedFrom = idx; }
+    inline int get_moved_from() const { return m_MovedFrom; }
+
+    inline void set_moved_to(int idx) { m_MovedTo = idx; }
+    inline int get_moved_to() const { return m_MovedTo; }
+
+    inline void set_move_flag(int flag) { m_MoveFlag = flag; }
+    inline int get_move_flag() const { return m_MoveFlag; }
+
+    inline void set_rook_piece(Piece piece) { m_RookPiece = piece; }
+    inline Piece get_rook_piece() const { return m_RookPiece; }
+
+    inline void set_rook_from(int rook_from_idx) { m_RookFrom = rook_from_idx; }
+    inline int get_rook_from() const { return m_RookFrom; }
+
+    inline void set_rook_to(int rook_to_idx) { m_RookTo = rook_to_idx; }
+    inline int get_rook_to() const { return m_RookTo; }
+
+    friend class Board;
 };
 
 class Zobrist {

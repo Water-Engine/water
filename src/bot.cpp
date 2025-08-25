@@ -75,9 +75,18 @@ uint64_t Bot::perft(int depth) {
     auto moves = Generator::generate(*m_Board);
 
     for (auto& move : moves) {
+        auto pre_move_string = m_Board->to_string();
         m_Board->make_move(move);
         nodes += perft(depth - 1);
         m_Board->unmake_move(move);
+        auto post_move_string = m_Board->to_string();
+
+        if (pre_move_string != post_move_string) {
+            fmt::println("Failed at move {}, node {}", move.to_uci(), nodes);
+            fmt::println("Before:\n{}", pre_move_string);
+            fmt::println("After:\n{}", post_move_string);
+            continue;
+        }
     }
 
     return nodes;

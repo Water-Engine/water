@@ -322,6 +322,9 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
         // Now move the pieces
         move_piece(m_KingBB, king_from, king_to, piece_from);
         move_piece(m_RookBB, rook_from, rook_to, rook_piece);
+        m_State.set_rook_piece(rook_piece);
+        m_State.set_rook_from(rook_from);
+        m_State.set_rook_to(rook_to);
     }
 
     // Any king move that makes it this far will invalidate its castling rights
@@ -645,8 +648,12 @@ void Board::make_move(const Move& move, bool in_search) {
         return;
     }
 
+    
     m_State.set_moved_piece(piece_start);
-
+    m_State.set_moved_from(move.start_square());
+    m_State.set_moved_to(move.target_square());
+    m_State.set_move_flag(move.flag());
+    
     m_State.try_reset_halfmove_clock();
     m_StateHistory.push_back(m_State);
     m_WhiteToMove = !m_WhiteToMove;
@@ -661,18 +668,17 @@ void Board::unmake_move(const Move& move, bool in_search) {
         return;
     }
 
-    // Pop the last state first, since it contains all info for this move
     auto last_state = m_StateHistory.back();
 
     m_WhiteToMove = !m_WhiteToMove;
     bool undoing_white = m_WhiteToMove;
 
-    int moved_from = move.start_square();
-    int moved_to = move.target_square();
-    int moved_flag = move.flag();
+    int moved_from = last_state.get_moved_from();
+    int moved_to = last_state.get_moved_to();
+    int moved_flag = last_state.get_move_flag();
 
     bool undoing_ep = last_state.was_ep_captured();
-    bool undoing_promotion = move.is_promotion();
+    bool undoing_promotion = Move::is_promotion(moved_flag);
     bool undoing_capture = last_state.captured_piece_type() != PieceType::None;
 
     Piece moved_piece = last_state.get_moved_piece();
@@ -682,26 +688,21 @@ void Board::unmake_move(const Move& move, bool in_search) {
 
     // Undo promotion
     if (undoing_promotion) {
-        Piece promoted_piece = m_StoredPieces[moved_to];
-
+        Piece promoted_piece = moved_piece;
         get_piece_bb(promoted_piece.type()).clear_bit_unchecked(moved_to);
-        get_piece_bb(moved_piece.type()).set_bit_unchecked(moved_to);
-        m_StoredPieces[moved_to] = moved_piece;
-    }
 
-    // Undo capture
-    if (undoing_capture) {
-        int captured_square = moved_to;
-        if (undoing_ep) {
-            captured_square = moved_to + (undoing_white ? -8 : 8);
-        }
+        Piece pawn_piece(PieceType::Pawn, moved_piece.color());
+        get_piece_bb(PieceType::Pawn).set_bit_unchecked(moved_from);
 
-        get_piece_bb(captured_piece_type).set_bit_unchecked(captured_square);
-        m_StoredPieces[captured_square] = captured_piece;
-        if (captured_piece.is_white()) {
-            m_WhiteBB.set_bit(captured_square);
+        m_StoredPieces[moved_from] = pawn_piece;
+        m_StoredPieces[moved_to].clear();
+
+        if (pawn_piece.is_white()) {
+            m_WhiteBB.clear_bit(moved_to);
+            m_WhiteBB.set_bit(moved_from);
         } else {
-            m_BlackBB.set_bit(captured_square);
+            m_BlackBB.clear_bit(moved_to);
+            m_BlackBB.set_bit(moved_from);
         }
     }
 
@@ -711,42 +712,57 @@ void Board::unmake_move(const Move& move, bool in_search) {
         m_KingBB.set_bit(moved_from);
 
         if (moved_flag == CASTLE_FLAG) {
-            Piece rook_piece(PieceType::Rook, friendly_color());
-            bool kingside = moved_to == Square::G1 || moved_to == Square::G8;
-            int rook_from = kingside ? (undoing_white ? Square::H1 : Square::H8)
-                                     : (undoing_white ? Square::A1 : Square::A8);
-            int rook_to = kingside ? moved_to - 1 : moved_to + 1;
+            get_piece_bb(PieceType::Rook).clear_bit_unchecked(last_state.get_rook_to());
+            m_StoredPieces[last_state.get_rook_to()].clear();
 
-            get_piece_bb(PieceType::Rook).clear_bit_unchecked(rook_to);
-            m_StoredPieces[rook_to] = Piece::none();
+            get_piece_bb(PieceType::Rook).set_bit_unchecked(last_state.get_rook_from());
+            m_StoredPieces[last_state.get_rook_from()] = last_state.get_rook_piece();
 
-            get_piece_bb(PieceType::Rook).set_bit_unchecked(rook_from);
-            m_StoredPieces[rook_from] = rook_piece;
-
-            if (friendly_color() == PieceColor::White) {
-                m_WhiteBB.clear_bit(rook_to);
-                m_WhiteBB.set_bit(rook_from);
+            if (last_state.get_rook_piece().is_white()) {
+                m_WhiteBB.clear_bit(last_state.get_rook_to());
+                m_WhiteBB.set_bit(last_state.get_rook_from());
             } else {
-                m_BlackBB.clear_bit(rook_to);
-                m_BlackBB.set_bit(rook_from);
+                m_BlackBB.clear_bit(last_state.get_rook_to());
+                m_BlackBB.set_bit(last_state.get_rook_from());
             }
         }
     }
 
-    // Undo normal piece moves
+    // Undo normal piece moves (before restoring capture)
     if (!undoing_promotion && moved_flag != CASTLE_FLAG && moved_piece_type != PieceType::None) {
         get_piece_bb(moved_piece_type).clear_bit_unchecked(moved_to);
         get_piece_bb(moved_piece_type).set_bit_unchecked(moved_from);
 
-        m_StoredPieces[moved_to].clear();
         m_StoredPieces[moved_from] = moved_piece;
 
-        if (undoing_white) {
+        // Only clear target if it shouldn't contain a captured piece
+        if (!(undoing_capture && !undoing_ep)) {
+            m_StoredPieces[moved_to].clear();
+        }
+
+        if (moved_piece.is_white()) {
             m_WhiteBB.clear_bit(moved_to);
             m_WhiteBB.set_bit(moved_from);
         } else {
             m_BlackBB.clear_bit(moved_to);
             m_BlackBB.set_bit(moved_from);
+        }
+    }
+
+    // Undo capture (after mover restored)
+    if (undoing_capture) {
+        int captured_square = moved_to;
+        if (undoing_ep) {
+            captured_square = moved_to + (undoing_white ? -8 : 8);
+        }
+
+        get_piece_bb(captured_piece_type).set_bit_unchecked(captured_square);
+        m_StoredPieces[captured_square] = captured_piece;
+
+        if (captured_piece.is_white()) {
+            m_WhiteBB.set_bit(captured_square);
+        } else {
+            m_BlackBB.set_bit(captured_square);
         }
     }
 
