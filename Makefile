@@ -14,9 +14,10 @@ rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst 
 SRCS := $(call rwildcard, $(SRC_DIR)/, *.cpp)
 HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
 
-TEST_SRCS := $(wildcard $(TEST_DIR)/*.cpp)
+TEST_SRCS := $(filter-out $(TEST_DIR)/perft.cpp, $(wildcard $(TEST_DIR)/*.cpp))
 TEST_OBJS := $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/tests/%.o,$(TEST_SRCS))
 TEST_BIN := $(BIN_ROOT)/tests/run_tests$(EXE)
+PERFT_BIN := $(BIN_ROOT)/perft/run_perft$(EXE)
 
 FMT_SRCS := $(SRCS) \
             $(call rwildcard,$(INC_DIR)/,*.h) \
@@ -80,18 +81,42 @@ test: $(TEST_BIN)
 TEST_OBJS := $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/tests/%.o,$(TEST_SRCS))
 CATCH_OBJ := $(BUILD_DIR)/tests/catch_amalgamated.o
 LIB_OBJS_FOR_TESTS := $(filter-out $(OBJ_DIR_DEBUG)/main.o,$(OBJS_DEBUG))
+CXXFLAGS_TEST = -std=c++20 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DTEST
 
-$(BUILD_DIR)/tests/%.o: $(TEST_DIR)/%.cpp $(HEADERS) $(PCH_GCH_DEBUG)
+$(BUILD_DIR)/tests/%.o: $(TEST_DIR)/%.cpp $(HEADERS) $(PCH_GCH_RELEASE)
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_RELEASE) -include $(PCH) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS_TEST) -include $(PCH) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
 
 $(CATCH_OBJ): $(TEST_DIR)/test_framework/catch_amalgamated.cpp
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_RELEASE) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS_TEST) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
 
 $(TEST_BIN): $(CATCH_OBJ) $(TEST_OBJS) $(LIB_OBJS_FOR_TESTS)
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_RELEASE) -o $@ $^
+	$(CXX) $(CXXFLAGS_TEST) -o $@ $^
+
+# ================ PERFT TARGET ================
+PERFT_TEST_SRC := $(TEST_DIR)/perft.cpp
+PERFT_OBJ_DIR := $(BUILD_DIR)/perft
+PERFT_OBJ := $(PERFT_OBJ_DIR)/perft.o
+CATCH_OBJ_PERFT := $(PERFT_OBJ_DIR)/catch_amalgamated.o
+
+CXXFLAGS_PERFT = -std=c++20 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DPERFT
+
+$(PERFT_OBJ): $(PERFT_TEST_SRC) $(HEADERS) $(PCH_GCH_RELEASE)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_PERFT) -include $(PCH) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
+
+$(CATCH_OBJ_PERFT): $(TEST_DIR)/test_framework/catch_amalgamated.cpp
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_PERFT) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
+
+$(PERFT_BIN): $(CATCH_OBJ_PERFT) $(PERFT_OBJ) $(LIB_OBJS_FOR_TESTS)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_PERFT) -o $@ $^
+
+perft: $(PERFT_BIN)
+	@$(PERFT_BIN)
 
 # ================ BINARY DIRECTORIES ================
 $(TARGET_BIN_DIST): $(OBJS_DIST)
@@ -164,9 +189,8 @@ fmt:
 fmt-check:
 	@clang-format --dry-run --Werror $(FMT_SRCS)
 
-CLOC_EXCLUDE_FILE := .rgignore
 cloc:
-	cloc . --exclude-list-file=$(CLOC_EXCLUDE_FILE)
+	cloc src include tests --exclude-dir=test_framework
 
 # ================ SLIDER GENERATOR ================
 
@@ -179,4 +203,6 @@ $(SLIDER_BIN): scripts/slider_generators.c
 	@$(call MKDIR,$(BIN_ROOT))
 	$(C) -std=c11 $< -o $@
 
-.PHONY: default install all dist release debug test run run-dist run-release run-debug clean fmt fmt-check cloc sliders
+.PHONY: default install all dist release debug \
+		test perft run run-dist run-release run-debug \
+		clean fmt fmt-check cloc sliders 

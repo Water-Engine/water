@@ -65,7 +65,7 @@ Result<void, std::string> Bot::think_timed(int time_ms) {
         fmt::interpolate("I want to think for {} ms, but I can't yet :(", time_ms));
 }
 
-uint64_t Bot::perft(int depth, bool divide) { return perft_recursive(*m_Board, depth, divide); }
+uint64_t Bot::perft(int depth, bool divide) { return perft_recursive(*m_Board, depth, false); }
 
 uint64_t Bot::perft_parallel(int depth, size_t max_threads) {
     if (depth <= 4 || max_threads == 0) {
