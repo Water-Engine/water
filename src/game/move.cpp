@@ -17,14 +17,15 @@ Move::Move(Ref<Board> board, const std::string& move_uci) {
     }
 
     Coord start_coord(move_uci.substr(0, 2));
-    int start = start_coord.square_idx();
     Coord target_coord(move_uci.substr(2, 2));
-    int target = target_coord.square_idx();
 
     if (!start_coord.valid_square_idx() || !target_coord.valid_square_idx()) {
         m_Compact = 0;
         return;
     }
+
+    int start = start_coord.square_idx_unchecked();
+    int target = target_coord.square_idx_unchecked();
 
     Piece moved_piece = board->piece_at(start);
     int flag = NO_FLAG;

@@ -150,12 +150,39 @@ class Generator {
             int left_capture = Color == PieceColor::White ? pawn_idx + 7 : pawn_idx - 9;
             int right_capture = Color == PieceColor::White ? pawn_idx + 9 : pawn_idx - 7;
 
-            if (board.occupied_by_enemy(left_capture, Color)) {
-                out.push_back(Move(pawn_idx, left_capture, PAWN_CAPTURE_FLAG));
-            }
-            if (board.occupied_by_enemy(right_capture, Color)) {
-                out.push_back(Move(pawn_idx, right_capture, PAWN_CAPTURE_FLAG));
-            }
+            auto maybe_push_capture = [&](int target_idx) {
+                if (!Coord::valid_square_idx(target_idx)) {
+                    return;
+                }
+
+                bool is_capture = false;
+
+                // normal capture
+                if (board.occupied_by_enemy(target_idx, Color)) {
+                    is_capture = true;
+                }
+
+                // en-passant capture (target square empty but equals EP target)
+                else if (board.get_ep_square() == target_idx) {
+                    is_capture = true;
+                }
+
+                if (is_capture) {
+                    // Check if it's a promotion capture
+                    if (Coord::rank_from_square(target_idx) == 7 ||
+                        Coord::rank_from_square(target_idx) == 0) {
+                        auto flags = promotions_for<Promotions>;
+                        for (auto& flag : flags) {
+                            out.push_back(Move(pawn_idx, target_idx, static_cast<int>(flag)));
+                        }
+                    } else {
+                        out.push_back(Move(pawn_idx, target_idx, PAWN_CAPTURE_FLAG));
+                    }
+                }
+            };
+
+            maybe_push_capture(left_capture);
+            maybe_push_capture(right_capture);
         }
     }
 

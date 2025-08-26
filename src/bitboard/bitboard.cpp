@@ -15,15 +15,15 @@ void Bitboard::set_bit(int bit_to_set) {
 
 void Bitboard::set_bit_unchecked(int bit_to_set) { m_BBoard |= (1ULL << bit_to_set); }
 
-void Bitboard::clear_bit(int bit_to_set) {
-    if (bit_to_set < 0 || bit_to_set > 63) {
+void Bitboard::clear_bit(int bit_to_clear) {
+    if (bit_to_clear < 0 || bit_to_clear > 63) {
         return;
     }
 
-    clear_bit_unchecked(bit_to_set);
+    clear_bit_unchecked(bit_to_clear);
 }
 
-void Bitboard::clear_bit_unchecked(int bit_to_set) { m_BBoard &= ~(1ULL << bit_to_set); }
+void Bitboard::clear_bit_unchecked(int bit_to_clear) { m_BBoard &= ~(1ULL << bit_to_clear); }
 
 void Bitboard::toggle_bit(int bit_to_set) {
     if (bit_to_set < 0 || bit_to_set > 63) {

@@ -1,6 +1,23 @@
 #pragma once
 
+#include "bitboard/bitboard.hpp"
 #include "game/piece.hpp"
+
+struct BoardBoards {
+    std::array<Piece, 64> StoredPieces;
+
+    Bitboard WhiteBB;
+    Bitboard BlackBB;
+
+    Bitboard PawnBB;
+    Bitboard KnightBB;
+    Bitboard BishopBB;
+    Bitboard RookBB;
+    Bitboard QueenBB;
+    Bitboard KingBB;
+
+    Bitboard AllPieceBB;
+};
 
 class GameState {
   private:
@@ -15,19 +32,18 @@ class GameState {
     bool m_LastMoveWasCapture;
     bool m_LastMoveWasPawnMove;
 
-    bool m_WasEpCaptured;
-    PieceType m_CapturedPieceType;
-    Piece m_CapturedPiece;
+    // Naive make/unmake move
+    std::array<Piece, 64> m_StoredPieces;
 
-    Piece m_MovedPiece;
-    int m_MovedFrom;
-    int m_MovedTo;
-    int m_MoveFlag;
+    Bitboard m_WhiteBB;
+    Bitboard m_BlackBB;
 
-    // For castling only
-    Piece m_RookPiece;
-    int m_RookFrom;
-    int m_RookTo;
+    Bitboard m_PawnBB;
+    Bitboard m_KnightBB;
+    Bitboard m_BishopBB;
+    Bitboard m_RookBB;
+    Bitboard m_QueenBB;
+    Bitboard m_KingBB;
 
   public:
     GameState();
@@ -68,43 +84,40 @@ class GameState {
         }
     }
 
-    inline void capture_piece(const Piece& piece) {
-        m_CapturedPieceType = piece.type();
-        m_CapturedPiece = piece;
-        indicate_capture();
-    }
-
-    inline bool was_piece_captured() const { return m_CapturedPieceType != PieceType::None; }
-    inline Piece captured_piece() const { return m_CapturedPiece; }
-    inline PieceType captured_piece_type() const { return m_CapturedPieceType; }
-
-    inline void capture_ep() { m_WasEpCaptured = true; }
-    inline bool was_ep_captured() const { return m_WasEpCaptured; }
-
     inline void clear_ep() { m_EpSquare = -1; }
     inline void set_ep(int ep_square) { m_EpSquare = ep_square; }
     inline int get_ep_square() const { return m_EpSquare; }
 
-    inline void set_moved_piece(Piece moved) { m_MovedPiece = moved; }
-    inline Piece get_moved_piece() const { return m_MovedPiece; }
+    inline void cache_board(const std::array<Piece, 64>& stored_pieces, const Bitboard& white_bb,
+                            const Bitboard& black_bb, const Bitboard& pawn_bb,
+                            const Bitboard& knight_bb, const Bitboard& bishop_bb,
+                            const Bitboard& rook_bb, const Bitboard& queen_bb,
+                            const Bitboard& king_bb) {
+        m_StoredPieces = stored_pieces;
+        m_WhiteBB = white_bb;
+        m_BlackBB = black_bb;
+        m_PawnBB = pawn_bb;
+        m_KnightBB = knight_bb;
+        m_BishopBB = bishop_bb;
+        m_RookBB = rook_bb;
+        m_QueenBB = queen_bb;
+        m_KingBB = king_bb;
+    }
 
-    inline void set_moved_from(int idx) { m_MovedFrom = idx; }
-    inline int get_moved_from() const { return m_MovedFrom; }
-
-    inline void set_moved_to(int idx) { m_MovedTo = idx; }
-    inline int get_moved_to() const { return m_MovedTo; }
-
-    inline void set_move_flag(int flag) { m_MoveFlag = flag; }
-    inline int get_move_flag() const { return m_MoveFlag; }
-
-    inline void set_rook_piece(Piece piece) { m_RookPiece = piece; }
-    inline Piece get_rook_piece() const { return m_RookPiece; }
-
-    inline void set_rook_from(int rook_from_idx) { m_RookFrom = rook_from_idx; }
-    inline int get_rook_from() const { return m_RookFrom; }
-
-    inline void set_rook_to(int rook_to_idx) { m_RookTo = rook_to_idx; }
-    inline int get_rook_to() const { return m_RookTo; }
+    inline BoardBoards get_cache() const {
+        return BoardBoards{
+            .StoredPieces = m_StoredPieces,
+            .WhiteBB = m_WhiteBB,
+            .BlackBB = m_BlackBB,
+            .PawnBB = m_PawnBB,
+            .KnightBB = m_KnightBB,
+            .BishopBB = m_BishopBB,
+            .RookBB = m_RookBB,
+            .QueenBB = m_QueenBB,
+            .KingBB = m_KingBB,
+            .AllPieceBB = m_WhiteBB | m_BlackBB,
+        };
+    }
 
     friend class Board;
 };

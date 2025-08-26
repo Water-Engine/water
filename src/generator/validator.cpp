@@ -11,39 +11,97 @@
 
 bool Board::move_leaves_self_checked(Coord start_coord, Coord target_coord, int move_flag,
                                      Piece piece_start, Piece piece_target) {
-    // Only two cases need to be considered, either the king moves, or another piece moves
-    if (piece_start.is_king()) {
-        // We just need the full opponent attack mask and to check its value at target_coord
-        return is_square_attacked(target_coord.square_idx(), piece_start.color());
-    } else if (move_flag == PAWN_CAPTURE_FLAG &&
-               target_coord.square_idx() == m_State.get_ep_square()) {
-        int captured_square = m_State.get_ep_square() + (piece_start.is_white() ? -8 : 8);
-        m_AllPieceBB.toggle_bit(captured_square);
-        bool result = king_in_check(piece_start.color());
-        m_AllPieceBB.toggle_bit(captured_square);
-        return result;
-    } else {
-        // Here, the piece needs to be 'moved', just clear the start_coord bit temporary, check rays
-        // with current king, and reset the cleared bit
-        m_AllPieceBB.toggle_bit(start_coord.square_idx());
-        bool captured = false;
-        if (!piece_target.is_none()) {
-            m_AllPieceBB.toggle_bit(target_coord.square_idx());
-            captured = true;
-        }
+    // 1. Snapshot board
+    BoardBoards saved{
+        .StoredPieces = m_StoredPieces,
+        .WhiteBB = m_WhiteBB,
+        .BlackBB = m_BlackBB,
+        .PawnBB = m_PawnBB,
+        .KnightBB = m_KnightBB,
+        .BishopBB = m_BishopBB,
+        .RookBB = m_RookBB,
+        .QueenBB = m_QueenBB,
+        .KingBB = m_KingBB,
+        .AllPieceBB = m_AllPieceBB,
+    };
 
-        bool result = king_in_check(piece_start.color());
+    const int from = start_coord.square_idx_unchecked();
+    const int to = target_coord.square_idx_unchecked();
 
-        m_AllPieceBB.toggle_bit(start_coord.square_idx());
-        if (captured) {
-            m_AllPieceBB.toggle_bit(target_coord.square_idx());
-        }
-
-        return result;
+    if (!start_coord.valid_square_idx() || !target_coord.valid_square_idx()) {
+        throw illegal_board_access(
+            fmt::interpolate("Invalid access: From = {}; To = {}", from, to));
     }
+
+    // 2. Remove piece from 'from'
+    m_StoredPieces[from].clear();
+    get_piece_bb(piece_start.type()).clear_bit_unchecked(from);
+
+    if (piece_start.is_white()) {
+        m_WhiteBB.clear_bit_unchecked(from);
+    } else {
+        m_BlackBB.clear_bit_unchecked(from);
+    }
+    m_AllPieceBB.clear_bit_unchecked(from);
+
+    // 3. Handle captures (regular or en-passant)
+    if (move_flag == PAWN_CAPTURE_FLAG && to == m_State.get_ep_square()) {
+        int captured_square = m_State.get_ep_square() + (piece_start.is_white() ? -8 : 8);
+        Piece captured = m_StoredPieces[captured_square];
+        if (!captured.is_none()) {
+            m_StoredPieces[captured_square].clear();
+            m_PawnBB.clear_bit_unchecked(captured_square);
+            if (captured.is_white()) {
+                m_WhiteBB.clear_bit_unchecked(captured_square);
+            } else {
+                m_BlackBB.clear_bit_unchecked(captured_square);
+            }
+            m_AllPieceBB.clear_bit_unchecked(captured_square);
+        }
+    } else {
+        if (!piece_target.is_none()) {
+            Piece captured = m_StoredPieces[to];
+            m_StoredPieces[to].clear();
+            get_piece_bb(captured.type()).clear_bit_unchecked(to);
+
+            if (captured.is_white()) {
+                m_WhiteBB.clear_bit_unchecked(to);
+            } else {
+                m_BlackBB.clear_bit_unchecked(to);
+            }
+            m_AllPieceBB.clear_bit_unchecked(to);
+        }
+    }
+
+    // 4. Place moving piece at 'to'
+    m_StoredPieces[to] = piece_start;
+    get_piece_bb(piece_start.type()).set_bit_unchecked(to);
+
+    if (piece_start.is_white()) {
+        m_WhiteBB.set_bit_unchecked(to);
+    } else {
+        m_BlackBB.set_bit_unchecked(to);
+    }
+    m_AllPieceBB.set_bit_unchecked(to);
+
+    bool leaves = king_in_check(piece_start.color());
+
+    // 5. Restore saved snapshot
+    m_StoredPieces = saved.StoredPieces;
+    m_WhiteBB = saved.WhiteBB;
+    m_BlackBB = saved.BlackBB;
+    m_PawnBB = saved.PawnBB;
+    m_KnightBB = saved.KnightBB;
+    m_BishopBB = saved.BishopBB;
+    m_RookBB = saved.RookBB;
+    m_QueenBB = saved.QueenBB;
+    m_KingBB = saved.KingBB;
+    m_AllPieceBB = saved.AllPieceBB;
+
+    return leaves;
 }
 
-bool Board::can_capture_ep(bool is_white) const {
+bool Board::can_capture_ep(bool is_white) {
     int ep_square = m_State.get_ep_square();
     if (ep_square == -1) {
         return false;
@@ -55,60 +113,111 @@ bool Board::can_capture_ep(bool is_white) const {
     int from_left = -1, from_right = -1;
 
     if (is_white) {
-        if (rank != 5) {
+        if (rank != 5)
             return false;
-        }
-        if (file > 0) {
+        if (file > 0)
             from_left = ep_square - 9;
-        }
-        if (file < 7) {
+        if (file < 7)
             from_right = ep_square - 7;
-        }
     } else {
-        if (rank != 2) {
+        if (rank != 2)
             return false;
-        }
-        if (file > 0) {
+        if (file > 0)
             from_left = ep_square + 7;
-        }
-        if (file < 7) {
+        if (file < 7)
             from_right = ep_square + 9;
-        }
     }
 
-    Bitboard all_piece_bb = m_AllPieceBB;
-
-    auto test_ep = [&](int from) -> bool {
-        if (from == -1) {
-            return false;
-        }
-        Piece p = piece_at(from);
-        if ((is_white && !p.is_white()) || (!is_white && !p.is_black())) {
-            return false;
-        }
-
-        // Temporarily remove both the moving pawn and the captured pawn
-        int captured_square = ep_square + (is_white ? -8 : 8);
-        all_piece_bb.toggle_bit(from);
-        all_piece_bb.toggle_bit(captured_square);
-
-        bool leaves_king_checked = king_in_check(p.color());
-
-        // Restore the bits
-        all_piece_bb.toggle_bit(from);
-        all_piece_bb.toggle_bit(captured_square);
-
-        return !leaves_king_checked;
+    // We'll need to simulate on the real board, so cast away const (we'll restore)
+    // Take a snapshot of the relevant boards (same pattern as above)
+    BoardBoards saved{
+        .StoredPieces = m_StoredPieces,
+        .WhiteBB = m_WhiteBB,
+        .BlackBB = m_BlackBB,
+        .PawnBB = m_PawnBB,
+        .KnightBB = m_KnightBB,
+        .BishopBB = m_BishopBB,
+        .RookBB = m_RookBB,
+        .QueenBB = m_QueenBB,
+        .KingBB = m_KingBB,
+        .AllPieceBB = m_AllPieceBB,
     };
 
-    return test_ep(from_left) || test_ep(from_right);
+    auto test_from = [&](int from) -> bool {
+        if (from == -1)
+            return false;
+        Piece p = piece_at(from);
+        if (p.is_none())
+            return false;
+        if ((is_white && !p.is_white()) || (!is_white && !p.is_black()))
+            return false;
+        if (!p.is_pawn())
+            return false;
+
+        // Simulate EP capture: remove moving pawn from 'from', remove captured pawn, and place pawn
+        // at ep_square
+        int captured_square = ep_square + (is_white ? -8 : 8);
+
+        // remove moving pawn from 'from'
+        m_StoredPieces[from].clear();
+        m_PawnBB.clear_bit(from);
+        if (p.is_white())
+            m_WhiteBB.clear_bit(from);
+        else
+            m_BlackBB.clear_bit(from);
+        m_AllPieceBB.clear_bit(from);
+
+        // remove captured pawn
+        Piece captured = m_StoredPieces[captured_square];
+        if (!captured.is_none()) {
+            m_StoredPieces[captured_square].clear();
+            m_PawnBB.clear_bit(captured_square);
+            if (captured.is_white())
+                m_WhiteBB.clear_bit(captured_square);
+            else
+                m_BlackBB.clear_bit(captured_square);
+            m_AllPieceBB.clear_bit(captured_square);
+        }
+
+        // place pawn at ep_square
+        m_StoredPieces[ep_square] = p;
+        m_PawnBB.set_bit(ep_square);
+        if (p.is_white())
+            m_WhiteBB.set_bit(ep_square);
+        else
+            m_BlackBB.set_bit(ep_square);
+        m_AllPieceBB.set_bit(ep_square);
+
+        bool leaves = king_in_check(p.color());
+
+        // restore
+        m_StoredPieces = saved.StoredPieces;
+        m_WhiteBB = saved.WhiteBB;
+        m_BlackBB = saved.BlackBB;
+        m_PawnBB = saved.PawnBB;
+        m_KnightBB = saved.KnightBB;
+        m_BishopBB = saved.BishopBB;
+        m_RookBB = saved.RookBB;
+        m_QueenBB = saved.QueenBB;
+        m_KingBB = saved.KingBB;
+        m_AllPieceBB = saved.AllPieceBB;
+
+        return !leaves;
+    };
+
+    return test_from(from_left) || test_from(from_right);
 }
 
 Option<ValidatedMove> Board::is_legal_move(const Move& move, bool deep_verify) {
-    Coord target_coord(move.target_square());
     Coord start_coord(move.start_square());
-    Piece piece_start = piece_at(start_coord.square_idx());
-    Piece piece_target = piece_at(target_coord.square_idx());
+    Coord target_coord(move.target_square());
+
+    if (!start_coord.valid_square_idx() || !target_coord.valid_square_idx()) {
+        return Option<ValidatedMove>();
+    }
+
+    Piece piece_start = piece_at(start_coord.square_idx_unchecked());
+    Piece piece_target = piece_at(target_coord.square_idx_unchecked());
     int move_flag = move.flag();
 
     if (piece_start.is_none() || start_coord == target_coord) {
@@ -255,20 +364,25 @@ bool Board::validate_king_move(Coord start_coord, Coord target_coord, int move_f
         return false;
     }
 
+    if (!start_coord.valid_square_idx() || !target_coord.valid_square_idx()) {
+        return false;
+    }
+
     Bitboard opponent_rays = opponent_attack_rays();
     if (move_flag == NO_FLAG) {
-        if (!King::can_move_to(start_coord.square_idx(), target_coord.square_idx())) {
+        if (!King::can_move_to(start_coord.square_idx_unchecked(),
+                               target_coord.square_idx_unchecked())) {
             return false;
         }
 
         if (piece_from.color() == piece_to.color() &&
-            m_AllPieceBB.contains_square(target_coord.square_idx())) {
+            m_AllPieceBB.contains_square(target_coord.square_idx_unchecked())) {
             return false;
         }
 
     } else if (move_flag == CASTLE_FLAG) {
-        const int king_from = start_coord.square_idx();
-        const int king_to = target_coord.square_idx();
+        const int king_from = start_coord.square_idx_unchecked();
+        const int king_to = target_coord.square_idx_unchecked();
         const bool king_side = (king_to > king_from);
 
         // 1. Castling rights must be valid
@@ -352,13 +466,19 @@ bool Board::validate_king_move(Coord start_coord, Coord target_coord, int move_f
 }
 
 bool Board::validate_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
-                               Piece piece_from, Piece piece_to) const {
+                               Piece piece_from, Piece piece_to) {
     PROFILE_FUNCTION();
-    if (piece_from.is_white() && !Pawn::can_move_to<PieceColor::White>(start_coord.square_idx(),
-                                                                       target_coord.square_idx())) {
+    if (!start_coord.valid_square_idx() || !target_coord.valid_square_idx()) {
         return false;
-    } else if (piece_from.is_black() && !Pawn::can_move_to<PieceColor::Black>(
-                                            start_coord.square_idx(), target_coord.square_idx())) {
+    }
+
+    if (piece_from.is_white() &&
+        !Pawn::can_move_to<PieceColor::White>(start_coord.square_idx_unchecked(),
+                                              target_coord.square_idx_unchecked())) {
+        return false;
+    } else if (piece_from.is_black() &&
+               !Pawn::can_move_to<PieceColor::Black>(start_coord.square_idx_unchecked(),
+                                                     target_coord.square_idx_unchecked())) {
         return false;
     }
 
@@ -371,16 +491,16 @@ bool Board::validate_pawn_move(Coord start_coord, Coord target_coord, int move_f
 
     if (move_flag == NO_FLAG) {
         if (piece_from.color() == piece_to.color() &&
-            m_AllPieceBB.contains_square(target_coord.square_idx())) {
+            m_AllPieceBB.contains_square(target_coord.square_idx_unchecked())) {
             return false;
         }
     } else if (move_flag == PAWN_TWO_UP_FLAG) {
         if (piece_from.color() == piece_to.color() &&
-            m_AllPieceBB.contains_square(target_coord.square_idx())) {
+            m_AllPieceBB.contains_square(target_coord.square_idx_unchecked())) {
             return false;
         }
 
-        int ep_square = start_coord.square_idx() + (piece_from.is_white() ? 8 : -8);
+        int ep_square = start_coord.square_idx_unchecked() + (piece_from.is_white() ? 8 : -8);
         if (m_AllPieceBB.contains_square(ep_square)) {
             return false;
         }
@@ -389,7 +509,7 @@ bool Board::validate_pawn_move(Coord start_coord, Coord target_coord, int move_f
         int old_ep_square = m_State.get_ep_square();
 
         // Handle ep side of moves
-        if (old_ep_square == target_coord.square_idx()) {
+        if (old_ep_square == target_coord.square_idx_unchecked()) {
             if (!can_capture_ep(piece_from.color() == PieceColor::White)) {
                 return false;
             }
@@ -398,13 +518,13 @@ bool Board::validate_pawn_move(Coord start_coord, Coord target_coord, int move_f
             // is a valid attack square due to passing can_move_to checks
             if (piece_from.color() == piece_to.color()) {
                 return false;
-            } else if ((int)piece_at(target_coord.square_idx()) == Piece::none()) {
+            } else if (piece_at(target_coord.square_idx_unchecked()).is_none()) {
                 return false;
             }
         }
     } else if (Move::is_promotion(move_flag)) {
         // 1. Ensure the target square is a promotion rank
-        int target_idx = target_coord.square_idx();
+        int target_idx = target_coord.square_idx_unchecked();
         bool valid_promotion_rank =
             (piece_from.is_white() && target_idx >= 56 && target_idx <= 63) ||
             (piece_from.is_black() && target_idx >= 0 && target_idx <= 7);
@@ -435,8 +555,12 @@ template <PrecomputedValidator Validator>
 bool Board::validate_basic_precomputed_move(Coord start_coord, Coord target_coord, Piece piece_from,
                                             Piece piece_to) const {
     PROFILE_FUNCTION();
-    int piece_idx = start_coord.square_idx();
-    int target_idx = target_coord.square_idx();
+    if (!start_coord.valid_square_idx() || !target_coord.valid_square_idx()) {
+        return false;
+    }
+
+    int piece_idx = start_coord.square_idx_unchecked();
+    int target_idx = target_coord.square_idx_unchecked();
 
     // Validate move request
     if (!Validator::can_move_to(piece_idx, target_idx, m_AllPieceBB)) {

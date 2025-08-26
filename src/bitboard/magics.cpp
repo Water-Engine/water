@@ -78,7 +78,7 @@ Bitboard Magics::create_movement_mask(int square_idx, bool is_ortho_slider) {
             Coord next_coord = start_coord + dir * (dst + 1);
 
             if (next_coord.valid_square_idx()) {
-                mask.set_bit(coord.square_idx());
+                mask.set_bit(coord.square_idx_unchecked());
             } else {
                 break;
             }
@@ -98,7 +98,7 @@ Bitboard Magics::legal_move_bb(int square_idx, const Bitboard& blocker_bb, bool 
             Coord coord = start_coord + dir * dst;
 
             if (coord.valid_square_idx()) {
-                int index = coord.square_idx();
+                int index = coord.square_idx_unchecked();
                 bb.set_bit(index);
                 if (blocker_bb.contains_square(index)) {
                     break;

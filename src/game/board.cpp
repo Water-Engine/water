@@ -75,7 +75,9 @@ Result<PositionInfo, std::string> PositionInfo::from_fen(const std::string& fen)
         bcq = true;
     }
 
-    ep_square_idx = Coord(ep_square).square_idx();
+    if (ep_square != "-") {
+        ep_square_idx = Coord(ep_square).square_idx();
+    }
 
     if (sections.size() >= 5) {
         try {
@@ -108,8 +110,8 @@ void Board::load_from_position(const PositionInfo& pos) {
         GameState(pos.m_WhiteCastleKingside, pos.m_WhiteCastleQueenside, pos.m_BlackCastleKingside,
                   pos.m_BlackCastleQueenside, pos.m_EpSquare, pos.m_HalfmoveClock);
 
-    m_StateHistory.emplace_back(m_State);
     m_StoredPieces = pos.m_Squares;
+    m_WhiteToMove = pos.m_WhiteToMove;
 
     for (size_t i = 0; i < pos.m_Squares.size(); i++) {
         Piece piece = pos.m_Squares[i];
@@ -139,6 +141,9 @@ void Board::load_from_position(const PositionInfo& pos) {
     }
 
     m_AllPieceBB = m_WhiteBB | m_BlackBB;
+
+    cache_self();
+    m_StateHistory.emplace_back(m_State);
 }
 
 void Board::reset() {
@@ -224,19 +229,21 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
 
     Bitboard opponent_rays = opponent_attack_rays();
     if (move_flag == NO_FLAG) {
-        if (!King::can_move_to(start_coord.square_idx(), target_coord.square_idx())) {
+        if (!King::can_move_to(start_coord.square_idx_unchecked(),
+                               target_coord.square_idx_unchecked())) {
             return false;
         }
 
         if (piece_from.color() == piece_to.color() &&
-            m_AllPieceBB.contains_square(target_coord.square_idx())) {
+            m_AllPieceBB.contains_square(target_coord.square_idx_unchecked())) {
             return false;
         }
 
-        move_piece(m_KingBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
+        move_piece(m_KingBB, start_coord.square_idx_unchecked(),
+                   target_coord.square_idx_unchecked(), piece_from);
     } else if (move_flag == CASTLE_FLAG) {
-        const int king_from = start_coord.square_idx();
-        const int king_to = target_coord.square_idx();
+        const int king_from = start_coord.square_idx_unchecked();
+        const int king_to = target_coord.square_idx_unchecked();
         const bool king_side = (king_to > king_from);
 
         // 1. Castling rights must be valid
@@ -322,9 +329,6 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
         // Now move the pieces
         move_piece(m_KingBB, king_from, king_to, piece_from);
         move_piece(m_RookBB, rook_from, rook_to, rook_piece);
-        m_State.set_rook_piece(rook_piece);
-        m_State.set_rook_from(rook_from);
-        m_State.set_rook_to(rook_to);
     }
 
     // Any king move that makes it this far will invalidate its castling rights
@@ -341,11 +345,13 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
 bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
                            Piece piece_to) {
     PROFILE_FUNCTION();
-    if (piece_from.is_white() && !Pawn::can_move_to<PieceColor::White>(start_coord.square_idx(),
-                                                                       target_coord.square_idx())) {
+    if (piece_from.is_white() &&
+        !Pawn::can_move_to<PieceColor::White>(start_coord.square_idx_unchecked(),
+                                              target_coord.square_idx_unchecked())) {
         return false;
-    } else if (piece_from.is_black() && !Pawn::can_move_to<PieceColor::Black>(
-                                            start_coord.square_idx(), target_coord.square_idx())) {
+    } else if (piece_from.is_black() &&
+               !Pawn::can_move_to<PieceColor::Black>(start_coord.square_idx_unchecked(),
+                                                     target_coord.square_idx_unchecked())) {
         return false;
     }
 
@@ -358,29 +364,31 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
 
     if (move_flag == NO_FLAG) {
         if (piece_from.color() == piece_to.color() &&
-            m_AllPieceBB.contains_square(target_coord.square_idx())) {
+            m_AllPieceBB.contains_square(target_coord.square_idx_unchecked())) {
             return false;
         }
 
-        move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
+        move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
+                   target_coord.square_idx_unchecked(), piece_from);
     } else if (move_flag == PAWN_TWO_UP_FLAG) {
         if (piece_from.color() == piece_to.color() &&
-            m_AllPieceBB.contains_square(target_coord.square_idx())) {
+            m_AllPieceBB.contains_square(target_coord.square_idx_unchecked())) {
             return false;
         }
 
-        int ep_square = start_coord.square_idx() + (piece_from.is_white() ? 8 : -8);
+        int ep_square = start_coord.square_idx_unchecked() + (piece_from.is_white() ? 8 : -8);
         if (m_AllPieceBB.contains_square(ep_square)) {
             return false;
         }
 
         m_State.set_ep(ep_square);
-        move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
+        move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
+                   target_coord.square_idx_unchecked(), piece_from);
     } else if (move_flag == PAWN_CAPTURE_FLAG) {
         int old_ep_square = m_State.get_ep_square();
 
         // Handle ep side of moves
-        if (old_ep_square == target_coord.square_idx()) {
+        if (old_ep_square == target_coord.square_idx_unchecked()) {
             if (!can_capture_ep(piece_from.color() == PieceColor::White)) {
                 return false;
             }
@@ -388,22 +396,24 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
             // Move and capture involved pawns
             int captured_pawn_square = old_ep_square + (piece_from.is_white() ? -8 : 8);
             remove_piece_at(captured_pawn_square);
-            move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
-            m_State.capture_ep();
+            m_State.indicate_capture();
+            move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
+                       target_coord.square_idx_unchecked(), piece_from);
         } else {
             // Fallback to basic captures, diagonal moves must attack an enemy piece, but we know it
             // is a valid attack square due to passing can_move_to checks
             if (piece_from.color() == piece_to.color()) {
                 return false;
-            } else if ((int)piece_at(target_coord.square_idx()) == Piece::none()) {
+            } else if ((int)piece_at(target_coord.square_idx_unchecked()) == Piece::none()) {
                 return false;
             }
 
-            move_piece(m_PawnBB, start_coord.square_idx(), target_coord.square_idx(), piece_from);
+            move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
+                       target_coord.square_idx_unchecked(), piece_from);
         }
     } else if (Move::is_promotion(move_flag)) {
         // 1. Ensure the target square is a promotion rank
-        int target_idx = target_coord.square_idx();
+        int target_idx = target_coord.square_idx_unchecked();
         bool valid_promotion_rank =
             (piece_from.is_white() && target_idx >= 56 && target_idx <= 63) ||
             (piece_from.is_black() && target_idx >= 0 && target_idx <= 7);
@@ -425,7 +435,7 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
         }
 
         // 4. Remove pawn and add promoted piece
-        remove_piece_at(start_coord.square_idx());
+        remove_piece_at(start_coord.square_idx_unchecked());
         if (piece_to.type() != PieceType::None) {
             remove_piece_at(target_idx);
         }
@@ -442,8 +452,8 @@ template <PrecomputedValidator Validator>
 bool Board::make_basic_precomputed_move(Coord start_coord, Coord target_coord, Piece piece_from,
                                         Piece piece_to, Bitboard& piece_bb) {
     PROFILE_FUNCTION();
-    int piece_idx = start_coord.square_idx();
-    int target_idx = target_coord.square_idx();
+    int piece_idx = start_coord.square_idx_unchecked();
+    int target_idx = target_coord.square_idx_unchecked();
 
     // Validate move request
     if (!Validator::can_move_to(piece_idx, target_idx, m_AllPieceBB)) {
@@ -460,15 +470,17 @@ bool Board::make_basic_precomputed_move(Coord start_coord, Coord target_coord, P
     // If were moving a rook, then we have to update castling rights
     if constexpr (Validator::as_piece_type() == PieceType::Rook) {
         if (piece_from.is_white()) {
-            if (m_State.can_white_kingside() && start_coord.square_idx() == Square::H1) {
+            if (m_State.can_white_kingside() && start_coord.square_idx_unchecked() == Square::H1) {
                 m_State.white_lost_kingside_right();
-            } else if (m_State.can_white_queenside() && start_coord.square_idx() == Square::A1) {
+            } else if (m_State.can_white_queenside() &&
+                       start_coord.square_idx_unchecked() == Square::A1) {
                 m_State.white_lost_queenside_right();
             }
         } else {
-            if (m_State.can_black_kingside() && start_coord.square_idx() == Square::H8) {
+            if (m_State.can_black_kingside() && start_coord.square_idx_unchecked() == Square::H8) {
                 m_State.black_lost_kingside_right();
-            } else if (m_State.can_black_queenside() && start_coord.square_idx() == Square::A8) {
+            } else if (m_State.can_black_queenside() &&
+                       start_coord.square_idx_unchecked() == Square::A8) {
                 m_State.black_lost_queenside_right();
             }
         }
@@ -484,10 +496,12 @@ void Board::move_piece(Bitboard& piece_bb, int from, int to, Piece piece) {
     // If there is an enemy piece on the target, remove it BEFORE placing the new piece
     if (piece.is_white()) {
         if (m_BlackBB.bit_value_at(to) == 1) {
+            m_State.indicate_capture();
             remove_piece_at(to);
         }
     } else {
         if (m_WhiteBB.bit_value_at(to) == 1) {
+            m_State.indicate_capture();
             remove_piece_at(to);
         }
     }
@@ -519,6 +533,22 @@ void Board::remove_piece_at(int square_idx) {
     PieceColor occupied_piece_color = piece.color();
     PieceType occupied_piece_type = piece.type();
 
+    if (occupied_piece_type == PieceType::Rook) {
+        if (occupied_piece_color == PieceColor::White) {
+            if (square_idx == Square::H1 && m_State.can_white_kingside()) {
+                m_State.white_lost_kingside_right();
+            } else if (square_idx == Square::A1 && m_State.can_white_queenside()) {
+                m_State.white_lost_queenside_right();
+            }
+        } else {
+            if (square_idx == Square::H8 && m_State.can_black_kingside()) {
+                m_State.black_lost_kingside_right();
+            } else if (square_idx == Square::A8 && m_State.can_black_queenside()) {
+                m_State.black_lost_queenside_right();
+            }
+        }
+    }
+
     if (occupied_piece_color == PieceColor::White) {
         m_WhiteBB.clear_bit(square_idx);
     } else {
@@ -549,7 +579,6 @@ void Board::remove_piece_at(int square_idx) {
     }
 
     m_StoredPieces[square_idx].clear();
-    m_State.capture_piece(piece);
 }
 
 Piece Board::piece_at(int square_idx) const {
@@ -648,13 +677,14 @@ void Board::make_move(const Move& move, bool in_search) {
         return;
     }
 
-    
-    m_State.set_moved_piece(piece_start);
-    m_State.set_moved_from(move.start_square());
-    m_State.set_moved_to(move.target_square());
-    m_State.set_move_flag(move.flag());
-    
+    if (!(piece_start.is_pawn() && move_flag == PAWN_TWO_UP_FLAG)) {
+        m_State.clear_ep();
+    }
+
     m_State.try_reset_halfmove_clock();
+
+    cache_self();
+
     m_StateHistory.push_back(m_State);
     m_WhiteToMove = !m_WhiteToMove;
 
@@ -663,117 +693,27 @@ void Board::make_move(const Move& move, bool in_search) {
     }
 }
 
-void Board::unmake_move(const Move& move, bool in_search) {
-    if (!contains(m_AllMoves, move)) {
-        return;
-    }
-
-    auto last_state = m_StateHistory.back();
-
-    m_WhiteToMove = !m_WhiteToMove;
-    bool undoing_white = m_WhiteToMove;
-
-    int moved_from = last_state.get_moved_from();
-    int moved_to = last_state.get_moved_to();
-    int moved_flag = last_state.get_move_flag();
-
-    bool undoing_ep = last_state.was_ep_captured();
-    bool undoing_promotion = Move::is_promotion(moved_flag);
-    bool undoing_capture = last_state.captured_piece_type() != PieceType::None;
-
-    Piece moved_piece = last_state.get_moved_piece();
-    auto moved_piece_type = moved_piece.type();
-    Piece captured_piece = last_state.captured_piece();
-    auto captured_piece_type = captured_piece.type();
-
-    // Undo promotion
-    if (undoing_promotion) {
-        Piece promoted_piece = moved_piece;
-        get_piece_bb(promoted_piece.type()).clear_bit_unchecked(moved_to);
-
-        Piece pawn_piece(PieceType::Pawn, moved_piece.color());
-        get_piece_bb(PieceType::Pawn).set_bit_unchecked(moved_from);
-
-        m_StoredPieces[moved_from] = pawn_piece;
-        m_StoredPieces[moved_to].clear();
-
-        if (pawn_piece.is_white()) {
-            m_WhiteBB.clear_bit(moved_to);
-            m_WhiteBB.set_bit(moved_from);
-        } else {
-            m_BlackBB.clear_bit(moved_to);
-            m_BlackBB.set_bit(moved_from);
-        }
-    }
-
-    // Undo king moves / castling
-    if (moved_piece.is_king()) {
-        m_KingBB.clear_bit(moved_to);
-        m_KingBB.set_bit(moved_from);
-
-        if (moved_flag == CASTLE_FLAG) {
-            get_piece_bb(PieceType::Rook).clear_bit_unchecked(last_state.get_rook_to());
-            m_StoredPieces[last_state.get_rook_to()].clear();
-
-            get_piece_bb(PieceType::Rook).set_bit_unchecked(last_state.get_rook_from());
-            m_StoredPieces[last_state.get_rook_from()] = last_state.get_rook_piece();
-
-            if (last_state.get_rook_piece().is_white()) {
-                m_WhiteBB.clear_bit(last_state.get_rook_to());
-                m_WhiteBB.set_bit(last_state.get_rook_from());
-            } else {
-                m_BlackBB.clear_bit(last_state.get_rook_to());
-                m_BlackBB.set_bit(last_state.get_rook_from());
-            }
-        }
-    }
-
-    // Undo normal piece moves (before restoring capture)
-    if (!undoing_promotion && moved_flag != CASTLE_FLAG && moved_piece_type != PieceType::None) {
-        get_piece_bb(moved_piece_type).clear_bit_unchecked(moved_to);
-        get_piece_bb(moved_piece_type).set_bit_unchecked(moved_from);
-
-        m_StoredPieces[moved_from] = moved_piece;
-
-        // Only clear target if it shouldn't contain a captured piece
-        if (!(undoing_capture && !undoing_ep)) {
-            m_StoredPieces[moved_to].clear();
-        }
-
-        if (moved_piece.is_white()) {
-            m_WhiteBB.clear_bit(moved_to);
-            m_WhiteBB.set_bit(moved_from);
-        } else {
-            m_BlackBB.clear_bit(moved_to);
-            m_BlackBB.set_bit(moved_from);
-        }
-    }
-
-    // Undo capture (after mover restored)
-    if (undoing_capture) {
-        int captured_square = moved_to;
-        if (undoing_ep) {
-            captured_square = moved_to + (undoing_white ? -8 : 8);
-        }
-
-        get_piece_bb(captured_piece_type).set_bit_unchecked(captured_square);
-        m_StoredPieces[captured_square] = captured_piece;
-
-        if (captured_piece.is_white()) {
-            m_WhiteBB.set_bit(captured_square);
-        } else {
-            m_BlackBB.set_bit(captured_square);
-        }
-    }
-
-    m_AllPieceBB = m_WhiteBB | m_BlackBB;
-
+void Board::unmake_last_move(bool in_search) {
     if (!in_search) {
         m_AllMoves.pop_back();
     }
 
     m_StateHistory.pop_back();
     m_State = m_StateHistory.back();
+    m_WhiteToMove = !m_WhiteToMove;
+
+    auto bbs = m_State.get_cache();
+
+    m_StoredPieces = bbs.StoredPieces;
+    m_WhiteBB = bbs.WhiteBB;
+    m_BlackBB = bbs.BlackBB;
+    m_PawnBB = bbs.PawnBB;
+    m_KnightBB = bbs.KnightBB;
+    m_BishopBB = bbs.BishopBB;
+    m_RookBB = bbs.RookBB;
+    m_QueenBB = bbs.QueenBB;
+    m_KingBB = bbs.KingBB;
+    m_AllPieceBB = bbs.AllPieceBB;
 }
 
 Result<void, std::string> Board::load_from_fen(const std::string& fen) {

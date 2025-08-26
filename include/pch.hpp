@@ -11,6 +11,7 @@
 
 // Utilities
 #include <algorithm>
+#include <atomic>
 #include <bitset>
 #include <cassert>
 #include <chrono>

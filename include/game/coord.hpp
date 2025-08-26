@@ -5,9 +5,6 @@ class Coord {
     int m_FileIdx;
     int m_RankIdx;
 
-  private:
-    int square_idx_unchecked() const { return m_RankIdx * 8 + m_FileIdx; }
-
   public:
     Coord() : m_FileIdx(-1), m_RankIdx(-1) {}
     constexpr Coord(int file_idx, int rank_idx) : m_FileIdx(file_idx), m_RankIdx(rank_idx) {}
@@ -18,6 +15,7 @@ class Coord {
     int file_idx() const { return m_FileIdx; }
     int rank_idx() const { return m_RankIdx; }
     int square_idx() const { return valid_square_idx() ? square_idx_unchecked() : -1; }
+    int square_idx_unchecked() const { return m_RankIdx * 8 + m_FileIdx; }
 
     static int file_from_square(int square_idx) { return square_idx & 0b000111; }
     static int rank_from_square(int square_idx) { return square_idx >> 3; }

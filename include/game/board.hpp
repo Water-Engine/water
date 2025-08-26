@@ -113,7 +113,7 @@ class Board {
     bool validate_king_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
                             Piece piece_to) const;
     bool validate_pawn_move(Coord start_coord, Coord target_coord, int move_flag, Piece piece_from,
-                            Piece piece_to) const;
+                            Piece piece_to);
 
     template <PrecomputedValidator Validator>
     bool validate_basic_precomputed_move(Coord start_coord, Coord target_coord, Piece piece_from,
@@ -125,7 +125,7 @@ class Board {
     bool move_leaves_self_checked(Coord start_coord, Coord target_coord, int move_flag,
                                   Piece piece_start, Piece piece_target);
 
-    bool can_capture_ep(bool is_white) const;
+    bool can_capture_ep(bool is_white);
 
     Bitboard& get_piece_bb(PieceType piece_type);
     template <PieceType Type> inline Bitboard& get_piece_bb() {
@@ -144,6 +144,11 @@ class Board {
         } else {
             throw illegal_board_access("No bitboard associated for PieceType::None");
         }
+    }
+
+    inline void cache_self() {
+        m_State.cache_board(m_StoredPieces, m_WhiteBB, m_BlackBB, m_PawnBB, m_KnightBB, m_BishopBB,
+                            m_RookBB, m_QueenBB, m_KingBB);
     }
 
   public:
@@ -172,6 +177,8 @@ class Board {
     };
 
     bool is_square_attacked(int square_idx, PieceColor occupied_color) const;
+    inline int get_ep_square() const { return m_State.get_ep_square(); }
+
     bool king_in_check(PieceColor king_color) const;
 
     inline bool occupied(int square_idx) const { return m_AllPieceBB.contains_square(square_idx); }
@@ -187,7 +194,7 @@ class Board {
     Piece piece_at(int square_idx) const;
     void add_piece(Piece piece, int square_idx);
     void make_move(const Move& move, bool in_search = false);
-    void unmake_move(const Move& move, bool in_search = false);
+    void unmake_last_move(bool in_search = false);
 
     Result<void, std::string> load_from_fen(const std::string& fen);
     Result<void, std::string> load_startpos();
