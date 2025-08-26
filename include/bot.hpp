@@ -11,7 +11,7 @@ class Bot {
     bool m_Thinking;
 
   private:
-    uint64_t perft_recursive(Board& board, int depth, bool divide = true);
+    uint64_t perft_recursive(Board& board, int depth);
 
   public:
     Bot() : m_Board(CreateRef<Board>()), m_Thinking(false) { m_Board->load_startpos(); }
@@ -26,7 +26,7 @@ class Bot {
                           int increment_white_ms, int increment_black_ms);
     Result<void, std::string> think_timed(int time_ms);
 
-    uint64_t perft(int depth, bool divide = true);
+    uint64_t perft(int depth);
     uint64_t perft_parallel(int depth, size_t max_threads = 2);
 
     std::string board_str() { return m_Board->to_string(); }

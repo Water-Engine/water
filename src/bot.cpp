@@ -6,7 +6,7 @@
 
 #include "generator/generator.hpp"
 
-uint64_t Bot::perft_recursive(Board& board, int depth, bool divide) {
+uint64_t Bot::perft_recursive(Board& board, int depth) {
     if (depth == 0) {
         return 1;
     }
@@ -15,13 +15,8 @@ uint64_t Bot::perft_recursive(Board& board, int depth, bool divide) {
     auto moves = Generator::generate(board);
     for (auto& move : moves) {
         board.make_move(move);
-        auto nodes = perft_recursive(board, depth - 1, divide);
+        total_nodes += perft_recursive(board, depth - 1);
         board.unmake_last_move();
-
-        if (divide) {
-            fmt::println("{}: {}", move.to_uci(), nodes);
-        }
-        total_nodes += nodes;
     }
 
     return total_nodes;
@@ -65,11 +60,11 @@ Result<void, std::string> Bot::think_timed(int time_ms) {
         fmt::interpolate("I want to think for {} ms, but I can't yet :(", time_ms));
 }
 
-uint64_t Bot::perft(int depth, bool divide) { return perft_recursive(*m_Board, depth, false); }
+uint64_t Bot::perft(int depth) { return perft_recursive(*m_Board, depth); }
 
 uint64_t Bot::perft_parallel(int depth, size_t max_threads) {
     if (depth <= 4 || max_threads == 0) {
-        return perft(depth, false);
+        return perft(depth);
     }
 
     auto moves = Generator::generate(*m_Board);
@@ -92,7 +87,7 @@ uint64_t Bot::perft_parallel(int depth, size_t max_threads) {
         uint64_t nodes = 0;
         for (auto& move : chunks[idx]) {
             board_copy.make_move(move);
-            nodes += perft_recursive(board_copy, depth - 1, false);
+            nodes += perft_recursive(board_copy, depth - 1);
             board_copy.unmake_last_move();
         }
         results[idx] = nodes;
