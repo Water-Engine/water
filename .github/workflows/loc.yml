@@ -19,26 +19,20 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y cloc jq
 
-      - name: Run cloc and extract total LOC
+      - name: Extract LOC
         run: |
           cloc src include tests --exclude-dir=test_framework --json > cloc.json
           total_lines=$(jq '.SUM.code' cloc.json)
           echo "{\"label\":\"LOC\",\"message\":\"$total_lines\",\"color\":\"blue\"}" > badge.json
           cat badge.json
 
-      - name: Commit and push to loc branch
+      - name: Commit to loc branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # create or switch to loc branch
           git checkout -B loc
-
-          # add/update badge.json
           git add badge.json
           git commit -m "Update LOC badge" || echo "No changes to commit"
-
-          # push to loc branch
           git push -f origin loc
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
