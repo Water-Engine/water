@@ -574,3 +574,111 @@ bool Board::validate_basic_precomputed_move(Coord start_coord, Coord target_coor
 
     return true;
 }
+
+// ================ VALIDATORS FOR LEGALITY CHECKS ================
+
+bool Board::verify_bb_match(const Board& a, const Board& b) {
+    bool boards_match = true;
+
+    if (!a.m_WhiteBB.equals(b.m_WhiteBB)) {
+        fmt::println("WhiteBB mismatch");
+        boards_match = false;
+    }
+
+    if (!a.m_BlackBB.equals(b.m_BlackBB)) {
+        fmt::println("BlackBB mismatch");
+        boards_match = false;
+    }
+
+    if (!a.m_PawnBB.equals(b.m_PawnBB)) {
+        fmt::println("PawnBB mismatch");
+        boards_match = false;
+    }
+
+    if (!a.m_KnightBB.equals(b.m_KnightBB)) {
+        fmt::println("KnightBB mismatch");
+        boards_match = false;
+    }
+
+    if (!a.m_BishopBB.equals(b.m_BishopBB)) {
+        fmt::println("BishopBB mismatch");
+        boards_match = false;
+    }
+
+    if (!a.m_RookBB.equals(b.m_RookBB)) {
+        fmt::println("RookBB mismatch");
+        boards_match = false;
+    }
+
+    if (!a.m_QueenBB.equals(b.m_QueenBB)) {
+        fmt::println("QueenBB mismatch");
+        boards_match = false;
+    }
+
+    if (!a.m_KingBB.equals(b.m_KingBB)) {
+        fmt::println("KingBB mismatch");
+        boards_match = false;
+    }
+
+    if (!a.m_AllPieceBB.equals(b.m_AllPieceBB)) {
+        fmt::println("AllPieceBB mismatch");
+        boards_match = false;
+    }
+
+    return boards_match;
+}
+
+bool Board::compare_boards(const Board& a, const Board& b) {
+    // Verify startpos
+    if (a.m_StartPos != b.m_StartPos) {
+        fmt::println("Start position mis-match");
+        return false;
+    }
+
+    // Verify bitboards
+    if (!verify_bb_match(a, b)) {
+        return false;
+    }
+
+    // Verify State
+    if (a.m_State != b.m_State) {
+        fmt::println("State mis-match");
+        return false;
+    }
+
+    if (a.m_WhiteToMove != b.m_WhiteToMove) {
+        fmt::println("To-move mis-match");
+        return false;
+    }
+
+    // Verify piece repr board
+    for (size_t i = 0; i < 64; i++) {
+        if (a.m_StoredPieces[i] != b.m_StoredPieces[i]) {
+            fmt::println("Stored piece mis-match");
+            return false;
+        }
+    }
+
+    // Verify history vectors
+    if (a.m_StateHistory.size() != b.m_StateHistory.size() ||
+        a.m_AllMoves.size() != b.m_AllMoves.size()) {
+        fmt::println("History size mis-match");
+        return false;
+    }
+
+    for (size_t i = 0; i < a.m_StateHistory.size(); i++) {
+        if (a.m_StateHistory[i] != b.m_StateHistory[i]) {
+            fmt::println("State history mis-match");
+            return false;
+        }
+    }
+
+    for (size_t i = 0; i < a.m_AllMoves.size(); i++) {
+        if (a.m_AllMoves[i] != b.m_AllMoves[i]) {
+            fmt::println("All move mis-match");
+            return false;
+        }
+    }
+
+    return true;
+}

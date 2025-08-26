@@ -41,6 +41,29 @@ class PositionInfo {
     PositionInfo() = default;
     static Result<PositionInfo, std::string> from_fen(const std::string& fen);
 
+    friend bool operator==(const PositionInfo& a, const PositionInfo& b) {
+        if (a.m_Fen != b.m_Fen) {
+            return false;
+        }
+
+        for (size_t i = 0; i < 64; i++) {
+            if (a.m_Squares[i] != b.m_Squares[i]) {
+                return false;
+            }
+        }
+
+        bool same_move = a.m_WhiteToMove == b.m_WhiteToMove;
+        bool same_castle = (a.m_WhiteCastleKingside == b.m_WhiteCastleKingside) &&
+                           (a.m_WhiteCastleQueenside == b.m_WhiteCastleQueenside) &&
+                           (a.m_BlackCastleKingside == b.m_BlackCastleKingside) &&
+                           (a.m_BlackCastleQueenside == b.m_BlackCastleQueenside);
+        bool same_ep = a.m_EpSquare == b.m_EpSquare;
+        bool same_clock =
+            (a.m_HalfmoveClock == b.m_HalfmoveClock) && (a.m_MoveClock == b.m_MoveClock);
+
+        return same_move & same_castle & same_ep & same_clock;
+    }
+
     friend class Board;
 };
 
@@ -148,8 +171,11 @@ class Board {
 
     inline void cache_self() {
         m_State.cache_board(m_StoredPieces, m_WhiteBB, m_BlackBB, m_PawnBB, m_KnightBB, m_BishopBB,
-                            m_RookBB, m_QueenBB, m_KingBB);
+                            m_RookBB, m_QueenBB, m_KingBB, m_AllPieceBB);
     }
+
+    static bool compare_boards(const Board& a, const Board& b);
+    static bool verify_bb_match(const Board& a, const Board& b);
 
   public:
     Board() {};
@@ -204,6 +230,8 @@ class Board {
         os << board.to_string();
         return os;
     }
+
+    friend bool operator==(const Board& a, const Board& b) { Board::compare_boards(a, b); }
 
     friend class Generator;
 };

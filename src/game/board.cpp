@@ -529,6 +529,7 @@ void Board::remove_piece_at(int square_idx) {
     if (piece.is_none()) {
         return;
     }
+    m_AllPieceBB.clear_bit(square_idx);
 
     PieceColor occupied_piece_color = piece.color();
     PieceType occupied_piece_type = piece.type();
@@ -550,34 +551,12 @@ void Board::remove_piece_at(int square_idx) {
     }
 
     if (occupied_piece_color == PieceColor::White) {
-        m_WhiteBB.clear_bit(square_idx);
+        m_WhiteBB.clear_bit_unchecked(square_idx);
     } else {
-        m_BlackBB.clear_bit(square_idx);
+        m_BlackBB.clear_bit_unchecked(square_idx);
     }
 
-    switch (occupied_piece_type) {
-    case PieceType::Rook:
-        m_RookBB.clear_bit(square_idx);
-        break;
-    case PieceType::Knight:
-        m_KnightBB.clear_bit(square_idx);
-        break;
-    case PieceType::Bishop:
-        m_BishopBB.clear_bit(square_idx);
-        break;
-    case PieceType::Queen:
-        m_QueenBB.clear_bit(square_idx);
-        break;
-    case PieceType::King:
-        m_KingBB.clear_bit(square_idx);
-        break;
-    case PieceType::Pawn:
-        m_PawnBB.clear_bit(square_idx);
-        break;
-    default:
-        break;
-    }
-
+    get_piece_bb(occupied_piece_type).clear_bit_unchecked(square_idx);
     m_StoredPieces[square_idx].clear();
 }
 
@@ -595,29 +574,7 @@ void Board::add_piece(Piece piece, int square_idx) {
     }
 
     m_StoredPieces[square_idx] = piece;
-
-    switch (piece.type()) {
-    case PieceType::Pawn:
-        m_PawnBB.set_bit_unchecked(square_idx);
-        break;
-    case PieceType::Knight:
-        m_KnightBB.set_bit_unchecked(square_idx);
-        break;
-    case PieceType::Bishop:
-        m_BishopBB.set_bit_unchecked(square_idx);
-        break;
-    case PieceType::Rook:
-        m_RookBB.set_bit_unchecked(square_idx);
-        break;
-    case PieceType::Queen:
-        m_QueenBB.set_bit_unchecked(square_idx);
-        break;
-    case PieceType::King:
-        m_KingBB.set_bit_unchecked(square_idx);
-        break;
-    default:
-        break;
-    }
+    get_piece_bb(piece.type()).set_bit_unchecked(square_idx);
 
     if (piece.is_white()) {
         m_WhiteBB.set_bit_unchecked(square_idx);

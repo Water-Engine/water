@@ -45,6 +45,8 @@ class GameState {
     Bitboard m_QueenBB;
     Bitboard m_KingBB;
 
+    Bitboard m_AllPieceBB;
+
   public:
     GameState();
     GameState(bool wck, bool wcq, bool bck, bool bcq, int ep_square, int hmc);
@@ -92,7 +94,7 @@ class GameState {
                             const Bitboard& black_bb, const Bitboard& pawn_bb,
                             const Bitboard& knight_bb, const Bitboard& bishop_bb,
                             const Bitboard& rook_bb, const Bitboard& queen_bb,
-                            const Bitboard& king_bb) {
+                            const Bitboard& king_bb, const Bitboard& all_piece) {
         m_StoredPieces = stored_pieces;
         m_WhiteBB = white_bb;
         m_BlackBB = black_bb;
@@ -102,6 +104,7 @@ class GameState {
         m_RookBB = rook_bb;
         m_QueenBB = queen_bb;
         m_KingBB = king_bb;
+        m_AllPieceBB = all_piece;
     }
 
     inline BoardBoards get_cache() const {
@@ -115,8 +118,34 @@ class GameState {
             .RookBB = m_RookBB,
             .QueenBB = m_QueenBB,
             .KingBB = m_KingBB,
-            .AllPieceBB = m_WhiteBB | m_BlackBB,
+            .AllPieceBB = m_AllPieceBB,
         };
+    }
+
+    friend bool operator==(const GameState& a, const GameState& b) {
+        bool same_castle = (a.m_WhiteCastleKingside == b.m_WhiteCastleKingside) &&
+                           (a.m_WhiteCastleQueenside == b.m_WhiteCastleQueenside) &&
+                           (a.m_BlackCastleKingside == b.m_BlackCastleKingside) &&
+                           (a.m_BlackCastleQueenside == b.m_BlackCastleQueenside);
+        bool same_ep = a.m_EpSquare == b.m_EpSquare;
+        bool same_clock = a.m_HalfmoveClock == b.m_HalfmoveClock;
+        bool same_capture = a.m_LastMoveWasCapture == b.m_LastMoveWasCapture;
+        bool same_pawn = a.m_LastMoveWasPawnMove == b.m_LastMoveWasPawnMove;
+
+        for (size_t i = 0; i < 64; i++) {
+            if (a.m_StoredPieces[i] != b.m_StoredPieces[i]) {
+                return false;
+            }
+        }
+
+        bool boards_match =
+            (a.m_WhiteBB.equals(b.m_WhiteBB)) && (a.m_BlackBB.equals(b.m_BlackBB)) &&
+            (a.m_PawnBB.equals(b.m_PawnBB)) && (a.m_KnightBB.equals(b.m_KnightBB)) &&
+            (a.m_BishopBB.equals(b.m_BishopBB)) && (a.m_RookBB.equals(b.m_RookBB)) &&
+            (a.m_QueenBB.equals(b.m_QueenBB)) && (a.m_KingBB.equals(b.m_KingBB)) &&
+            (a.m_AllPieceBB.equals(b.m_AllPieceBB));
+
+        return same_castle & same_ep & same_clock & same_capture & same_pawn & boards_match;
     }
 
     friend class Board;

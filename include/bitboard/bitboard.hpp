@@ -96,6 +96,10 @@ class Bitboard {
         return a * Bitboard(value);
     }
 
+    // ================ COMPARATIVE (fake overload) ================
+
+    inline bool equals(const Bitboard& other) const { return m_BBoard == other.m_BBoard; }
+
     operator uint64_t() { return m_BBoard; }
     operator uint64_t() const { return m_BBoard; }
 };

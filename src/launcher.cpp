@@ -102,7 +102,14 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
         think_time_ms = try_get_labeled_int(message, "movetime", GO_LABELS).unwrap_or(0);
     } else if (str::contains(message, "perft")) {
         int depth = std::abs(try_get_labeled_int(message, "perft", GO_LABELS).unwrap_or(1));
-        uint64_t nodes = m_Bot->perft(depth);
+        uint64_t nodes;
+        if (str::contains(message, "parallel")) {
+            int threads =
+                std::abs(try_get_labeled_int(message, "parallel", GO_LABELS).unwrap_or(1));
+            nodes = m_Bot->perft_parallel(depth, threads);
+        } else {
+            nodes = m_Bot->perft(depth);
+        }
         fmt::println("Perft test of depth {} found {} nodes", depth, nodes);
         return Result<void, std::string>();
     } else {

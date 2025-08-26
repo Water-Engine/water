@@ -15,7 +15,7 @@ uint64_t Bot::perft_recursive(Board& board, int depth, bool divide) {
     auto moves = Generator::generate(board);
     for (auto& move : moves) {
         board.make_move(move);
-        auto nodes = perft_recursive(board, depth - 1);
+        auto nodes = perft_recursive(board, depth - 1, divide);
         board.unmake_last_move();
 
         if (divide) {
@@ -67,10 +67,9 @@ Result<void, std::string> Bot::think_timed(int time_ms) {
 
 uint64_t Bot::perft(int depth, bool divide) { return perft_recursive(*m_Board, depth, divide); }
 
-uint64_t Bot::perft_parallel(int depth) {
-    // Small depths, just use normal single-threaded perft
-    if (depth <= 4) {
-        return perft(depth);
+uint64_t Bot::perft_parallel(int depth, size_t max_threads) {
+    if (depth <= 4 || max_threads == 0) {
+        return perft(depth, false);
     }
 
     auto moves = Generator::generate(*m_Board);
@@ -79,30 +78,38 @@ uint64_t Bot::perft_parallel(int depth) {
         return 0;
     }
 
-    size_t mid = n / 2;
+    size_t num_threads = std::min(max_threads, n);
+    std::vector<std::vector<Move>> chunks(num_threads);
+    for (size_t i = 0; i < n; i++) {
+        chunks[i % num_threads].push_back(moves[i]);
+    }
 
-    std::vector<Move> left_moves(moves.begin(), moves.begin() + mid);
-    std::vector<Move> right_moves(moves.begin() + mid, moves.end());
+    std::vector<std::thread> threads;
+    std::vector<uint64_t> results(num_threads, 0);
 
-    std::atomic<uint64_t> left_count{0};
-    std::atomic<uint64_t> right_count{0};
-
-    auto worker = [&](std::vector<Move>& move_subset, std::atomic<uint64_t>& counter) {
+    auto worker = [&](size_t idx) {
         Board board_copy = *m_Board;
         uint64_t nodes = 0;
-        for (auto& move : move_subset) {
+        for (auto& move : chunks[idx]) {
             board_copy.make_move(move);
-            nodes += perft_recursive(board_copy, depth - 1);
+            nodes += perft_recursive(board_copy, depth - 1, false);
             board_copy.unmake_last_move();
         }
-        counter = nodes;
+        results[idx] = nodes;
     };
 
-    std::thread t1(worker, std::ref(left_moves), std::ref(left_count));
-    std::thread t2(worker, std::ref(right_moves), std::ref(right_count));
+    for (size_t i = 0; i < num_threads; i++) {
+        threads.emplace_back(worker, i);
+    }
 
-    t1.join();
-    t2.join();
+    for (auto& t : threads) {
+        t.join();
+    }
 
-    return left_count + right_count;
+    uint64_t total = 0;
+    for (auto r : results) {
+        total += r;
+    }
+
+    return total;
 }
