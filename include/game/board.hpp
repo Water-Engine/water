@@ -231,7 +231,7 @@ class Board {
         return os;
     }
 
-    friend bool operator==(const Board& a, const Board& b) { Board::compare_boards(a, b); }
+    friend bool operator==(const Board& a, const Board& b) { return Board::compare_boards(a, b); }
 
     friend class Generator;
 };

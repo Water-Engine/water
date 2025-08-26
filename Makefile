@@ -41,7 +41,7 @@ endif
 # ================ DIST CONFIG ================
 OBJ_DIR_DIST := $(BUILD_DIR)/dist
 BIN_DIR_DIST := $(BIN_ROOT)/dist
-CXXFLAGS_DIST := -std=c++20 -O3 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS)
+CXXFLAGS_DIST := -std=c++20 -O3 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DDIST
 
 OBJS_DIST := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_DIST)/%.o,$(SRCS))
 PCH_GCH_DIST := $(OBJ_DIR_DIST)/pch.hpp.gch
@@ -50,7 +50,7 @@ TARGET_BIN_DIST := $(BIN_DIR_DIST)/$(TARGET)$(EXE)
 # ================ RELEASE CONFIG ================
 OBJ_DIR_RELEASE := $(BUILD_DIR)/release
 BIN_DIR_RELEASE := $(BIN_ROOT)/release
-CXXFLAGS_RELEASE := -std=c++20 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DPROFILE
+CXXFLAGS_RELEASE := -std=c++20 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DRELEASE
 
 OBJS_RELEASE := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_RELEASE)/%.o,$(SRCS))
 PCH_GCH_RELEASE := $(OBJ_DIR_RELEASE)/pch.hpp.gch
@@ -83,15 +83,15 @@ LIB_OBJS_FOR_TESTS := $(filter-out $(OBJ_DIR_DEBUG)/main.o,$(OBJS_DEBUG))
 
 $(BUILD_DIR)/tests/%.o: $(TEST_DIR)/%.cpp $(HEADERS) $(PCH_GCH_DEBUG)
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_DEBUG) -include $(PCH) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS_RELEASE) -include $(PCH) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
 
 $(CATCH_OBJ): $(TEST_DIR)/test_framework/catch_amalgamated.cpp
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_DEBUG) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS_RELEASE) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
 
 $(TEST_BIN): $(CATCH_OBJ) $(TEST_OBJS) $(LIB_OBJS_FOR_TESTS)
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_DEBUG) -o $@ $^
+	$(CXX) $(CXXFLAGS_RELEASE) -o $@ $^
 
 # ================ BINARY DIRECTORIES ================
 $(TARGET_BIN_DIST): $(OBJS_DIST)
