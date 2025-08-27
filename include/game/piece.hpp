@@ -95,6 +95,7 @@ class Piece {
     inline bool is_pawn() const { return m_Type == PieceType::Pawn; }
     inline bool is_none() const { return value() == 0; }
 
+    /// Note: Valid (non-null) pieces are guanteed to be bounded [0, 11]
     inline int index() const {
         if (is_none()) {
             return -1;
