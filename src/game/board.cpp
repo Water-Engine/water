@@ -210,7 +210,7 @@ std::string Board::diagram(bool black_at_top, bool include_fen, bool include_has
     }
 
     if (include_fen) {
-        oss << fmt::interpolate("Fen         : {}\n", "Not implemented");
+        oss << fmt::interpolate("Fen         : {}\n", current_fen());
     }
 
     if (include_hash) {
@@ -705,4 +705,69 @@ Bitboard& Board::get_piece_bb(PieceType piece_type) {
 
 Result<void, std::string> Board::load_startpos() {
     return load_from_fen(str::from_view(STARTING_FEN));
+}
+
+std::string Board::current_fen() const {
+    std::ostringstream oss;
+
+    for (int rank = 7; rank >= 0; rank--) {
+        int num_empty_files = 0;
+        for (int file = 0; file < 8; file++) {
+            int i = rank * 8 + file;
+            auto piece = m_StoredPieces[i];
+
+            if (!piece.is_none()) {
+                if (num_empty_files != 0) {
+                    oss << num_empty_files;
+                    num_empty_files = 0;
+                }
+
+                oss << piece.symbol();
+            } else {
+                num_empty_files++;
+            }
+        }
+
+        if (num_empty_files != 0) {
+            oss << num_empty_files;
+        }
+
+        if (rank != 0) {
+            oss << '/';
+        }
+    }
+
+    oss << (m_WhiteToMove ? " w " : " b ");
+
+    if (m_State.can_anyone_castle()) {
+        if (m_State.can_white_kingside()) {
+            oss << 'K';
+        }
+        if (m_State.can_white_queenside()) {
+            oss << 'Q';
+        }
+        if (m_State.can_black_kingside()) {
+            oss << 'k';
+        }
+        if (m_State.can_black_queenside()) {
+            oss << 'q';
+        }
+    } else {
+        oss << "-";
+    }
+
+    oss << ' ';
+    Coord ep_coord(m_State.get_ep_square());
+    if (ep_coord.valid_square_idx()) {
+        oss << ep_coord.as_str();
+    } else {
+        oss << "-";
+    }
+
+    oss << ' ';
+    oss << m_State.halfmove_clock();
+    oss << ' ';
+    oss << (m_AllMoves.size() / 2) + 1;
+
+    return oss.str();
 }

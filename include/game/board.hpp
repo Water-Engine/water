@@ -118,6 +118,8 @@ class Board {
     std::vector<GameState> m_StateHistory;
     std::vector<Move> m_AllMoves;
 
+    uint64_t m_Hash;
+
   private:
     void load_from_position(const PositionInfo& pos);
     void reset();
@@ -224,7 +226,9 @@ class Board {
 
     Result<void, std::string> load_from_fen(const std::string& fen);
     Result<void, std::string> load_startpos();
+
     std::string to_string() const { return diagram(m_WhiteToMove); };
+    std::string current_fen() const;
 
     friend std::ostream& operator<<(std::ostream& os, const Board& board) {
         os << board.to_string();

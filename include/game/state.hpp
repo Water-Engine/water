@@ -61,6 +61,11 @@ class GameState {
     inline void white_lost_queenside_right() { m_WhiteCastleQueenside = false; }
     inline void black_lost_queenside_right() { m_BlackCastleQueenside = false; }
 
+    inline bool can_anyone_castle() const {
+        return m_WhiteCastleKingside || m_BlackCastleKingside || m_WhiteCastleQueenside ||
+               m_BlackCastleQueenside;
+    }
+
     inline int pop_ep_square() {
         int previous = m_EpSquare;
         m_EpSquare = -1;
@@ -151,7 +156,14 @@ class GameState {
     friend class Board;
 };
 
-class Zobrist {
-  private:
-  public:
+// Randomly generated seed for hashing reproducibility
+const uint64_t SEED = 18274927;
+
+struct Zobrist {
+    static uint64_t Pieces[12][64];
+    static uint64_t Castling[16];
+    static uint64_t EnPassant[8];
+    static uint64_t Side;
+
+    static void init();
 };

@@ -5,6 +5,7 @@
 #include "bot.hpp"
 
 #include "game/board.hpp"
+#include "game/state.hpp"
 
 #include "bitboard/magics.hpp"
 
@@ -12,6 +13,7 @@ void launch() {
     std::string line;
     Engine e;
     Magics::instance();
+    Zobrist::init();
 
     while (std::getline(std::cin, line)) {
         if (e.process_line(line) != ParseResult::SUCCESS) {
