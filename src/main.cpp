@@ -9,7 +9,7 @@ void signal_handler(int) {
 
 int main() {
     std::signal(SIGINT, signal_handler);
-    PROFILE_BEGIN_SESSION("Main", "Water-Main.json");
+    PROFILE_BEGIN_SESSION("Water", "Water-Main.json");
     launch();
     PROFILE_END_SESSION();
 }
