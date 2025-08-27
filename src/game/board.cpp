@@ -667,7 +667,6 @@ void Board::make_move(const Move& move, bool in_search) {
         m_State.clear_ep();
     }
 
-
     m_State.try_reset_halfmove_clock();
     cache_self();
     m_WhiteToMove = !m_WhiteToMove;
