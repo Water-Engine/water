@@ -19,6 +19,8 @@ class Engine {
   public:
     Engine() : m_Bot(CreateScope<Bot>()) {};
 
+    void prime() { m_Bot->set_position(str::from_view(STARTING_FEN)); }
+
     ParseResult process_line(const std::string& line);
     Result<void, std::string> process_position_cmd(const std::string& options);
     Result<void, std::string> process_go_cmd(const std::string& options);

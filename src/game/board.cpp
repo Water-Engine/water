@@ -142,6 +142,32 @@ void Board::load_from_position(const PositionInfo& pos) {
 
     m_AllPieceBB = m_WhiteBB | m_BlackBB;
 
+    uint64_t hash = 0ULL;
+
+    // Pieces
+    for (int sq = 0; sq < 64; sq++) {
+        Piece piece = m_StoredPieces[sq];
+        if (!piece.is_none()) {
+            hash ^= Zobrist::Pieces[piece.index()][sq];
+        }
+    }
+
+    // Side
+    if (!m_WhiteToMove) {
+        hash ^= Zobrist::Side;
+    }
+
+    // Castling
+    auto castling_mask = m_State.castle_flags_mask();
+    hash ^= Zobrist::Castling[castling_mask];
+
+    if (pos.m_EpSquare != -1) {
+        int file = pos.m_EpSquare % 8;
+        hash ^= Zobrist::EnPassant[file];
+    }
+
+    m_State.hash(hash);
+
     cache_self();
     m_StateHistory.emplace_back(m_State);
 }
@@ -214,7 +240,7 @@ std::string Board::diagram(bool black_at_top, bool include_fen, bool include_has
     }
 
     if (include_hash) {
-        oss << fmt::interpolate("Hash        : {}", "Not implemented");
+        oss << fmt::interpolate("Hash        : {}", m_State.hash());
     }
 
     return oss.str();

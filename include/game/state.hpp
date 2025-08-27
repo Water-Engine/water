@@ -48,6 +48,9 @@ class GameState {
     Bitboard m_AllPieceBB;
 
   public:
+    uint64_t Hash;
+
+  public:
     GameState();
     GameState(bool wck, bool wcq, bool bck, bool bcq, int ep_square, int hmc);
 
@@ -94,6 +97,27 @@ class GameState {
     inline void clear_ep() { m_EpSquare = -1; }
     inline void set_ep(int ep_square) { m_EpSquare = ep_square; }
     inline int get_ep_square() const { return m_EpSquare; }
+
+    inline uint64_t hash() const { return Hash; }
+    inline void hash(uint64_t& hash) { Hash = hash; }
+
+    inline int castle_flags_mask() const {
+        int castling_mask = 0b0000;
+        if (m_WhiteCastleKingside) {
+            castling_mask |= 0b0001;
+        }
+        if (m_WhiteCastleQueenside) {
+            castling_mask |= 0b0010;
+        }
+        if (m_BlackCastleKingside) {
+            castling_mask |= 0b0100;
+        }
+        if (m_BlackCastleQueenside) {
+            castling_mask |= 0b1000;
+        }
+
+        return castling_mask;
+    }
 
     inline void cache_board(const std::array<Piece, 64>& stored_pieces, const Bitboard& white_bb,
                             const Bitboard& black_bb, const Bitboard& pawn_bb,

@@ -118,8 +118,6 @@ class Board {
     std::vector<GameState> m_StateHistory;
     std::vector<Move> m_AllMoves;
 
-    uint64_t m_Hash;
-
   private:
     void load_from_position(const PositionInfo& pos);
     void reset();

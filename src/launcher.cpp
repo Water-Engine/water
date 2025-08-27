@@ -12,9 +12,13 @@
 void launch() {
     std::string line;
     Engine e;
+
+    // Initialization
     Magics::instance();
     Zobrist::init();
+    e.prime();
 
+    // Main loop
     while (std::getline(std::cin, line)) {
         if (e.process_line(line) != ParseResult::SUCCESS) {
             return;

@@ -18,7 +18,7 @@ uint64_t Zobrist::EnPassant[8];
 uint64_t Zobrist::Side;
 
 void Zobrist::init() {
-    std::mt19937_64 rng(20250826);
+    std::mt19937_64 rng(SEED);
     std::uniform_int_distribution<uint64_t> dist(0, UINT64_MAX);
 
     // Pieces

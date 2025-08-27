@@ -14,7 +14,7 @@ class Bot {
     uint64_t perft_recursive(Board& board, int depth);
 
   public:
-    Bot() : m_Board(CreateRef<Board>()), m_Thinking(false) { m_Board->load_startpos(); }
+    Bot() : m_Board(CreateRef<Board>()), m_Thinking(false) {}
 
     void new_game();
     void stop_thinking() { m_Thinking = false; };

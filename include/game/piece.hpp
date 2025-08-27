@@ -95,6 +95,19 @@ class Piece {
     inline bool is_pawn() const { return m_Type == PieceType::Pawn; }
     inline bool is_none() const { return value() == 0; }
 
+    inline int index() const {
+        if (is_none()) {
+            return -1;
+        }
+
+        int type_idx = static_cast<int>(type()) - 1;
+        if (is_white()) {
+            return type_idx;
+        } else {
+            return type_idx + 6;
+        }
+    }
+
     friend bool operator==(const Piece& a, const Piece& b) {
         bool types_match = a.m_Type == b.m_Type;
         bool colors_match = a.m_Color == b.m_Color;
