@@ -65,9 +65,13 @@ void Board::update_hash(const ValidatedMove& move, int old_castling_mask, int ol
         m_State.Hash ^= Zobrist::EnPassant[new_ep_square % 8];
     }
 
+// While compiler warning can be helpful, the PieceStart member is guaranteed to be non-none
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
     // Moved piece in/out
     m_State.Hash ^= Zobrist::Pieces[move.PieceStart.index()][start_square];
     m_State.Hash ^= Zobrist::Pieces[move.PieceStart.index()][target_square];
+#pragma GCC diagnostic pop
 
     // Captured piece (if any)
     if (!captured_piece.is_none()) {
