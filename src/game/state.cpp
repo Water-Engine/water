@@ -47,5 +47,4 @@ void Board::update_hash(const ValidatedMove& move, int old_castling_mask, int ol
                         const Piece& captured_piece) {
     m_State.Hash ^= Zobrist::Side;
     m_State.Hash ^= Zobrist::Castling[old_castling_mask];
-
-                        }
+}
