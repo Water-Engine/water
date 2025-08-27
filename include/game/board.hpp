@@ -177,6 +177,8 @@ class Board {
     static bool compare_boards(const Board& a, const Board& b);
     static bool verify_bb_match(const Board& a, const Board& b);
 
+    /// Incrementally update the zobrist hash, assumes the move is valid and has been played
+    /// successfully
     void update_hash(const ValidatedMove& move, int old_castling_mask, int old_ep_square,
                      const Piece& captured_piece);
 

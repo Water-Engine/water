@@ -670,12 +670,12 @@ void Board::make_move(const Move& move, bool in_search) {
     m_State.try_reset_halfmove_clock();
     cache_self();
     m_WhiteToMove = !m_WhiteToMove;
-    
+
     if (!in_search) {
         m_AllMoves.push_back(move);
     }
 
-    // update_hash(validated, old_castling_rights, old_ep, ); // Need logic for captured piece
+    update_hash(validated, old_castling_rights, old_ep, piece_target);
     m_StateHistory.push_back(m_State);
 }
 
