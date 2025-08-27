@@ -1,5 +1,6 @@
 #include <pch.hpp>
 
+#include "game/board.hpp"
 #include "game/state.hpp"
 
 GameState::GameState()
@@ -41,3 +42,10 @@ void Zobrist::init() {
     // Side to move
     Side = dist(rng);
 }
+
+void Board::update_hash(const ValidatedMove& move, int old_castling_mask, int old_ep_square,
+                        const Piece& captured_piece) {
+    m_State.Hash ^= Zobrist::Side;
+    m_State.Hash ^= Zobrist::Castling[old_castling_mask];
+
+                        }

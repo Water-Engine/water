@@ -627,6 +627,9 @@ void Board::make_move(const Move& move, bool in_search) {
     Piece piece_target = validated.PieceTarget;
     int move_flag = validated.MoveFlag;
 
+    int old_castling_rights = m_State.castle_flags_mask();
+    int old_ep = m_State.get_ep_square();
+
     // The move has transendendid pseudo-legality
     bool was_valid;
     switch (piece_start.type()) {
@@ -664,16 +667,17 @@ void Board::make_move(const Move& move, bool in_search) {
         m_State.clear_ep();
     }
 
+
     m_State.try_reset_halfmove_clock();
-
     cache_self();
-
-    m_StateHistory.push_back(m_State);
     m_WhiteToMove = !m_WhiteToMove;
-
+    
     if (!in_search) {
         m_AllMoves.push_back(move);
     }
+
+    // update_hash(validated, old_castling_rights, old_ep, ); // Need logic for captured piece
+    m_StateHistory.push_back(m_State);
 }
 
 void Board::unmake_last_move(bool in_search) {
