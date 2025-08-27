@@ -42,7 +42,7 @@ def generate_white_pawn_pushes():
         if rank < 7:
             single_sq = (rank + 1) * 8 + file
             single[sq] = 1 << single_sq
-            if rank == 1:  # home rank for white pawns
+            if rank == 1:
                 double_sq = (rank + 2) * 8 + file
                 double[sq] = 1 << double_sq
     return single, double
@@ -56,7 +56,7 @@ def generate_black_pawn_pushes():
         if rank > 0:
             single_sq = (rank - 1) * 8 + file
             single[sq] = 1 << single_sq
-            if rank == 6:  # home rank for black pawns
+            if rank == 6:
                 double_sq = (rank - 2) * 8 + file
                 double[sq] = 1 << double_sq
     return single, double
