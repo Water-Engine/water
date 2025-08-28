@@ -4,6 +4,7 @@ INC_DIR := include
 TEST_DIR := tests
 BUILD_DIR := build
 BIN_ROOT := bin
+RUST_OUT := target
 
 C ?= gcc
 CXX ?= g++
@@ -183,14 +184,41 @@ else
 	@rm -rf $(BIN_ROOT)
 endif
 
+clean-all: clean gui-clean
+
+cloc:
+	cloc src include tests scripts cactus --exclude-dir=test_framework
+
+# ================ CARGO / GUI ================
+gui: gui-release
+gui-debug:
+	cargo run
+
+gui-release:
+	cargo run --release
+
+gui-clean:
+ifeq ($(OS),Windows_NT)
+	@if exist "$(RUST_OUT)" rmdir /S /Q "$(RUST_OUT)"
+else
+	@rm -rf $(RUST_OUT)
+endif
+
+# ================ FORMATTING ================
+fmt-all: fmt gui-fmt
+fmt-check-all: fmt-check gui-fmt-check
+
 fmt:
 	clang-format -i $(FMT_SRCS)
 
 fmt-check:
 	@clang-format --dry-run --Werror $(FMT_SRCS)
 
-cloc:
-	cloc src include tests --exclude-dir=test_framework
+gui-fmt:
+	cargo fmt
+
+gui-fmt-check:
+	cargo fmt -- --check
 
 # ================ SLIDER GENERATOR ================
 
@@ -205,4 +233,6 @@ $(SLIDER_BIN): scripts/slider_generators.c
 
 .PHONY: default install all dist release debug \
 		test perft run run-dist run-release run-debug \
-		clean fmt fmt-check cloc sliders 
+		clean fmt fmt-check cloc sliders gui gui-debug \
+		gui-release gui-fmt gui-fmt-check gui-clean \
+		fmt-all fmt-check-all clean-all

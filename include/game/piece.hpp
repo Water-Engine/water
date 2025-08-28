@@ -81,6 +81,7 @@ class Piece {
     }
 
     inline int value() const { return static_cast<int>(*this); }
+    int score() const;
     inline PieceType type() const { return m_Type; };
     inline PieceColor color() const { return m_Color; };
     char symbol() const;
@@ -119,3 +120,13 @@ class Piece {
 
     operator int() const { return static_cast<int>(m_Type) | static_cast<int>(m_Color); }
 };
+
+namespace PieceScores {
+enum Scores {
+    Pawn = 100,
+    Knight = 300,
+    Bishop = 300,
+    Rook = 500,
+    Queen = 900,
+};
+}

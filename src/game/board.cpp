@@ -671,17 +671,23 @@ void Board::make_move(const Move& move, bool in_search) {
     cache_self();
     m_WhiteToMove = !m_WhiteToMove;
 
-    if (!in_search) {
-        m_AllMoves.push_back(move);
-    }
-
     update_hash(validated, old_castling_rights, old_ep, piece_target);
     m_StateHistory.push_back(m_State);
+
+    if (!in_search) {
+        m_AllMoves.push_back(move);
+        m_RepetitionHistory.push_back(m_State.Hash);
+    }
 }
 
 void Board::unmake_last_move(bool in_search) {
+    if (m_AllMoves.empty() || m_RepetitionHistory.empty()) {
+        return;
+    }
+
     if (!in_search) {
         m_AllMoves.pop_back();
+        m_RepetitionHistory.pop_back();
     }
 
     m_StateHistory.pop_back();

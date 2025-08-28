@@ -1,4 +1,4 @@
-name: formatting
+name: Formatting
 
 on:
   push:
@@ -11,6 +11,7 @@ on:
       - 'src/**'
       - 'include/**'
       - 'tests/**'
+      - 'cactus/**'
   pull_request:
     branches:
       - main
@@ -20,9 +21,10 @@ on:
       - 'src/**'
       - 'include/**'
       - 'tests/**'
+      - 'cactus/**'
 
 jobs:
-  fmt-check:
+  cpp-fmt-check:
     runs-on: windows-latest
     steps:
       - name: Checkout repo
@@ -33,3 +35,18 @@ jobs:
 
       - name: Check formatting
         run: make fmt-check
+
+  rust-fmt-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Check Rust formatting
+        run: cargo fmt -- --check

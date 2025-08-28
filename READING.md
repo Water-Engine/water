@@ -9,6 +9,7 @@
 - Advanced concepts, optimization, and walkthrough: https://youtu.be/_vqlIPDR2TU?si=TsFC_y-vNylaVEVO
 
 # Iterative Approaches (Not full NN) 
+- Negamax: https://www.chessprogramming.org/Negamax
 - Minimax: https://inst.eecs.berkeley.edu/~cs188/textbook/games/minimax.html
 - Alpha-beta pruning: https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning
 - NNUE: https://www.chessprogramming.org/NNUE

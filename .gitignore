@@ -40,6 +40,14 @@
 # debug information files
 *.dwo
 
+# Added by Cargo
+debug
+target
+**/*.rs.bk
+**/mutants.out*/
+/target
+
+# Custom ignores
 .vscode
 .vs
 bin

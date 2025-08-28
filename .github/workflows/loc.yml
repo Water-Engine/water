@@ -9,6 +9,7 @@ on:
       - 'include/**'
       - 'tests/**'
       - 'scripts/**'
+      - 'cactus/**'
 
 permissions:
   contents: write
@@ -27,7 +28,7 @@ jobs:
 
       - name: Extract LOC
         run: |
-          cloc src include tests scripts --exclude-dir=test_framework --json > cloc.json
+          cloc src include tests scripts cactus --exclude-dir=test_framework --json > cloc.json
           total_lines=$(jq '.SUM.code' cloc.json)
           echo "{\"label\":\"LOC\",\"message\":\"$total_lines\",\"color\":\"blue\"}" > badge.json
           cat badge.json

@@ -117,6 +117,7 @@ class Board {
 
     std::vector<GameState> m_StateHistory;
     std::vector<Move> m_AllMoves;
+    std::vector<uint64_t> m_RepetitionHistory;
 
   private:
     void load_from_position(const PositionInfo& pos);
@@ -186,6 +187,9 @@ class Board {
     Board() {};
 
     bool is_white_to_move() const { return m_WhiteToMove; }
+    PieceColor color_to_move() const {
+        return m_WhiteToMove ? PieceColor::White : PieceColor::Black;
+    }
     PieceColor friendly_color() const {
         return is_white_to_move() ? PieceColor::White : PieceColor::Black;
     }
@@ -241,4 +245,5 @@ class Board {
     friend bool operator==(const Board& a, const Board& b) { return Board::compare_boards(a, b); }
 
     friend class Generator;
+    friend class Evaluator;
 };

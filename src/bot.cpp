@@ -6,6 +6,8 @@
 
 #include "generator/generator.hpp"
 
+#include "evaluation/evaluation.hpp"
+
 uint64_t Bot::perft_recursive(Board& board, int depth) {
     if (depth == 0) {
         return 1;
@@ -54,10 +56,10 @@ int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black
 }
 
 Result<void, std::string> Bot::think_timed(int time_ms) {
-    MoveList moves;
+    Evaluator eval(m_Board);
+    eval.evaluate(3);
 
-    return Result<void, std::string>::Err(
-        fmt::interpolate("I want to think for {} ms, but I can't yet :(", time_ms));
+    return Result<void, std::string>();
 }
 
 uint64_t Bot::perft(int depth) { return perft_recursive(*m_Board, depth); }

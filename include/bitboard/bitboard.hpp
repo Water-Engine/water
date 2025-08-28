@@ -29,6 +29,8 @@ class Bitboard {
     std::string bin_str() const;
     std::string as_square_board_str() const;
 
+    int popcount() const { return std::popcount(m_BBoard); };
+
     // ================ BITWISE ================
 
     friend Bitboard operator|(const Bitboard& a, const Bitboard& b) {

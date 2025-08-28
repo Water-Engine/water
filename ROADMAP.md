@@ -18,6 +18,15 @@
 - [x] Make/Unmake move system, including null moves for evaluation if needed
 - [ ] Evaluating positions with NNUE and piece-square-boards
 
+# GUI
+- [x] Add in cactus project (stripped of failed engine)
+- [ ] Clean up renderer code
+- [ ] Clean up handlers
+- [ ] Enhance user interface
+    - [ ] Allow force draws
+    - [ ] Allow resizing but still keep correct aspect ratio
+- [ ] Fix lingering bugs in arbiter
+
 # Milestones
 - [x] All pieces move as expected
 - [x] Legal move generation

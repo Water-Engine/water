@@ -80,6 +80,23 @@ Piece::Piece(char c) {
     m_Type = p.m_Type;
 }
 
+int Piece::score() const {
+    switch (type()) {
+    case PieceType::Pawn:
+        return PieceScores::Pawn;
+    case PieceType::Knight:
+        return PieceScores::Knight;
+    case PieceType::Bishop:
+        return PieceScores::Bishop;
+    case PieceType::Rook:
+        return PieceScores::Rook;
+    case PieceType::Queen:
+        return PieceScores::Queen;
+    default:
+        return 0;
+    }
+}
+
 char Piece::symbol() const {
     char raw;
     switch (m_Type) {
