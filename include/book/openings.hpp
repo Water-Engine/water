@@ -1,4 +1,8 @@
-pos rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -
+#ifndef OPENING_BOOK
+#define OPENING_BOOK
+
+/// A collection of openings separated by fen strings, with most common responses ordered
+const std::string_view OPENINGS = R"(pos rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -
 e2e4 243109
 d2d4 146627
 g1f3 33009
@@ -58096,3 +58100,5 @@ pos rn1qkbnr/pppbpppp/3p4/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq -
 b1c3 25
 pos rn1qkbnr/pppbpppp/3p4/8/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq -
 b8c6 22
+)";
+#endif
