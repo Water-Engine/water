@@ -189,6 +189,10 @@ clean-all: clean gui-clean
 cloc:
 	cloc src include tests scripts cactus --exclude-dir=test_framework
 
+everything: all
+	@cargo build
+	@cargo build --release
+
 # ================ CARGO / GUI ================
 gui: gui-release
 gui-debug:
@@ -235,4 +239,4 @@ $(SLIDER_BIN): scripts/slider_generators.c
 		test perft run run-dist run-release run-debug \
 		clean fmt fmt-check cloc sliders gui gui-debug \
 		gui-release gui-fmt gui-fmt-check gui-clean \
-		fmt-all fmt-check-all clean-all
+		fmt-all fmt-check-all clean-all everything

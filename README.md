@@ -43,7 +43,8 @@ The project's build system uses C++20 and GNU Make, and it is recommended that y
 - `dist`: Builds the project with maximum optimization and disabled profiling
 - `release`: Builds the project with slightly fewer optimizations and no DEBUG define
 - `debug`: Builds the project with no optimization, defining both PROFILE and DEBUG
-- `test`: Run the project's unit tests
+- `test`: Run the project's unit tests Excludes perft testing
+- `perft`: Run the perft tests
 - `run`: Build and run the release binary
 - `run-dist`: Build and run the dist binary
 - `run-release`: Build and run the release binary
@@ -63,6 +64,7 @@ The project's build system uses C++20 and GNU Make, and it is recommended that y
 ## General Targets
 - `fmt-all`: Format all project source files. Assumes Cargo is installed
 - `cloc`: Count the lines of code in the project's relevant directories
+- `everything`: Make all C++ targets and build the Rust debug and release targets. Assumes Cargo is installed
 - `clean-all`: Remove all C++ and Rust object files, dependency files, and binaries
 
 # The GUI (Cactus)
