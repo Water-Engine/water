@@ -306,7 +306,7 @@ class str {
 // ================ GENERIC CONTAINER UTILS ================
 
 template <typename Container, typename T>
-auto contains(const Container& c, const T& value)
+inline auto contains(const Container& c, const T& value)
     -> std::enable_if_t<!std::is_same<Container, std::string>::value, bool> {
     return std::find(c.begin(), c.end(), value) != c.end();
 }
@@ -318,6 +318,10 @@ inline std::string deque_join(const std::deque<std::string>& parts) {
 
     return std::accumulate(std::next(parts.begin()), parts.end(), parts[0],
                            [](const std::string& a, const std::string& b) { return a + " " + b; });
+}
+
+template <Iterable Container> inline auto into_deque(const Container& c) {
+    return std::deque<typename Container::value_type>(std::begin(c), std::end(c));
 }
 
 // ================ OPTION & RESULT TYPES ================

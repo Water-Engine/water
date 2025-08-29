@@ -9,12 +9,15 @@
 
 #include "bitboard/magics.hpp"
 
+#include "book/book.hpp"
+
 void launch() {
     std::string line;
     Engine e;
 
     // Initialization
     Magics::instance();
+    Book::instance();
     Zobrist::init();
     e.prime();
 

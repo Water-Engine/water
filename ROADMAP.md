@@ -17,6 +17,7 @@
 - [ ] Search thread - `go` command should not halt io operations
 - [x] Make/Unmake move system, including null moves for evaluation if needed
 - [ ] Evaluating positions with NNUE and piece-square-boards
+- [ ] Opening book for perfect, yet fun, openings
 
 # GUI
 - [x] Add in cactus project (stripped of failed engine)
