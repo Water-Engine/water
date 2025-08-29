@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 CLOC_JSON = Path("cloc.json")
-BADGE_JSON = Path("assets/loc_badge.json")
+BADGE_JSON = Path(".github/loc_badge.json")
 
 def main():
     if not CLOC_JSON.exists():
