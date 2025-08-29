@@ -1,10 +1,8 @@
 #pragma once
 
-#include "game/move.hpp"
-
 struct BookMove {
-    Move move;
-    uint32_t frequency;
+    std::string MoveString;
+    uint32_t Frequency;
 };
 
 using Openings = std::unordered_map<std::string, std::vector<BookMove>>;
@@ -12,9 +10,12 @@ using Openings = std::unordered_map<std::string, std::vector<BookMove>>;
 class Book {
   private:
     Openings m_OpeningMoves;
+    std::mt19937 m_Rng;
 
   private:
     Book();
+
+    float rand_float();
 
   public:
     Book(const Book&) = delete;

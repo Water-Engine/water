@@ -320,8 +320,11 @@ inline std::string deque_join(const std::deque<std::string>& parts) {
                            [](const std::string& a, const std::string& b) { return a + " " + b; });
 }
 
-template <Iterable Container> inline auto into_deque(const Container& c) {
-    return std::deque<typename Container::value_type>(std::begin(c), std::end(c));
+/// Moves the contents of a container into a deque, clearing the container
+template <Iterable Container> inline auto into_deque(Container&& c) {
+    using ValueType = typename Container::value_type;
+    return std::deque<ValueType>(std::make_move_iterator(std::begin(c)),
+                                 std::make_move_iterator(std::end(c)));
 }
 
 // ================ OPTION & RESULT TYPES ================
