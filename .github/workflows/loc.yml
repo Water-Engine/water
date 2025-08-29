@@ -33,6 +33,7 @@ jobs:
           total_lines=$(jq '.SUM.code' cloc.json)
           echo "{\"label\":\"LOC\",\"message\":\"$total_lines\",\"color\":\"blue\"}" > badge.json
           cat badge.json
+        working-directory: ${{ github.workspace }}
 
       - name: Commit to loc branch
         run: |
