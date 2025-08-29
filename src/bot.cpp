@@ -8,6 +8,8 @@
 
 #include "evaluation/evaluation.hpp"
 
+#include "book/book.hpp"
+
 uint64_t Bot::perft_recursive(Board& board, int depth) {
     if (depth == 0) {
         return 1;
@@ -56,6 +58,11 @@ int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black
 }
 
 Result<void, std::string> Bot::think_timed(int time_ms) {
+    auto bm = Book::instance().try_get_book_move(m_Board);
+    if (bm.is_some()) {
+        fmt::println(bm.unwrap());
+        return Result<void, std::string>();
+    }
     Evaluator eval(m_Board);
     eval.evaluate(3);
 

@@ -43,26 +43,33 @@ float Book::rand_float() {
     return dist(m_Rng);
 }
 
-Option<std::string> Book::try_get_book_move(Ref<Board> board, float weight) {
+Option<std::string> Book::try_get_book_move(Ref<Board> board) {
     if (m_OpeningMoves.empty()) {
         return Option<std::string>();
     }
 
     auto current_fen = board->current_fen(false);
-    float weight_power = std::clamp(weight, 0.0f, 1.0f);
-
-    auto weighted_play_count = [&](int play_count) -> int {
-        return static_cast<int>(std::ceil(std::pow(play_count, weight_power)));
-    };
 
     if (m_OpeningMoves.contains(current_fen)) {
         auto moves = m_OpeningMoves[current_fen];
+        std::vector<float> weights(moves.size());
         int total_play_count =
             std::accumulate(moves.begin(), moves.end(), 0, [&](int sum, const BookMove& move) {
-                return sum + weighted_play_count(move.Frequency);
+                weights.push_back(move.Frequency);
+                return sum + move.Frequency;
             });
 
-        double weights[moves.size()];
+        std::vector<float> prefix(weights.size());
+        prefix[0] = weights[0];
+        for (size_t i = 1; i < weights.size(); i++) {
+            prefix[i] = prefix[i - 1] + weights[i];
+        }
+        float total = prefix.back();
+
+        auto it = std::lower_bound(prefix.begin(), prefix.end(), rand_float());
+        size_t idx = static_cast<int>(std::distance(prefix.begin(), it));
+
+        return Option<std::string>(moves[idx].MoveString);
     } else {
         return Option<std::string>();
     }

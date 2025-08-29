@@ -14,5 +14,5 @@
 - Alpha-beta pruning: https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning
 - NNUE: https://www.chessprogramming.org/NNUE
 
-# Neural Network Approaches
+# Neural Networks
 - Neural Networks: https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi
