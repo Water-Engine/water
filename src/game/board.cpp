@@ -742,7 +742,7 @@ Result<void, std::string> Board::load_startpos() {
     return load_from_fen(str::from_view(STARTING_FEN));
 }
 
-std::string Board::current_fen() const {
+std::string Board::current_fen(bool include_counters) const {
     std::ostringstream oss;
 
     for (int rank = 7; rank >= 0; rank--) {
@@ -799,10 +799,12 @@ std::string Board::current_fen() const {
         oss << "-";
     }
 
-    oss << ' ';
-    oss << m_State.halfmove_clock();
-    oss << ' ';
-    oss << (m_AllMoves.size() / 2) + 1;
+    if (include_counters) {
+        oss << ' ';
+        oss << m_State.halfmove_clock();
+        oss << ' ';
+        oss << (m_AllMoves.size() / 2) + 1;
+    }
 
     return oss.str();
 }

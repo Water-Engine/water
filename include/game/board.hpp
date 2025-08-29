@@ -235,7 +235,7 @@ class Board {
     Result<void, std::string> load_startpos();
 
     std::string to_string() const { return diagram(m_WhiteToMove); };
-    std::string current_fen() const;
+    std::string current_fen(bool include_counters = true) const;
 
     friend std::ostream& operator<<(std::ostream& os, const Board& board) {
         os << board.to_string();
