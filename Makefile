@@ -35,6 +35,7 @@ FMT_SRCS := $(SRCS) \
 PCH := $(INC_DIR)/pch.hpp
 
 # ================ CROSS PLATFORM SUPPORT ================
+
 ifeq ($(OS),Windows_NT)
     SHELL := cmd.exe
     RM := del /Q
@@ -48,6 +49,7 @@ else
 endif
 
 # ================ DIST CONFIG ================
+
 OBJ_DIR_DIST := $(BUILD_DIR)/dist
 BIN_DIR_DIST := $(BIN_ROOT)/dist
 CXXFLAGS_DIST := -std=c++20 -O3 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DDIST
@@ -57,6 +59,7 @@ PCH_GCH_DIST := $(OBJ_DIR_DIST)/pch.hpp.gch
 TARGET_BIN_DIST := $(BIN_DIR_DIST)/$(TARGET)$(EXE)
 
 # ================ RELEASE CONFIG ================
+
 OBJ_DIR_RELEASE := $(BUILD_DIR)/release
 BIN_DIR_RELEASE := $(BIN_ROOT)/release
 CXXFLAGS_RELEASE := -std=c++20 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DRELEASE
@@ -66,6 +69,7 @@ PCH_GCH_RELEASE := $(OBJ_DIR_RELEASE)/pch.hpp.gch
 TARGET_BIN_RELEASE := $(BIN_DIR_RELEASE)/$(TARGET)$(EXE)
 
 # ================ DEBUG CONFIG ================
+
 OBJ_DIR_DEBUG := $(BUILD_DIR)/debug
 BIN_DIR_DEBUG := $(BIN_ROOT)/debug
 CXXFLAGS_DEBUG := -std=c++20 -O0 -Wall -Wextra -g -I$(INC_DIR) $(DEPFLAGS) -DPROFILE -DDEBUG
@@ -75,6 +79,7 @@ PCH_GCH_DEBUG := $(OBJ_DIR_DEBUG)/pch.hpp.gch
 TARGET_BIN_DEBUG := $(BIN_DIR_DEBUG)/$(TARGET)$(EXE)
 
 # ================ BUILD TARGETS ================
+
 default: release
 install: dist
 all: dist release debug
@@ -86,6 +91,7 @@ test: $(TEST_BIN)
 	@$(TEST_BIN)
 
 # ================ TESTING BUILD ================
+
 TEST_OBJS := $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/tests/%.o,$(TEST_SRCS))
 CATCH_OBJ := $(BUILD_DIR)/tests/catch_amalgamated.o
 LIB_OBJS_FOR_TESTS := $(filter-out $(OBJ_DIR_DEBUG)/main.o,$(OBJS_DEBUG))
@@ -104,6 +110,7 @@ $(TEST_BIN): $(CATCH_OBJ) $(TEST_OBJS) $(LIB_OBJS_FOR_TESTS)
 	$(CXX) $(CXXFLAGS_TEST) -o $@ $^
 
 # ================ PERFT TARGET ================
+
 PERFT_TEST_SRC := $(TEST_DIR)/perft.cpp
 PERFT_OBJ_DIR := $(BUILD_DIR)/perft
 PERFT_OBJ := $(PERFT_OBJ_DIR)/perft.o
@@ -127,6 +134,7 @@ perft: $(PERFT_BIN)
 	@$(PERFT_BIN)
 
 # ================ BINARY DIRECTORIES ================
+
 $(TARGET_BIN_DIST): $(OBJS_DIST)
 	@$(call MKDIR,$(BIN_DIR_DIST))
 	$(CXX) $(CXXFLAGS_DIST) -o $@ $^
@@ -140,6 +148,7 @@ $(TARGET_BIN_DEBUG): $(OBJS_DEBUG)
 	$(CXX) $(CXXFLAGS_DEBUG) -o $@ $^
 
 # ================ OBJECT DIRECTORIES ================
+
 $(OBJ_DIR_DIST)/%.o: $(SRC_DIR)/%.cpp $(HEADERS) $(PCH_GCH_DIST)
 	@$(call MKDIR,$(dir $@))
 	$(CXX) $(CXXFLAGS_DIST) -include $(PCH) -c $< -o $@
@@ -153,6 +162,7 @@ $(OBJ_DIR_DEBUG)/%.o: $(SRC_DIR)/%.cpp $(HEADERS) $(PCH_GCH_DEBUG)
 	$(CXX) $(CXXFLAGS_DEBUG) -include $(PCH) -c $< -o $@
 
 # ================ PRECOMPILED HEADER ================
+
 $(PCH_GCH_DIST): $(PCH)
 	@$(call MKDIR,$(OBJ_DIR_DIST))
 	$(CXX) $(CXXFLAGS_DIST) -x c++-header $(PCH) -o $@
@@ -166,11 +176,13 @@ $(PCH_GCH_DEBUG): $(PCH)
 	$(CXX) $(CXXFLAGS_DEBUG) -x c++-header $(PCH) -o $@
 
 # ================ INCLUDES ================
+
 -include $(OBJS_DIST:.o=.d)
 -include $(OBJS_RELEASE:.o=.d)
 -include $(OBJS_DEBUG:.o=.d)
 
 # ================ OTHER TARGETS ================
+
 run: run-release
 
 run-dist: $(TARGET_BIN_DIST)
@@ -194,7 +206,7 @@ endif
 clean-all: clean gui-clean
 
 cloc:
-	@cloc src include tests scripts cactus --exclude-list-file=.clocignore --json > cloc.json
+	@cloc src include tests scripts cactus --not-match-f="(openings.hpp|catch_amalgamated.hpp|catch_amalgamated.cpp)" --json > cloc.json
 	@$(PYTHON) scripts/cloc.py
 
 everything: all
@@ -202,6 +214,7 @@ everything: all
 	@cargo build --release
 
 # ================ CARGO / GUI ================
+
 gui: gui-release
 gui-debug:
 	cargo run
@@ -217,6 +230,7 @@ else
 endif
 
 # ================ FORMATTING ================
+
 fmt-all: fmt gui-fmt
 fmt-check-all: fmt-check gui-fmt-check
 
@@ -232,7 +246,7 @@ gui-fmt:
 gui-fmt-check:
 	cargo fmt -- --check
 
-# ================ SLIDER GENERATOR ================
+# ================ MAGIC BITBOARD GENERATOR ================
 
 SLIDER_BIN := scripts/slider_generators$(EXE)
 
