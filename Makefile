@@ -257,8 +257,53 @@ $(SLIDER_BIN): scripts/slider_generators.c
 	@$(call MKDIR,$(BIN_ROOT))
 	$(C) -std=c11 $< -o $@
 
+# ================ HELP ME ================
+
+help: 
+	@printf "\
+\n\
+To build and run the project, type:\n\
+\n\
+make [target] [options]\n\
+\n\
+C++ Specific Targets:\n\
+\n\
+default           > Builds the release configuration (default)\n\
+install           > Builds the dist config (to be updated)\n\
+all               > Builds all optimization configurations (dist, release, debug)\n\
+dist              > Max optimization, profiling disabled\n\
+release           > Slightly fewer optimizations, no DEBUG define\n\
+debug             > No optimization, PROFILE and DEBUG defined\n\
+test              > Run unit tests (excludes perft tests)\n\
+perft             > Run the perft tests\n\
+run               > Build and run the release binary\n\
+run-dist          > Build and run the dist binary\n\
+run-release       > Build and run the release binary\n\
+run-debug         > Build and run the debug binary\n\
+fmt               > Format all C++ source and header files with clang-format\n\
+fmt-check         > Check formatting rules without modifying files\n\
+clean             > Remove object files, dependency files, and binaries\n\
+\n\
+Rust (Cargo) Specific Targets:\n\
+\n\
+gui               > Alias for gui-release\n\
+gui-release       > Builds the GUI release configuration\n\
+gui-debug         > Builds GUI debug configuration (slow, not recommended)\n\
+gui-fmt           > Format all Rust source files with cargo fmt\n\
+gui-fmt-check     > Validate Rust formatting rules without modifying files\n\
+gui-clean         > Cleans Rust target directory (long rebuild time)\n\
+\n\
+General Targets:\n\
+\n\
+fmt-all           > Format all project source files (requires Cargo)\n\
+cloc              > Count lines of code in relevant directories\n\
+everything        > Build all C++ targets and Rust debug/release targets\n\
+clean-all         > Remove all C++ and Rust object files, dependency files, and binaries\n\
+help              > Print this help menu\n\
+"
+
 .PHONY: default install all dist release debug \
 		test perft run run-dist run-release run-debug \
 		clean fmt fmt-check cloc sliders gui gui-debug \
 		gui-release gui-fmt gui-fmt-check gui-clean \
-		fmt-all fmt-check-all clean-all everything
+		fmt-all fmt-check-all clean-all everything help
