@@ -1,4 +1,4 @@
-# water [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=c%2B%2B&logoColor=white)](https://en.cppreference.com/w/cpp/20.html) [![Rust](https://img.shields.io/static/v1?label=Rust&message=2024&labelColor=gray&color=F1592A)](https://github.com/rust-lang/rust) [![License](https://img.shields.io/github/license/trevorswan11/water)](LICENSE) [![LOC](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/trevorswan11/water/loc/badge.json)](https://github.com/trevorswan11/water/actions/workflows/loc.yml) [![Last commit](https://img.shields.io/github/last-commit/trevorswan11/water)](https://github.com/trevorswan11/water) [![Formatting](https://github.com/trevorswan11/water/actions/workflows/format.yml/badge.svg)](https://github.com/trevorswan11/water/actions/workflows/format.yml) [![CI](https://github.com/trevorswan11/water/actions/workflows/ci.yml/badge.svg)](https://github.com/trevorswan11/water/actions/workflows/ci.yml)
+# water [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=c%2B%2B&logoColor=white)](https://en.cppreference.com/w/cpp/20.html) [![Rust](https://img.shields.io/static/v1?label=Rust&message=2024&labelColor=gray&color=F1592A)](https://github.com/rust-lang/rust) [![License](https://img.shields.io/github/license/trevorswan11/water)](LICENSE) ![LOC](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/trevorswan11/water/main/assets/loc_badge.json) [![Last commit](https://img.shields.io/github/last-commit/trevorswan11/water)](https://github.com/trevorswan11/water) [![Formatting](https://github.com/trevorswan11/water/actions/workflows/format.yml/badge.svg)](https://github.com/trevorswan11/water/actions/workflows/format.yml) [![CI](https://github.com/trevorswan11/water/actions/workflows/ci.yml/badge.svg)](https://github.com/trevorswan11/water/actions/workflows/ci.yml)
 A chess engine written in C++ with a Rust frontend, powered by magic bitboard and neural networks.
 
 # Getting Started
@@ -32,6 +32,7 @@ cargo run --release -- black path/to/stockfish.exe
 - Clang-format
 - [Catch2](https://github.com/catchorg/Catch2) (included in this repository)
 - [Cargo](https://doc.rust-lang.org/beta/book/ch01-01-installation.html) (for building and running the gui > optional)
+- [cloc](https://github.com/AlDanial/cloc) and [jq](https://github.com/jqlang/jq) (for cloc make target > optional)
 
 # Building water
 The project's build system uses C++20 and GNU Make, and it is recommended that you run make with the flag `-j4` to run batch jobs. Below is a list of targets with their requirements where applicable:

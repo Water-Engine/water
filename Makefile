@@ -187,7 +187,21 @@ endif
 clean-all: clean gui-clean
 
 cloc:
-	cloc src include tests scripts cactus --exclude-list-file=.clocignore
+ifeq ($(OS),Windows_NT)
+	@cloc src include tests scripts cactus --exclude-list-file=.clocignore --json > cloc.json
+	@setlocal enabledelayedexpansion && \
+	for /f "usebackq delims=" %%i in (`jq ".SUM.code" cloc.json`) do ( \
+		set "total_lines=%%i" \
+	) && \
+	echo {"label":"LOC","message":"!total_lines!","color":"blue"} > assets/loc_badge.json && \
+	type assets/loc_badge.json
+else
+	@cloc src include tests scripts cactus \
+		--exclude-list-file=.clocignore --json > cloc.json && \
+	total_lines=$$(jq '.SUM.code' cloc.json) && \
+	echo "{\"label\":\"LOC\",\"message\":\"$${total_lines}\",\"color\":\"blue\"}" > assets/loc_badge.json && \
+	cat assets/loc_badge.json
+endif
 
 everything: all
 	@cargo build
