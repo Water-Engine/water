@@ -1,10 +1,6 @@
-# Testing
+# Contributing Overview
 
-## Water
-This project uses unit tests to verify the correctness of the engine’s foundation and functionality. To run tests, simply call `make test`. The Catch2 framework is used, and the amalgamated files are compiled directly into the test executable, resulting in longer initial build times. 
-
-## Cactus
-There are no tests for the GUI.
+This project's source code and build system is designed such that it can be run on any major platform assuming you have the correct tools installed. To confirm cross-platform behavior, GitHub Actions runs the project's build and test system on Windows, Linux, and macOS. This project is compiled using the GNU Compiler Collection's g++ compiler, and formatting is done through clang-format. Building this repository on your own should be as simple as running `make`. Please follow the project's formatting guides, and call `make fmt` on code that you contribute. Please do not push AI-generated code. This project should be a learning experience, not a copy-paste speedrun. Additional learning resources can be found in [READING.md](READING.md). If you aren't a main contributor, please open a pull request against the main branch when contributing.
 
 # Formatting
 
@@ -31,8 +27,16 @@ There are no tests for the GUI.
 ## Cactus
 `cargo fmt` is used for formatting on this side of the project. No custom formatting rules apply to written Rust code. The only requirement is that it aligns with the standard enforcing by cargo.
 
-# Contributing
-This project's source code and build system is designed such that it can be run on any major platform assuming you have the correct tools installed. To confirm cross-platform behavior, GitHub Actions runs the project's build and test system on Windows, Linux, and macOS. This project is compiled using the GNU Compiler Collection's g++ compiler, and formatting is done through clang-format. Building this repository on your own should be as simple as running `make`. Please follow the project's formatting guides, and call `make fmt` on code that you contribute. Please do not push AI-generated code. This project should be a learning experience, not a copy-paste speedrun. Additional learning resources can be found in [READING.md](READING.md). If you aren't a main contributor, please open a pull request against the main branch when contributing.
+# Testing
+
+## Water
+This project uses unit tests to verify the correctness of the engine’s foundation and functionality. To run tests, simply call `make test`. The Catch2 framework is used, and the amalgamated files are compiled directly into the test executable, resulting in longer initial build times. 
+
+## Cactus
+There are no tests for the GUI.
 
 # Profiling
+
 Water uses a profiling system that allows you to track wall time of called functions and entered scopes. You can use macros found in `core.hpp` to profile functions and scopes. This is an opt-in system, so you must use `PROFILE_FUNCTION()` and `PROFILE_SCOPE(name)` wherever desired. The data outputted by these macros can be found in `Water-Main.json`, and you can analyze it by going to `chrome://tracing` in a chromium-based browser (i.e. Edge, Google Chrome). Profiling runs on a separate thread, but it does take up CPU time. To maximize performance, profiling is disabled when building and running the `dist` configuration. You can configure the project to always enable profiling by uncommenting `// #define PROFILE` in `core.hpp`. This is not recommended, though.
+
+Due to the shear amount of operations happening every few milliseconds, profiling is disabled at all optimization levels. This means that the `debug` configuration is the only option that builds with the profiler. 

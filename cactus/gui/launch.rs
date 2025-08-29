@@ -6,7 +6,7 @@ use eframe::egui::{self, Color32, Context, IconData, Painter, Pos2, Vec2};
 use eframe::{App, Frame};
 use rodio::{OutputStream, OutputStreamBuilder};
 
-static ICON: &[u8] = include_bytes!("../../assets/icon.png");
+static ICON: &[u8] = include_bytes!("../../assets/cactus-icon.png");
 
 pub struct Cactus {
     pub board: Board,
