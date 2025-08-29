@@ -74,4 +74,4 @@ The project's build system uses C++20 and GNU Make, and it is recommended that y
 Cactus is a minimal rust-based chess gui built for playing basic games against chess engines. It was created with the intent of being the engine itself, but a lack of understanding of chess engine mechanics resulted in a dead project. As a result, it has been stripped to just be the GUI. After Water is completed, we expect Cactus to grow into something like a 'match manager', allowing you to stress test the engine against humans, itself, or other engines. For now, it is a non-resizable square window and will remain as such until Water is complete.
 
 # For Developers
-Contributing guidelines, information on tests, formatting, and profiling, see the `.github` folder.
+Contributing guidelines, information on tests, formatting, and profiling, see [CONTRIBUTING.md](.github/CONTRIBUTING.md).

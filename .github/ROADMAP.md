@@ -21,25 +21,25 @@
 
 # Neural Net
 - [ ] Input Encoding
-  - [ ] Define board → tensor format (pieces, side to move, castling rights, en passant, move counters)
-  - [ ] Map moves → fixed policy index space (e.g., 4672 moves)
-  - [ ] Conversion functions: engine moves ↔ policy vector
+    - [ ] Define board → tensor format (pieces, side to move, castling rights, en passant, move counters)
+    - [ ] Map moves → fixed policy index space
+    - [ ] Conversion functions: engine moves <> policy vector
 - [ ] Network Architecture
-  - [ ] Prototype small CNN (conv layers + policy/value heads)
-  - [ ] Forward pass in C++ (or Python for testing)
-  - [ ] Optimizer implementation (SGD/Adam) and backprop
+    - [ ] Prototype small CNN (conv layers + policy/value heads)
+    - [ ] Forward pass in C++ 
+    - [ ] Optimizer implementation (SGD/Adam) and backprop
 - [ ] Self-Play & Data Pipeline
-  - [ ] Implement MCTS guided by policy net
-  - [ ] Store (state, π, z) tuples for training
-  - [ ] Optional PGN import for supervised bootstrapping
+    - [ ] Implement MCTS guided by policy net
+    - [ ] Store (state, π, z) tuples for training
+    - [ ] Optional PGN import for supervised bootstrapping
 - [ ] Training Loop
-  - [ ] Train network on collected self-play data
-  - [ ] Arena matches for selecting stronger nets
-  - [ ] Track Elo/progress internally
+    - [ ] Train network on collected self-play data
+    - [ ] Arena matches for selecting stronger nets
+    - [ ] Track Elo/progress internally
 - [ ] Scaling & Optimization
-  - [ ] Residual networks / deeper nets
-  - [ ] Batch evaluation
-  - [ ] GPU acceleration / distributed self-play
+    - [ ] Residual networks / deeper nets
+    - [ ] Batch evaluation
+    - [ ] GPU acceleration / distributed self-play
 
 # GUI
 - [x] Add in cactus project (stripped of failed engine)
@@ -57,9 +57,9 @@
 - [ ] Non-blocking commands
 - [ ] Iterative search
 - [ ] Basic NN setup
-* [ ] Basic Neural Net setup (forward pass + policy/value heads)
-* [ ] NN Trainer and Self-Play implemented
-* [ ] NN integrated with search (MCTS or alpha-beta)
-* [ ] NN improves through self-play / arena matches
-* [ ] Opening book + NN evaluation working together
-* [ ] GUI fully integrated with engine + NN evaluation
+- [ ] Basic Neural Net setup (forward pass + policy/value heads)
+- [ ] NN Trainer and Self-Play implemented
+- [ ] NN integrated with search (MCTS or alpha-beta)
+- [ ] NN improves through self-play / arena matches
+- [ ] Opening book + NN evaluation working together
+- [ ] GUI fully integrated with engine + NN evaluation
