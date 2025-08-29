@@ -33,6 +33,8 @@ cargo run --release -- black path/to/stockfish.exe
 - [Catch2](https://github.com/catchorg/Catch2) (included in this repository)
 - [Cargo](https://doc.rust-lang.org/beta/book/ch01-01-installation.html) (for building and running the gui > optional)
 - [cloc](https://github.com/AlDanial/cloc) and [jq](https://github.com/jqlang/jq) (for cloc make target > optional)
+- [python](https://www.python.org/downloads/) for script running including cloc (for cloc make target and general scripts)
+    - On windows, Make will assume python is accessible as `python`, but will be assumed to be `python3` on UNIX systems
 
 # Building water
 The project's build system uses C++20 and GNU Make, and it is recommended that you run make with the flag `-j4` to run batch jobs. Below is a list of targets with their requirements where applicable:
