@@ -187,7 +187,7 @@ endif
 clean-all: clean gui-clean
 
 cloc:
-	cloc src include tests scripts cactus --exclude-list-file=.rgignore
+	cloc src include tests scripts cactus --exclude-list-file=.clocignore
 
 everything: all
 	@cargo build

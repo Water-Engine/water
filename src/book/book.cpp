@@ -18,11 +18,15 @@ Book::Book() : m_Rng(std::random_device{}()) {
         auto position_fen = entry_data[0];
         str::trim(position_fen);
         entry_data.pop_front();
-        std::vector<BookMove> moves(entry_data.size());
+        std::vector<BookMove> moves;
+        moves.reserve(entry_data.size());
 
         for (const auto& move : entry_data) {
-            auto move_data = str::split(move);
+            auto move_data = str::split(str::trim(move));
+
             if (move_data.size() != 2) {
+                continue;
+            } else if (move_data[0] == " " || move_data[0].empty()) {
                 continue;
             }
 
@@ -52,19 +56,20 @@ Option<std::string> Book::try_get_book_move(Ref<Board> board) {
 
     if (m_OpeningMoves.contains(current_fen)) {
         auto moves = m_OpeningMoves[current_fen];
-        std::vector<float> weights(moves.size());
-        int total_play_count =
+        std::vector<float> weights;
+        weights.reserve(moves.size());
+        float total_play_count =
             std::accumulate(moves.begin(), moves.end(), 0, [&](int sum, const BookMove& move) {
                 weights.push_back(move.Frequency);
                 return sum + move.Frequency;
             });
 
-        std::vector<float> prefix(weights.size());
-        prefix[0] = weights[0];
+        std::vector<float> prefix;
+        prefix.reserve(weights.size());
+        prefix[0] = weights[0] / total_play_count;
         for (size_t i = 1; i < weights.size(); i++) {
-            prefix[i] = prefix[i - 1] + weights[i];
+            prefix[i] = prefix[i - 1] + weights[i] / total_play_count;
         }
-        float total = prefix.back();
 
         auto it = std::lower_bound(prefix.begin(), prefix.end(), rand_float());
         size_t idx = static_cast<int>(std::distance(prefix.begin(), it));

@@ -60,11 +60,17 @@ int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black
 Result<void, std::string> Bot::think_timed(int time_ms) {
     auto bm = Book::instance().try_get_book_move(m_Board);
     if (bm.is_some()) {
-        fmt::println(bm.unwrap());
+        fmt::println("bestmove {}", bm.unwrap());
         return Result<void, std::string>();
     }
     Evaluator eval(m_Board);
-    eval.evaluate(3);
+    eval.simple_evaluate();
+
+    auto moves = Generator::generate(*m_Board);
+    if (moves.size() == 0) {
+        return Result<void, std::string>();
+    }
+    fmt::println("bestmove {}", moves[0].to_uci());
 
     return Result<void, std::string>();
 }

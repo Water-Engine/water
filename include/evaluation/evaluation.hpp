@@ -37,6 +37,9 @@ struct MaterialScore {
 
     MaterialScore(int num_pawns, int num_knights, int num_bishops, int num_rooks, int num_queens,
                   uint64_t friendly_pawns, uint64_t enemy_pawns);
+
+    inline int non_pawn_score() const { return Aggregate - pawn_score(); }
+    inline int pawn_score() const { return PieceScores::Pawn * NumPawns; }
 };
 
 // ================ EVALUATOR ================
@@ -66,12 +69,8 @@ class Evaluator {
                              enemy_pawns.value());
     }
 
-    std::pair<Move, int> root_negamax(int depth);
-    int negamax(int depth);
-
   public:
     Evaluator(Ref<Board> board) : m_Board(board) {}
 
-    int evaluate();
-    int evaluate(int depth);
+    int simple_evaluate();
 };

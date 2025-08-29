@@ -32,50 +32,10 @@ MaterialScore Evaluator::get_score(PieceColor color) const {
     }
 }
 
-int Evaluator::negamax(int depth) {
-    if (depth == 0) {
-        return evaluate();
-    }
+int Evaluator::simple_evaluate() {
+    auto friendly_score = get_score(m_Board->friendly_color());
+    auto opponent_score = get_score(m_Board->opponent_color());
 
-    int max = -INF;
-    auto all_moves = Generator::generate(*m_Board);
-
-    for (auto& move : all_moves) {
-        m_Board->make_move(move, false);
-        int score = -negamax(depth - 1);
-        m_Board->unmake_last_move(false);
-
-        if (score > max) {
-            max = score;
-        }
-    }
-
-    return max;
-}
-
-std::pair<Move, int> Evaluator::root_negamax(int depth) {
-    Move best_move(0);
-    int max = -INF;
-    auto all_moves = Generator::generate(*m_Board);
-
-    for (auto& move : all_moves) {
-        m_Board->make_move(move, false);
-        int score = -negamax(depth - 1);
-        m_Board->unmake_last_move(false);
-
-        if (score > max) {
-            max = score;
-            best_move = move;
-        }
-    }
-
-    return {best_move, max};
-}
-
-int Evaluator::evaluate() { return get_score(m_Board->color_to_move()).Aggregate; }
-
-int Evaluator::evaluate(int depth) {
-    auto eval = root_negamax(depth);
-    fmt::println("bestmove {}", eval.first.to_uci());
-    return eval.second;
+    return (friendly_score.pawn_score() - opponent_score.pawn_score()) +
+           (friendly_score.non_pawn_score() - opponent_score.non_pawn_score());
 }

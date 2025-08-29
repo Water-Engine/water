@@ -1,0 +1,3 @@
+tests/test_framework/catch_amalgamated.hpp
+tests/test_framework/catch_amalgamated.cpp
+include/book/openings.hpp

@@ -49,6 +49,8 @@ class Move {
     static std::string str_from_promotion_flag(int flag);
     static std::string str_from_flag(int flag);
 
+    bool valid_move() const { return m_Compact != 0; }
+
     std::string to_uci() const;
 
     friend bool operator==(const Move& a, const Move& b) { return a.m_Compact == b.m_Compact; }

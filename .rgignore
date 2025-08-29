@@ -1,3 +1,2 @@
-tests/test_framework/catch_amalgamated.hpp
-tests/test_framework/catch_amalgamated.cpp
+tests/test_framework/*
 include/book/openings.hpp
