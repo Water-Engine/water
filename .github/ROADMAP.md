@@ -41,15 +41,6 @@
     - [ ] Batch evaluation
     - [ ] GPU acceleration / distributed self-play
 
-# GUI
-- [x] Add in cactus project (stripped of failed engine)
-- [ ] Clean up renderer code
-- [ ] Clean up handlers
-- [ ] Enhance user interface
-    - [ ] Allow force draws
-    - [ ] Allow resizing but still keep correct aspect ratio
-- [ ] Fix lingering bugs in arbiter
-
 # Milestones
 - [x] All pieces move as expected
 - [x] Legal move generation
@@ -62,4 +53,3 @@
 - [ ] NN integrated with search (MCTS or alpha-beta)
 - [ ] NN improves through self-play / arena matches
 - [ ] Opening book + NN evaluation working together
-- [ ] GUI fully integrated with engine + NN evaluation
