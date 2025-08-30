@@ -1,4 +1,4 @@
-# water [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=c%2B%2B&logoColor=white)](https://en.cppreference.com/w/cpp/20.html) [![Rust](https://img.shields.io/static/v1?label=Rust&message=2024&labelColor=gray&color=F1592A)](https://github.com/rust-lang/rust) [![License](https://img.shields.io/github/license/trevorswan11/water)](LICENSE) [![LOC](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/trevorswan11/water/loc/.github/loc_badge.json)](https://github.com/trevorswan11/water/actions/workflows/loc.yml) [![Last commit](https://img.shields.io/github/last-commit/trevorswan11/water)](https://github.com/trevorswan11/water) [![Formatting](https://github.com/trevorswan11/water/actions/workflows/format.yml/badge.svg)](https://github.com/trevorswan11/water/actions/workflows/format.yml) [![CI](https://github.com/trevorswan11/water/actions/workflows/ci.yml/badge.svg)](https://github.com/trevorswan11/water/actions/workflows/ci.yml)
+# water [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=c%2B%2B&logoColor=white)](https://en.cppreference.com/w/cpp/20.html) [![Rust](https://img.shields.io/static/v1?label=Rust&message=2024&labelColor=gray&color=F1592A)](https://github.com/rust-lang/rust) [![License](https://img.shields.io/github/license/Water-Engine/water)](LICENSE) [![LOC](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Water-Engine/water/loc/.github/loc_badge.json)](https://github.com/Water-Engine/water/actions/workflows/loc.yml) [![Last commit](https://img.shields.io/github/last-commit/Water-Engine/water)](https://github.com/Water-Engine/water) [![Formatting](https://github.com/Water-Engine/water/actions/workflows/format.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/format.yml) [![CI](https://github.com/Water-Engine/water/actions/workflows/ci.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/ci.yml)
 A chess engine written in C++ with a Rust frontend, powered by magic bitboard and neural networks.
 
 # Getting Started
@@ -6,7 +6,7 @@ A chess engine written in C++ with a Rust frontend, powered by magic bitboard an
 ## Quick Build (Water)
 For a quick build of the project, run:
 ```shell
-git clone https://github.com/trevorswan11/water.git
+git clone https://github.com/Water-Engine/water.git
 cd water
 make -j4 run
 ```
@@ -14,7 +14,7 @@ make -j4 run
 ## Cactus
 To build and run the gui, install the rust toolchain and run:
 ```shell
-git clone https://github.com/trevorswan11/water.git
+git clone https://github.com/Water-Engine/water.git
 cd water
 make gui
 ```
