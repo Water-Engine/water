@@ -468,7 +468,7 @@ template <typename T, typename... Args> constexpr Ref<T> CreateRef(Args&&... arg
     return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
-// ================ PROFILING ================
+// ================ PROFILING (from Cherno's Game Engine Series) ================
 
 using FloatingPointMicroseconds = std::chrono::duration<double, std::micro>;
 
