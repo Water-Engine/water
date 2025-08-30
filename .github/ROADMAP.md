@@ -17,7 +17,7 @@
 - [ ] Search thread - `go` command should not halt io operations
 - [x] Make/Unmake move system, including null moves for evaluation if needed
 - [ ] Evaluating positions with NNUE and piece-square-tables (after NN implemented)
-- [ ] Opening book for perfect, yet fun, openings
+- [x] Opening book for well-played openings
 
 # Neural Net
 - [ ] Input Encoding

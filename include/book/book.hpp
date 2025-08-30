@@ -5,17 +5,16 @@ struct BookMove {
     uint32_t Frequency;
 };
 
-using Openings = std::unordered_map<std::string, std::vector<BookMove>>;
-
 class Book {
   private:
-    Openings m_OpeningMoves;
+    std::unordered_map<std::string, std::vector<BookMove>> m_OpeningMoves;
+    std::uniform_real_distribution<float> m_UniformRealDist;
     std::mt19937 m_Rng;
 
   private:
     Book();
 
-    float rand_float();
+    inline float rand_float() { return m_UniformRealDist(m_Rng); };
 
   public:
     Book(const Book&) = delete;
@@ -28,5 +27,5 @@ class Book {
         return s_instance;
     }
 
-    Option<std::string> try_get_book_move(Ref<Board> board);
+    Option<std::string> try_get_book_move(Ref<Board> board, float weight = 0.25);
 };
