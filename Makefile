@@ -206,8 +206,7 @@ endif
 clean-all: clean gui-clean
 
 cloc:
-	@cloc src include tests scripts cactus --not-match-f="(openings.hpp|catch_amalgamated.hpp|catch_amalgamated.cpp)" --json > cloc.json
-	@$(PYTHON) scripts/cloc.py
+	@cloc Makefile src include tests scripts cactus --not-match-f="(openings.hpp|catch_amalgamated.hpp|catch_amalgamated.cpp)"
 
 everything: all
 	@cargo build
