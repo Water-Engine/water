@@ -63,9 +63,8 @@ Result<void, std::string> Bot::think_timed(int time_ms) {
         fmt::println("bestmove {}", bm.unwrap());
         return Result<void, std::string>();
     }
-    Evaluator eval(m_Board);
-    eval.simple_evaluate();
 
+    // TODO: Actual evaluation and ordering - this just takes first legal move
     auto moves = Generator::generate(*m_Board);
     if (moves.size() == 0) {
         return Result<void, std::string>();

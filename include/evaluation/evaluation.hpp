@@ -71,6 +71,4 @@ class Evaluator {
 
   public:
     Evaluator(Ref<Board> board) : m_Board(board) {}
-
-    int simple_evaluate();
 };

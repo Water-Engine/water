@@ -31,11 +31,3 @@ MaterialScore Evaluator::get_score(PieceColor color) const {
         return get_score<PieceColor::Black>();
     }
 }
-
-int Evaluator::simple_evaluate() {
-    auto friendly_score = get_score(m_Board->friendly_color());
-    auto opponent_score = get_score(m_Board->opponent_color());
-
-    return (friendly_score.pawn_score() - opponent_score.pawn_score()) +
-           (friendly_score.non_pawn_score() - opponent_score.non_pawn_score());
-}
