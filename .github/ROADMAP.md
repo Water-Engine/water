@@ -49,6 +49,9 @@
     - [ ] Allow force draws
     - [ ] Allow resizing but still keep correct aspect ratio
 - [ ] Fix lingering bugs in arbiter
+- [ ] Show captures on side of the board
+- [ ] Allow arrow drawing and highlighting multiple squares for big thinkers
+- [ ] Allow switching sides against the engine without having to relaunch
 
 # Milestones
 - [x] All pieces move as expected
