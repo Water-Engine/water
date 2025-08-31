@@ -16,8 +16,9 @@ struct Node {
     Move BestMove;
     int Depth;
     int EvaluationScore;
-    NodeType Type;
+    NodeType Type{NodeType::Void};
 
+    Node() = default;
     Node(uint64_t key, const Move& best_move_so_far, int ply_searched, int eval, NodeType type);
 };
 
@@ -37,7 +38,7 @@ class TranspositionTable {
   public:
     TranspositionTable(Ref<Board> board, size_t table_size_mb);
 
-    inline void clear() { m_Entries.clear(); }
+    inline void clear() { reset_nodes(); }
     inline uint64_t current_idx() const { return m_Board->current_hash() % m_Count; }
 
     inline Option<Move> try_get_best_move() const { return try_get_best_move(current_idx()); }
