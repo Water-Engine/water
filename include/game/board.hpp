@@ -236,6 +236,7 @@ class Board {
 
     std::string to_string() const { return diagram(m_WhiteToMove); };
     std::string current_fen(bool include_counters = true) const;
+    inline uint64_t current_hash() const { return m_State.Hash; }
 
     friend std::ostream& operator<<(std::ostream& os, const Board& board) {
         os << board.to_string();
