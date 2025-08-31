@@ -7,6 +7,7 @@
 - Magic number generation: https://www.chessprogramming.org/Looking_for_Magics
 - Introductory concepts and walkthrough: https://youtu.be/_vqlIPDR2TU?si=qS2aBoFrfsu_480k
 - Advanced concepts, optimization, and walkthrough: https://youtu.be/_vqlIPDR2TU?si=TsFC_y-vNylaVEVO
+- Transposition Tables: https://github.com/Water-Engine/water
 
 # Iterative Approaches (Not full NN) 
 - Negamax: https://www.chessprogramming.org/Negamax

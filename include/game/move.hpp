@@ -52,6 +52,12 @@ class Move {
     bool valid_move() const { return m_Compact != 0; }
 
     std::string to_uci() const;
+    std::string to_string() const { return to_uci(); };
 
     friend bool operator==(const Move& a, const Move& b) { return a.m_Compact == b.m_Compact; }
+
+    friend std::ostream& operator<<(std::ostream& os, const Move& move) {
+        os << move.to_uci();
+        return os;
+    }
 };
