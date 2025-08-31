@@ -42,4 +42,4 @@ The project's build system uses C++20 and GNU Make, and it is recommended that y
 - `help`: Print this help menu
 
 # For Developers
-Contributing guidelines, information on tests, formatting, and profiling can be found in [CONTRIBUTING.md](.github/CONTRIBUTING.md).
+Contributing guidelines, information on tests, formatting, and profiling can be found in [CONTRIBUTING.md](.github/CONTRIBUTING.md). You can also check out a WIP roadmap for the project at [ROADMAP.md](.github/ROADMAP.md).
