@@ -2,3 +2,4 @@
 Trevor Swan
 
 # Contributors
+SoloMazer
