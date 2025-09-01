@@ -1,6 +1,11 @@
 # water [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=c%2B%2B&logoColor=white)](https://en.cppreference.com/w/cpp/20.html) [![License](https://img.shields.io/github/license/Water-Engine/water)](LICENSE) [![LOC](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Water-Engine/water/loc/.github/loc_badge.json)](https://github.com/Water-Engine/water/actions/workflows/loc.yml) [![Last commit](https://img.shields.io/github/last-commit/Water-Engine/water)](https://github.com/Water-Engine/water) [![Formatting](https://github.com/Water-Engine/water/actions/workflows/format.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/format.yml) [![CI](https://github.com/Water-Engine/water/actions/workflows/ci.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/ci.yml)
 A chess engine written in C++, powered by magic bitboard and neural networks.
 
+# Goals
+While this project is still a major WIP, the end-goal is a dual-mode engine:
+- An iterative search engine with Alpha-Beta Pruning, Quiescence, etc.
+- A neural network-powered engine using Monte Carlo Tree Search (MCTS)
+
 # Getting Started
 For a quick build of the project, run:
 ```shell
@@ -8,6 +13,8 @@ git clone https://github.com/Water-Engine/water.git
 cd water
 make -j4 run
 ```
+
+_The engine communicates through the UCI protocol for terminal interaction._
 
 # Dependencies
 - g++ with C++20
@@ -43,3 +50,8 @@ The project's build system uses C++20 and GNU Make, and it is recommended that y
 
 # For Developers
 Contributing guidelines, information on tests, formatting, and profiling can be found in [CONTRIBUTING.md](.github/CONTRIBUTING.md). You can also check out a WIP roadmap for the project at [ROADMAP.md](.github/ROADMAP.md).
+
+### Why Contribute?
+- Learn engine internals such as move generation, evaluation, and search  
+- Work on low-level performance optimizations in modern C++  
+- Explore and improve machine learning fine-tuning for chess 
