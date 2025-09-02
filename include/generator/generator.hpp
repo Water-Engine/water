@@ -11,8 +11,6 @@
 #include "generator/pawn.hpp"
 #include "generator/sliders.hpp"
 
-constexpr size_t MAX_MOVES = 256;
-
 enum class PromotionFlag {
     Queen = QUEEN_PROMOTION_FLAG,
     Rook = ROOK_PROMOTION_FLAG,
@@ -77,19 +75,32 @@ constexpr auto promotions_for = [] {
 
 class MoveList {
   private:
+    static constexpr size_t MAX_MOVES = 256;
+
     std::array<Move, MAX_MOVES> m_Moves{};
+    std::array<int, MAX_MOVES> m_Scores{};
     size_t m_Size = 0;
 
   public:
     inline size_t size() const { return m_Size; }
 
     inline void push_back(const Move& m) {
-        if (m_Size >= MAX_MOVES) {
+        if (m_Size >= m_Moves.size()) {
             return;
         }
 
         m_Moves[m_Size++] = m;
     }
+
+    inline void set_score(size_t idx, int score) {
+        if (idx >= m_Scores.size()) {
+            return;
+        }
+
+        m_Scores[idx] = score;
+    }
+
+    inline int score_at(size_t idx) const { return m_Scores[idx]; }
 
     inline Move* begin() { return m_Moves.data(); }
     inline Move* end() { return m_Moves.data() + m_Size; }
@@ -107,6 +118,26 @@ class MoveList {
             }
         }
         m_Size = i;
+    }
+
+    inline void sort_by_scores() {
+        std::array<size_t, MoveList::MAX_MOVES> indices{};
+        for (size_t i = 0; i < m_Size; ++i) {
+            indices[i] = i;
+        }
+
+        // Sort indices by scores descending
+        std::sort(indices.begin(), indices.begin() + m_Size,
+                  [&](size_t a, size_t b) { return m_Scores[a] > m_Scores[b]; });
+
+        // Reorder moves and scores in-place
+        std::array<Move, MoveList::MAX_MOVES> moves_copy = m_Moves;
+        std::array<int, MoveList::MAX_MOVES> scores_copy = m_Scores;
+
+        for (size_t i = 0; i < m_Size; ++i) {
+            m_Moves[i] = moves_copy[indices[i]];
+            m_Scores[i] = scores_copy[indices[i]];
+        }
     }
 
     friend class Generator;
@@ -156,6 +187,7 @@ class Generator {
                 }
 
                 bool is_capture = false;
+                bool is_ep = false;
 
                 // normal capture
                 if (board.occupied_by_enemy(target_idx, Color)) {
@@ -164,6 +196,7 @@ class Generator {
 
                 // en-passant capture (target square empty but equals EP target)
                 else if (board.get_ep_square() == target_idx) {
+                    is_ep = true;
                     is_capture = true;
                 }
 
@@ -176,7 +209,8 @@ class Generator {
                             out.push_back(Move(pawn_idx, target_idx, static_cast<int>(flag)));
                         }
                     } else {
-                        out.push_back(Move(pawn_idx, target_idx, PAWN_CAPTURE_FLAG));
+                        out.push_back(
+                            Move(pawn_idx, target_idx, is_ep ? EP_FLAG : PAWN_CAPTURE_FLAG));
                     }
                 }
             };

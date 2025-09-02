@@ -7,6 +7,7 @@
 #include "generator/generator.hpp"
 
 #include "evaluation/evaluation.hpp"
+#include "evaluation/ordering.hpp"
 
 #include "book/book.hpp"
 
@@ -64,11 +65,13 @@ Result<void, std::string> Bot::think_timed(int time_ms) {
         return Result<void, std::string>();
     }
 
-    // TODO: Actual evaluation and ordering - this just takes first legal move
+    // TODO: Actual evaluation - this just takes first ordered legal move
     auto moves = Generator::generate(*m_Board);
     if (moves.size() == 0) {
         return Result<void, std::string>();
     }
+
+    MoveOrderer().order_moves(m_Board, 0, moves, false, 0);
     fmt::println("bestmove {}", moves[0].to_uci());
 
     return Result<void, std::string>();
@@ -89,7 +92,7 @@ uint64_t Bot::perft_parallel(int depth, size_t max_threads) {
 
     size_t num_threads = std::min(max_threads, n);
     std::vector<std::vector<Move>> chunks(num_threads);
-    for (size_t i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; ++i) {
         chunks[i % num_threads].push_back(moves[i]);
     }
 
@@ -107,7 +110,7 @@ uint64_t Bot::perft_parallel(int depth, size_t max_threads) {
         results[idx] = nodes;
     };
 
-    for (size_t i = 0; i < num_threads; i++) {
+    for (size_t i = 0; i < num_threads; ++i) {
         threads.emplace_back(worker, i);
     }
 

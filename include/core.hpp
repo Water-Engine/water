@@ -160,7 +160,7 @@ class fmt {
 class str {
   public:
     static int char_idx(const std::string& str, const char c) {
-        for (size_t i = 0; i < str.length(); i++) {
+        for (size_t i = 0; i < str.length(); ++i) {
             if (str[i] == c) {
                 return static_cast<int>(i);
             }

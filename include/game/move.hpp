@@ -15,6 +15,8 @@ constexpr int BISHOP_PROMOTION_FLAG = 0b0101;
 constexpr int KNIGHT_PROMOTION_FLAG = 0b0110;
 constexpr int ROOK_PROMOTION_FLAG = 0b0111;
 
+constexpr int EP_FLAG = 0b1000;
+
 class Board;
 
 class Move {
@@ -39,7 +41,30 @@ class Move {
     int flag() const { return m_Compact >> 12; }
 
     inline bool is_promotion() const { return is_promotion(flag()); };
-    inline static bool is_promotion(int flag) { return flag >= QUEEN_PROMOTION_FLAG; }
+    inline static bool is_promotion(int flag) {
+        return flag >= QUEEN_PROMOTION_FLAG && flag <= ROOK_PROMOTION_FLAG;
+    }
+
+    inline bool is_queen_promotion() const { return flag() == QUEEN_PROMOTION_FLAG; }
+    inline bool is_bishop_promotion() const { return flag() == BISHOP_PROMOTION_FLAG; }
+    inline bool is_knight_promotion() const { return flag() == KNIGHT_PROMOTION_FLAG; }
+    inline bool is_rook_promotion() const { return flag() == ROOK_PROMOTION_FLAG; }
+
+    inline bool is_castle() const { return is_castle(flag()); }
+    inline static bool is_castle(int flag) { return flag == CASTLE_FLAG; }
+
+    inline bool is_kingside_castle() const { return is_castle() && (target_square() % 8 == 6); }
+    inline bool is_queenside_castle() const { return is_castle() && (target_square() % 8 == 2); }
+
+    inline bool is_ep() { return is_ep(flag()); }
+    inline static bool is_ep(int flag) { return flag == EP_FLAG; }
+
+    inline bool is_pawn_double_push() { return is_pawn_double_push(flag()); }
+    inline static bool is_pawn_double_push(int flag) { return flag == PAWN_TWO_UP_FLAG; }
+
+    inline bool is_pawn_capture() { return is_pawn_capture(flag()); }
+    inline static bool is_pawn_capture(int flag) { return flag == PAWN_CAPTURE_FLAG; }
+
     inline PieceType promotion_type() const { return promotion_type(flag()); }
     static PieceType promotion_type(int flag);
 
@@ -55,6 +80,7 @@ class Move {
     std::string to_string() const { return to_uci(); };
 
     friend bool operator==(const Move& a, const Move& b) { return a.m_Compact == b.m_Compact; }
+    friend bool operator!=(const Move& a, const Move& b) { return !(a == b); }
 
     friend std::ostream& operator<<(std::ostream& os, const Move& move) {
         os << move.to_uci();

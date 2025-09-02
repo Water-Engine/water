@@ -7,7 +7,7 @@ Magics::Magics() {
     std::array<Bitboard, 64> rook_mask = {};
     std::array<Bitboard, 64> bishop_mask = {};
 
-    for (size_t square_idx = 0; square_idx < 64; square_idx++) {
+    for (size_t square_idx = 0; square_idx < 64; ++square_idx) {
         rook_mask[square_idx] = create_movement_mask(square_idx, true);
         bishop_mask[square_idx] = create_movement_mask(square_idx, false);
     }
@@ -15,7 +15,7 @@ Magics::Magics() {
     std::array<std::vector<Bitboard>, 64> rook_attacks = {};
     std::array<std::vector<Bitboard>, 64> bishop_attacks = {};
 
-    for (size_t i = 0; i < 64; i++) {
+    for (size_t i = 0; i < 64; ++i) {
         rook_attacks[i] = create_table(i, true, ROOK_MAGICS[i], ROOK_SHIFTS[i]);
         bishop_attacks[i] = create_table(i, false, BISHOP_MAGICS[i], BISHOP_SHIFTS[i]);
     }
@@ -47,7 +47,7 @@ std::vector<Bitboard> Magics::create_table(int square_idx, bool is_ortho_slider,
 std::vector<Bitboard> Magics::create_all_blockers(const Bitboard& movement_mask) {
     std::vector<int> move_square_indices;
     move_square_indices.reserve(16);
-    for (int i = 0; i < 64; i++) {
+    for (int i = 0; i < 64; ++i) {
         if (movement_mask.bit_value_at(i) == 1) {
             move_square_indices.push_back(i);
         }
@@ -56,8 +56,8 @@ std::vector<Bitboard> Magics::create_all_blockers(const Bitboard& movement_mask)
     size_t num_patterns = 1ULL << move_square_indices.size();
     std::vector<Bitboard> blocker_bbs(num_patterns, Bitboard(0));
 
-    for (size_t pattern_idx = 0; pattern_idx < num_patterns; pattern_idx++) {
-        for (size_t bit_idx = 0; bit_idx < move_square_indices.size(); bit_idx++) {
+    for (size_t pattern_idx = 0; pattern_idx < num_patterns; ++pattern_idx) {
+        for (size_t bit_idx = 0; bit_idx < move_square_indices.size(); ++bit_idx) {
             uint64_t bit = (pattern_idx >> bit_idx) & 1ULL;
             blocker_bbs[pattern_idx] =
                 blocker_bbs[pattern_idx] | (bit << move_square_indices[bit_idx]);
@@ -73,7 +73,7 @@ Bitboard Magics::create_movement_mask(int square_idx, bool is_ortho_slider) {
     Coord start_coord(square_idx);
 
     for (const auto& dir : directions) {
-        for (int dst = 1; dst < 8; dst++) {
+        for (int dst = 1; dst < 8; ++dst) {
             Coord coord = start_coord + dir * dst;
             Coord next_coord = start_coord + dir * (dst + 1);
 
@@ -94,7 +94,7 @@ Bitboard Magics::legal_move_bb(int square_idx, const Bitboard& blocker_bb, bool 
     Coord start_coord(square_idx);
 
     for (const auto& dir : directions) {
-        for (int dst = 1; dst < 8; dst++) {
+        for (int dst = 1; dst < 8; ++dst) {
             Coord coord = start_coord + dir * dst;
 
             if (coord.valid_square_idx()) {

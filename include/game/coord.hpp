@@ -10,15 +10,18 @@ class Coord {
     constexpr Coord(int file_idx, int rank_idx) : m_FileIdx(file_idx), m_RankIdx(rank_idx) {}
 
     Coord(const std::string& square_string);
-    Coord(int square) : m_FileIdx(file_from_square(square)), m_RankIdx(rank_from_square(square)) {}
+    constexpr Coord(int square)
+        : m_FileIdx(file_from_square(square)), m_RankIdx(rank_from_square(square)) {}
 
-    int file_idx() const { return m_FileIdx; }
-    int rank_idx() const { return m_RankIdx; }
+    constexpr int file_idx() const { return m_FileIdx; }
+    constexpr int rank_idx() const { return m_RankIdx; }
+
     int square_idx() const { return valid_square_idx() ? square_idx_unchecked() : -1; }
-    int square_idx_unchecked() const { return m_RankIdx * 8 + m_FileIdx; }
+    constexpr int square_idx_unchecked() const { return m_RankIdx * 8 + m_FileIdx; }
+    constexpr static int square_idx_unchecked(int file, int rank) { return rank * 8 + file; }
 
-    static int file_from_square(int square_idx) { return square_idx & 0b000111; }
-    static int rank_from_square(int square_idx) { return square_idx >> 3; }
+    constexpr static int file_from_square(int square_idx) { return square_idx & 0b000111; }
+    constexpr static int rank_from_square(int square_idx) { return square_idx >> 3; }
 
     bool is_light_square() const { return (m_FileIdx + m_RankIdx) % 2 != 0; }
 

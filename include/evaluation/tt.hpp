@@ -3,7 +3,6 @@
 #include "game/board.hpp"
 #include "game/move.hpp"
 
-// Useful for classical AB pruning
 enum class NodeType {
     Void,
     Exact,

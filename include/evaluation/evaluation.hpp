@@ -49,7 +49,6 @@ class Evaluator {
     Ref<Board> m_Board;
 
   private:
-    MaterialScore get_score(PieceColor color) const;
     template <PieceColor Color> MaterialScore get_score() const {
         auto friendly_color_bb =
             (Color == PieceColor::White) ? m_Board->m_WhiteBB : m_Board->m_BlackBB;
@@ -71,4 +70,8 @@ class Evaluator {
 
   public:
     Evaluator(Ref<Board> board) : m_Board(board) {}
+
+    MaterialScore get_score(PieceColor color) const;
+    MaterialScore get_friendly_score() const { return get_score(m_Board->friendly_color()); }
+    MaterialScore get_opponent_score() const { return get_score(m_Board->opponent_color()); }
 };

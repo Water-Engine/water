@@ -66,7 +66,7 @@ Option<std::string> Book::try_get_book_move(Ref<Board> board, float weight) {
 
         std::vector<float> prefix(weights.size());
         prefix[0] = weights[0] / total_play_count;
-        for (size_t i = 1; i < weights.size(); i++) {
+        for (size_t i = 1; i < weights.size(); ++i) {
             prefix[i] = prefix[i - 1] + weights[i] / total_play_count;
         }
 
