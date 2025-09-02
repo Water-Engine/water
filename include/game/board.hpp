@@ -46,7 +46,7 @@ class PositionInfo {
             return false;
         }
 
-        for (size_t i = 0; i < 64; i++) {
+        for (size_t i = 0; i < 64; ++i) {
             if (a.m_Squares[i] != b.m_Squares[i]) {
                 return false;
             }
@@ -199,8 +199,10 @@ class Board {
 
     /// Important: Calling deep_verify will check the entire move legality including move_flags
     Option<ValidatedMove> is_legal_move(const Move& move, bool deep_verify = false);
+
     Bitboard pawn_attack_rays(PieceColor attacker_color) const;
     template <PrecomputedValidator Validator>
+    Bitboard non_pawn_attack_rays(PieceColor attacker_color) const;
     Bitboard non_pawn_attack_rays(PieceColor attacker_color) const;
 
     Bitboard calculate_attack_rays(PieceColor attacker_color) const;

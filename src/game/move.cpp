@@ -35,9 +35,12 @@ Move::Move(Ref<Board> board, const std::string& move_uci) {
             flag = flag_from_promotion_char(move_uci[move_uci.length() - 1]);
         } else if (std::abs(start_coord.rank_idx() - target_coord.rank_idx()) == 2) {
             flag = PAWN_TWO_UP_FLAG;
-        } else if ((start_coord.file_idx() != target_coord.file_idx()) &&
-                   board->piece_at(target).value() == Piece::none()) {
-            flag = PAWN_CAPTURE_FLAG;
+        } else if (start_coord.file_idx() != target_coord.file_idx()) {
+            if (board->piece_at(target).value() == Piece::none()) {
+                flag = EP_FLAG;
+            } else {
+                flag = PAWN_CAPTURE_FLAG;
+            }
         }
     } else if (moved_piece.type() == PieceType::King) {
         if (std::abs(start_coord.file_idx() - target_coord.file_idx()) == 2 &&

@@ -113,7 +113,7 @@ void Board::load_from_position(const PositionInfo& pos) {
     m_StoredPieces = pos.m_Squares;
     m_WhiteToMove = pos.m_WhiteToMove;
 
-    for (size_t i = 0; i < pos.m_Squares.size(); i++) {
+    for (size_t i = 0; i < pos.m_Squares.size(); ++i) {
         Piece piece = pos.m_Squares[i];
         if (piece.is_none()) {
             continue;
@@ -145,7 +145,7 @@ void Board::load_from_position(const PositionInfo& pos) {
     uint64_t hash = 0ULL;
 
     // Pieces
-    for (int sq = 0; sq < 64; sq++) {
+    for (int sq = 0; sq < 64; ++sq) {
         Piece piece = m_StoredPieces[sq];
         if (!piece.is_none()) {
             hash ^= Zobrist::Pieces[piece.index()][sq];
@@ -204,10 +204,10 @@ std::string Board::diagram(bool black_at_top, bool include_fen, bool include_has
         last_move_square = m_AllMoves[m_AllMoves.size() - 1].target_square();
     }
 
-    for (int y = 0; y < 8; y++) {
+    for (int y = 0; y < 8; ++y) {
         int rank_idx = black_at_top ? 7 - y : y;
         oss << "+---+---+---+---+---+---+---+---+\n";
-        for (int x = 0; x < 8; x++) {
+        for (int x = 0; x < 8; ++x) {
             int file_idx = black_at_top ? x : 7 - x;
             Coord square_coord(file_idx, rank_idx);
             if (!square_coord.valid_square_idx()) {
@@ -304,7 +304,7 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
         int king_path[2];
         king_path[0] = king_from + (king_side ? 1 : -1);
         king_path[1] = king_from + (king_side ? 2 : -2);
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 2; ++i) {
             if (opponent_rays.contains_square(king_path[i])) {
                 return false;
             }
@@ -321,7 +321,7 @@ bool Board::make_king_move(Coord start_coord, Coord target_coord, int move_flag,
             rook_clear[1] = king_from - 2;
             rook_clear[2] = king_from - 3;
         }
-        for (int i = 0; i < rook_clear_len; i++) {
+        for (int i = 0; i < rook_clear_len; ++i) {
             if (m_AllPieceBB.contains_square(rook_clear[i])) {
                 return false;
             }
@@ -411,32 +411,31 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
         move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
                    target_coord.square_idx_unchecked(), piece_from);
     } else if (move_flag == PAWN_CAPTURE_FLAG) {
+        if (piece_from.color() == piece_to.color()) {
+            return false;
+        } else if ((int)piece_at(target_coord.square_idx_unchecked()) == Piece::none()) {
+            return false;
+        }
+
+        move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
+                   target_coord.square_idx_unchecked(), piece_from);
+    } else if (move_flag == EP_FLAG) {
         int old_ep_square = m_State.get_ep_square();
 
-        // Handle ep side of moves
-        if (old_ep_square == target_coord.square_idx_unchecked()) {
-            if (!can_capture_ep(piece_from.color() == PieceColor::White)) {
-                return false;
-            }
-
-            // Move and capture involved pawns
-            int captured_pawn_square = old_ep_square + (piece_from.is_white() ? -8 : 8);
-            remove_piece_at(captured_pawn_square);
-            m_State.indicate_capture();
-            move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
-                       target_coord.square_idx_unchecked(), piece_from);
-        } else {
-            // Fallback to basic captures, diagonal moves must attack an enemy piece, but we know it
-            // is a valid attack square due to passing can_move_to checks
-            if (piece_from.color() == piece_to.color()) {
-                return false;
-            } else if ((int)piece_at(target_coord.square_idx_unchecked()) == Piece::none()) {
-                return false;
-            }
-
-            move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
-                       target_coord.square_idx_unchecked(), piece_from);
+        if (old_ep_square != target_coord.square_idx_unchecked()) {
+            return false;
         }
+
+        if (!can_capture_ep(piece_from.color() == PieceColor::White)) {
+            return false;
+        }
+
+        // Move and capture involved pawns
+        int captured_pawn_square = old_ep_square + (piece_from.is_white() ? -8 : 8);
+        remove_piece_at(captured_pawn_square);
+        m_State.indicate_capture();
+        move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
+                   target_coord.square_idx_unchecked(), piece_from);
     } else if (Move::is_promotion(move_flag)) {
         // 1. Ensure the target square is a promotion rank
         int target_idx = target_coord.square_idx_unchecked();
@@ -745,9 +744,9 @@ Result<void, std::string> Board::load_startpos() {
 std::string Board::current_fen(bool include_counters) const {
     std::ostringstream oss;
 
-    for (int rank = 7; rank >= 0; rank--) {
+    for (int rank = 7; rank >= 0; --rank) {
         int num_empty_files = 0;
-        for (int file = 0; file < 8; file++) {
+        for (int file = 0; file < 8; ++file) {
             int i = rank * 8 + file;
             auto piece = m_StoredPieces[i];
 
@@ -759,7 +758,7 @@ std::string Board::current_fen(bool include_counters) const {
 
                 oss << piece.symbol();
             } else {
-                num_empty_files++;
+                ++num_empty_files;
             }
         }
 

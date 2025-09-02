@@ -161,7 +161,7 @@ class GameState {
         bool same_capture = a.m_LastMoveWasCapture == b.m_LastMoveWasCapture;
         bool same_pawn = a.m_LastMoveWasPawnMove == b.m_LastMoveWasPawnMove;
 
-        for (size_t i = 0; i < 64; i++) {
+        for (size_t i = 0; i < 64; ++i) {
             if (a.m_StoredPieces[i] != b.m_StoredPieces[i]) {
                 return false;
             }

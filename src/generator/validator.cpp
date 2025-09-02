@@ -129,7 +129,6 @@ bool Board::can_capture_ep(bool is_white) {
     }
 
     // We'll need to simulate on the real board, so cast away const (we'll restore)
-    // Take a snapshot of the relevant boards (same pattern as above)
     BoardBoards saved{
         .StoredPieces = m_StoredPieces,
         .WhiteBB = m_WhiteBB,
@@ -327,6 +326,18 @@ Bitboard Board::non_pawn_attack_rays(PieceColor attacker_color) const {
     return attacks;
 }
 
+Bitboard Board::non_pawn_attack_rays(PieceColor attacker_color) const {
+    Bitboard attacks = 0ULL;
+
+    attacks |= non_pawn_attack_rays<Rook>(attacker_color);
+    attacks |= non_pawn_attack_rays<Knight>(attacker_color);
+    attacks |= non_pawn_attack_rays<Bishop>(attacker_color);
+    attacks |= non_pawn_attack_rays<Queen>(attacker_color);
+    attacks |= non_pawn_attack_rays<King>(attacker_color);
+
+    return attacks;
+}
+
 Bitboard Board::calculate_attack_rays(PieceColor attacker_color) const {
     Bitboard attacks = 0ULL;
 
@@ -417,7 +428,7 @@ bool Board::validate_king_move(Coord start_coord, Coord target_coord, int move_f
         int king_path[2];
         king_path[0] = king_from + (king_side ? 1 : -1);
         king_path[1] = king_from + (king_side ? 2 : -2);
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 2; ++i) {
             if (opponent_rays.contains_square(king_path[i])) {
                 return false;
             }
@@ -434,7 +445,7 @@ bool Board::validate_king_move(Coord start_coord, Coord target_coord, int move_f
             rook_clear[1] = king_from - 2;
             rook_clear[2] = king_from - 3;
         }
-        for (int i = 0; i < rook_clear_len; i++) {
+        for (int i = 0; i < rook_clear_len; ++i) {
             if (m_AllPieceBB.contains_square(rook_clear[i])) {
                 return false;
             }
@@ -506,21 +517,19 @@ bool Board::validate_pawn_move(Coord start_coord, Coord target_coord, int move_f
         }
 
     } else if (move_flag == PAWN_CAPTURE_FLAG) {
-        int old_ep_square = m_State.get_ep_square();
+        if (piece_from.color() == piece_to.color()) {
+            return false;
+        } else if (piece_at(target_coord.square_idx_unchecked()).is_none()) {
+            return false;
+        }
+    } else if (move_flag == EP_FLAG) {
+        int ep_square = m_State.get_ep_square();
+        if (ep_square != target_coord.square_idx_unchecked()) {
+            return false;
+        }
 
-        // Handle ep side of moves
-        if (old_ep_square == target_coord.square_idx_unchecked()) {
-            if (!can_capture_ep(piece_from.color() == PieceColor::White)) {
-                return false;
-            }
-        } else {
-            // Fallback to basic captures, diagonal moves must attack an enemy piece, but we know it
-            // is a valid attack square due to passing can_move_to checks
-            if (piece_from.color() == piece_to.color()) {
-                return false;
-            } else if (piece_at(target_coord.square_idx_unchecked()).is_none()) {
-                return false;
-            }
+        if (!can_capture_ep(piece_from.color() == PieceColor::White)) {
+            return false;
         }
     } else if (Move::is_promotion(move_flag)) {
         // 1. Ensure the target square is a promotion rank
@@ -652,7 +661,7 @@ bool Board::compare_boards(const Board& a, const Board& b) {
     }
 
     // Verify piece repr board
-    for (size_t i = 0; i < 64; i++) {
+    for (size_t i = 0; i < 64; ++i) {
         if (a.m_StoredPieces[i] != b.m_StoredPieces[i]) {
             fmt::println("Stored piece mis-match");
             return false;
@@ -666,14 +675,14 @@ bool Board::compare_boards(const Board& a, const Board& b) {
         return false;
     }
 
-    for (size_t i = 0; i < a.m_StateHistory.size(); i++) {
+    for (size_t i = 0; i < a.m_StateHistory.size(); ++i) {
         if (a.m_StateHistory[i] != b.m_StateHistory[i]) {
             fmt::println("State history mis-match");
             return false;
         }
     }
 
-    for (size_t i = 0; i < a.m_AllMoves.size(); i++) {
+    for (size_t i = 0; i < a.m_AllMoves.size(); ++i) {
         if (a.m_AllMoves[i] != b.m_AllMoves[i]) {
             fmt::println("All move mis-match");
             return false;

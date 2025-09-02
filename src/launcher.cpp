@@ -8,18 +8,26 @@
 #include "game/state.hpp"
 
 #include "bitboard/magics.hpp"
+#include "bitboard/pawn_shields.hpp"
 
 #include "book/book.hpp"
+
+#include "evaluation/pst.hpp"
 
 void launch() {
     std::string line;
     Engine e;
 
-    // Initialization
-    Magics::instance();
-    Book::instance();
-    Zobrist::init();
-    e.prime();
+    {
+        PROFILE_SCOPE("Initialization");
+        Magics::instance();
+        Book::instance();
+        Zobrist::init();
+        PST::instance();
+        PawnShields::instance();
+
+        e.prime();
+    }
 
     // Main loop
     while (std::getline(std::cin, line)) {

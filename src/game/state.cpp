@@ -23,19 +23,19 @@ void Zobrist::init() {
     std::uniform_int_distribution<uint64_t> dist(0, UINT64_MAX);
 
     // Pieces
-    for (int p = 0; p < 12; p++) {
-        for (int sq = 0; sq < 64; sq++) {
+    for (int p = 0; p < 12; ++p) {
+        for (int sq = 0; sq < 64; ++sq) {
             Pieces[p][sq] = dist(rng);
         }
     }
 
     // Castling
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 16; ++i) {
         Castling[i] = dist(rng);
     }
 
     // En passant
-    for (int f = 0; f < 8; f++) {
+    for (int f = 0; f < 8; ++f) {
         EnPassant[f] = dist(rng);
     }
 

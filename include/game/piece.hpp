@@ -19,6 +19,8 @@ constexpr inline PieceColor opposite_color(PieceColor color) {
     return (color == PieceColor::White) ? PieceColor::Black : PieceColor::White;
 }
 
+constexpr inline int color_as_idx(PieceColor color) { return (color == PieceColor::White) ? 0 : 1; }
+
 class Piece {
   private:
     PieceType m_Type;
