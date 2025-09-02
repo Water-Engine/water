@@ -58,7 +58,7 @@ int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black
     return std::ceil(std::max(min_think_time, think_time_ms));
 }
 
-Result<void, std::string> Bot::think_timed(int time_ms) {
+Result<void, std::string> Bot::think_timed([[maybe_unused]] int time_ms) {
     auto bm = Book::instance().try_get_book_move(m_Board);
     if (bm.is_some()) {
         fmt::println("bestmove {}", bm.unwrap());

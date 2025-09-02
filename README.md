@@ -55,3 +55,11 @@ Contributing guidelines, information on tests, formatting, and profiling can be 
 - Learn engine internals such as move generation, evaluation, and search  
 - Work on low-level performance optimizations in modern C++  
 - Explore and improve machine learning fine-tuning for chess 
+
+# Credits
+Water could not be where it is today without the formative work done by experienced developers in the past. Core references used during development include:
+- [Syzygy](https://www.chessprogramming.org/Syzygy_Bases) tables originally created by Dutch mathematician [Ronald de Man](https://www.chessprogramming.org/Ronald_de_Man)
+- [Fathom](https://github.com/jdart1/Fathom) syzygy tablebase reader - rewritten and catered to the Water engine
+- Sebastian Lague's [Chess Coding Adventure](https://github.com/SebLague/Chess-Coding-Adventure) engine - used for comparative testing for elo estimates
+- The [Aurora](https://github.com/kjljixx/Aurora-Chess-Engine) chess engine which previously implemented a similar hybrid evaluation approach
+- The legendary [Stockfish](https://github.com/official-stockfish/Stockfish) engine - used for verifying certain tests on the fly
