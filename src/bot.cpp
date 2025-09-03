@@ -49,14 +49,8 @@ Result<void, std::string> Bot::think_timed([[maybe_unused]] int time_ms) {
         return Result<void, std::string>();
     }
 
-    // TODO: Actual evaluation - this just takes first ordered legal move
-    auto moves = Generator::generate(*m_Board);
-    if (moves.size() == 0) {
-        return Result<void, std::string>();
-    }
-
-    MoveOrderer().order_moves(m_Board, 0, moves, false, 0);
-    fmt::println("bestmove {}", moves[0].to_uci());
+    m_Searcher.find_bestmove();
+    fmt::println(m_Searcher.retrieve_bestmove());
 
     return Result<void, std::string>();
 }

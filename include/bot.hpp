@@ -2,19 +2,23 @@
 
 #include "game/board.hpp"
 
+#include "search/searcher.hpp"
+
 constexpr bool USE_MAX_THINKING_TIME = false;
 constexpr int MAX_THINK_TIME_MS = 2500;
 
 class Bot {
   private:
     Ref<Board> m_Board;
+
+    Searcher m_Searcher;
     bool m_Thinking;
 
   private:
     uint64_t perft_recursive(Board& board, int depth);
 
   public:
-    Bot() : m_Board(CreateRef<Board>()), m_Thinking(false) {}
+    Bot() : m_Board(CreateRef<Board>()), m_Searcher(m_Board), m_Thinking(false) {}
 
     void new_game();
     void stop_thinking() { m_Thinking = false; };

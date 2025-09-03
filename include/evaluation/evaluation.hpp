@@ -68,6 +68,9 @@ class Evaluator {
                              enemy_pawns.value());
     }
 
+    static int individual_piece_score(const Piece& piece, Bitboard piece_bb, float endgame_transition);
+    int combined_piece_score(const Bitboard& friendly_bb, PieceColor friendly_color, float endgame_transition);
+
   public:
     Evaluator(Ref<Board> board) : m_Board(board) {}
 

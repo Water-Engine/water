@@ -3,12 +3,7 @@
 #include "game/board.hpp"
 #include "game/move.hpp"
 
-enum class NodeType {
-    Void,
-    Exact,
-    UpperBound,
-    LowerBound,
-};
+enum class NodeType { Void, Exact, UpperBound, LowerBound };
 
 struct Node {
     uint64_t ZobristKey;

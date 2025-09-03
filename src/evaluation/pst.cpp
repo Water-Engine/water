@@ -3,19 +3,19 @@
 #include "evaluation/pst.hpp"
 
 PSTManager::PSTManager() {
-    m_Tables[Piece(Piece::white_rook()).index()] = WhiteRookTable;
-    m_Tables[Piece(Piece::white_knight()).index()] = WhiteKnightTable;
-    m_Tables[Piece(Piece::white_bishop()).index()] = WhiteBishopTable;
-    m_Tables[Piece(Piece::white_queen()).index()] = WhiteQueenTable;
-    m_Tables[Piece(Piece::white_king()).index()] = WhiteKingTable;
-    m_Tables[Piece(Piece::white_pawn()).index()] = WhitePawnTable;
+    m_Tables[Pieces::WHITE_ROOK_IDX] = WhiteRookTable;
+    m_Tables[Pieces::WHITE_KNIGHT_IDX] = WhiteKnightTable;
+    m_Tables[Pieces::WHITE_BISHOP_IDX] = WhiteBishopTable;
+    m_Tables[Pieces::WHITE_QUEEN_IDX] = WhiteQueenTable;
+    m_Tables[Pieces::WHITE_KING_IDX] = WhiteKingTable;
+    m_Tables[Pieces::WHITE_PAWN_IDX] = WhitePawnTable;
 
-    m_Tables[Piece(Piece::black_rook()).index()] = BlackRookTable;
-    m_Tables[Piece(Piece::black_knight()).index()] = BlackKnightTable;
-    m_Tables[Piece(Piece::black_bishop()).index()] = BlackBishopTable;
-    m_Tables[Piece(Piece::black_queen()).index()] = BlackQueenTable;
-    m_Tables[Piece(Piece::black_king()).index()] = BlackKingTable;
-    m_Tables[Piece(Piece::black_pawn()).index()] = BlackPawnTable;
+    m_Tables[Pieces::BLACK_ROOK_IDX] = BlackRookTable;
+    m_Tables[Pieces::BLACK_KNIGHT_IDX] = BlackKnightTable;
+    m_Tables[Pieces::BLACK_BISHOP_IDX] = BlackBishopTable;
+    m_Tables[Pieces::BLACK_QUEEN_IDX] = BlackQueenTable;
+    m_Tables[Pieces::BLACK_KING_IDX] = BlackKingTable;
+    m_Tables[Pieces::BLACK_PAWN_IDX] = BlackPawnTable;
 }
 
 int PSTManager::get_value_unchecked(const PST& table, PieceColor piece_color, int square,

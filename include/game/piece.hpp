@@ -98,7 +98,7 @@ class Piece {
     inline bool is_pawn() const { return m_Type == PieceType::Pawn; }
     inline bool is_none() const { return value() == 0; }
 
-    /// Note: Valid (non-null) pieces are guanteed to be bounded [0, 11]
+    /// Note: Valid (non-null) pieces are guaranteed to be bounded [0, 11]
     inline int index() const {
         if (is_none()) {
             return -1;
@@ -131,4 +131,38 @@ enum Scores {
     Rook = 500,
     Queen = 900,
 };
+}
+
+// ================ FREQUENTLY USED PIECE EXPRESSIONS ================
+
+namespace Pieces {
+    // ================ Pieces ================
+    const auto WHITE_ROOK = Piece(Piece::white_rook());
+    const auto WHITE_KNIGHT = Piece(Piece::white_knight());
+    const auto WHITE_BISHOP = Piece(Piece::white_bishop());
+    const auto WHITE_QUEEN = Piece(Piece::white_queen());
+    const auto WHITE_KING = Piece(Piece::white_king());
+    const auto WHITE_PAWN = Piece(Piece::white_pawn());
+
+    const auto BLACK_ROOK = Piece(Piece::black_rook());
+    const auto BLACK_KNIGHT = Piece(Piece::black_knight());
+    const auto BLACK_BISHOP = Piece(Piece::black_bishop());
+    const auto BLACK_QUEEN = Piece(Piece::black_queen());
+    const auto BLACK_KING = Piece(Piece::black_king());
+    const auto BLACK_PAWN = Piece(Piece::black_pawn());
+
+    // ================ Indices ================
+    const auto WHITE_ROOK_IDX = WHITE_ROOK.index();
+    const auto WHITE_KNIGHT_IDX = WHITE_KNIGHT.index();
+    const auto WHITE_BISHOP_IDX = WHITE_BISHOP.index();
+    const auto WHITE_QUEEN_IDX = WHITE_QUEEN.index();
+    const auto WHITE_KING_IDX = WHITE_KING.index();
+    const auto WHITE_PAWN_IDX = WHITE_PAWN.index();
+
+    const auto BLACK_ROOK_IDX = BLACK_ROOK.index();
+    const auto BLACK_KNIGHT_IDX = BLACK_KNIGHT.index();
+    const auto BLACK_BISHOP_IDX = BLACK_BISHOP.index();
+    const auto BLACK_QUEEN_IDX = BLACK_QUEEN.index();
+    const auto BLACK_KING_IDX = BLACK_KING.index();
+    const auto BLACK_PAWN_IDX = BLACK_PAWN.index();
 }
