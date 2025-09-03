@@ -23,7 +23,7 @@ void launch() {
         Magics::instance();
         Book::instance();
         Zobrist::init();
-        PST::instance();
+        PSTManager::instance();
         PawnShields::instance();
 
         e.prime();

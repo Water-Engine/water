@@ -2,7 +2,7 @@
 
 #include "evaluation/pst.hpp"
 
-PST::PST() {
+PSTManager::PSTManager() {
     m_Tables[Piece(Piece::white_rook()).index()] = WhiteRookTable;
     m_Tables[Piece(Piece::white_knight()).index()] = WhiteKnightTable;
     m_Tables[Piece(Piece::white_bishop()).index()] = WhiteBishopTable;
@@ -18,7 +18,8 @@ PST::PST() {
     m_Tables[Piece(Piece::black_pawn()).index()] = BlackPawnTable;
 }
 
-int PST::get_value_unchecked(const Table& table, PieceColor piece_color, int square, Phase phase) {
+int PSTManager::get_value_unchecked(const PST& table, PieceColor piece_color, int square,
+                                    Phase phase) {
     int square_idx = square;
     if (piece_color == PieceColor::White) {
         int file = Coord::file_from_square(square_idx);
@@ -29,7 +30,7 @@ int PST::get_value_unchecked(const Table& table, PieceColor piece_color, int squ
     return table.phase(phase)[square_idx];
 }
 
-int PST::get_value(const Table& table, PieceColor piece_color, int square, Phase phase) {
+int PSTManager::get_value(const PST& table, PieceColor piece_color, int square, Phase phase) {
     if (!Coord::valid_square_idx(square)) {
         return 0;
     }
@@ -37,8 +38,8 @@ int PST::get_value(const Table& table, PieceColor piece_color, int square, Phase
     return get_value_unchecked(table, piece_color, square, phase);
 }
 
-int PST::get_value_tapered_unchecked(const Piece& piece, int square,
-                                     float endgame_transition) const {
+int PSTManager::get_value_tapered_unchecked(const Piece& piece, int square,
+                                            float endgame_transition) const {
     const auto& tbl = m_Tables[piece.index()];
     int early = tbl.EarlyGame[square];
     int late = tbl.LateGame[square];

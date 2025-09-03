@@ -4,6 +4,8 @@
 // I/O
 #include <csignal>
 #include <cstring>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -17,13 +19,12 @@
 #include <chrono>
 #include <climits>
 #include <concepts>
-#include <fstream>
 #include <functional>
-#include <iomanip>
 #include <memory>
 #include <mutex>
 #include <numeric>
 #include <random>
+#include <stdexcept>
 #include <thread>
 #include <type_traits>
 #include <utility>
@@ -37,9 +38,6 @@
 #include <unordered_set>
 #include <variant>
 #include <vector>
-
-// Exceptions
-#include <stdexcept>
 
 // Custom
 #include "core.hpp"

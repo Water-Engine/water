@@ -31,7 +31,7 @@ void MoveOrderer::order_moves(Ref<Board> board, const Move& hash_move, MoveList&
 
         Evaluator evaluator(board);
         float endgame_transition = evaluator.get_friendly_score().EndgameTransition;
-        auto& pst = PST::instance();
+        auto& pst = PSTManager::instance();
 
         // Capture handling
         if (is_capture) {

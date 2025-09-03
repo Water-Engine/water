@@ -31,3 +31,5 @@ MaterialScore Evaluator::get_score(PieceColor color) const {
         return get_score<PieceColor::Black>();
     }
 }
+
+int Evaluator::evaluate() { return 0; }

@@ -74,4 +74,6 @@ class Evaluator {
     MaterialScore get_score(PieceColor color) const;
     MaterialScore get_friendly_score() const { return get_score(m_Board->friendly_color()); }
     MaterialScore get_opponent_score() const { return get_score(m_Board->opponent_color()); }
+
+    int evaluate();
 };
