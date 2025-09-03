@@ -10,12 +10,12 @@
 - [x] Pawn move validation (most complex piece)
 - [X] Pseudo legal moves vs. legal moves
 - [x] Perft testing (Will validate correctness is Board, move, Coord, etc.)
+- [x] Zobrist hashing
+- [x] Custom Hash (Transposition) Table for positions
 
 # Search Core
-- [x] Zobrist hashing
-- [ ] Custom Hash (Transposition) Table for positions
-- [ ] Search thread - `go` command should not halt io operations
 - [x] Make/Unmake move system, including null moves for evaluation if needed
+- [ ] Search thread - `go` command should not halt io operations
 - [ ] Evaluating positions with NNUE and piece-square-tables (after NN implemented)
 - [x] Opening book for well-played openings
 
