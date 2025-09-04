@@ -13,11 +13,11 @@ uint64_t Bot::perft_recursive(Board& board, int depth) {
     }
 
     uint64_t total_nodes = 0;
-    auto moves = Generator::generate(board);
+    auto moves = board.legal_moves();
     for (auto& move : moves) {
         board.make_move(move);
         total_nodes += perft_recursive(board, depth - 1);
-        board.unmake_last_move();
+        board.unmake_move(move);
     }
 
     return total_nodes;
@@ -30,7 +30,7 @@ uint64_t Bot::perft_parallel(int depth, size_t max_threads) {
         return perft(depth);
     }
 
-    auto moves = Generator::generate(*m_Board);
+    auto moves = m_Board->legal_moves();
     size_t n = moves.size();
     if (n == 0) {
         return 0;
@@ -51,7 +51,7 @@ uint64_t Bot::perft_parallel(int depth, size_t max_threads) {
         for (auto& move : chunks[idx]) {
             board_copy.make_move(move);
             nodes += perft_recursive(board_copy, depth - 1);
-            board_copy.unmake_last_move();
+            board_copy.unmake_move(move);
         }
         results[idx] = nodes;
     };

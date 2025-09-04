@@ -13,6 +13,7 @@
 - Fathom tb prober: https://github.com/jdart1/Fathom
 - Probabilistic testing: https://www.chessprogramming.org/Sequential_Probability_Ratio_Test 
 - Static Exchange Evaluation (SEE): https://www.chessprogramming.org/Static_Exchange_Evaluation
+
 # Iterative Approaches (Not full NN) 
 - Negamax: https://www.chessprogramming.org/Negamax
 - Minimax: https://inst.eecs.berkeley.edu/~cs188/textbook/games/minimax.html

@@ -1,2 +1,3 @@
-#include "generator/generator.hpp"
 #include <pch.hpp>
+
+#include "generator/generator.hpp"

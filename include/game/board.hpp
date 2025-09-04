@@ -95,6 +95,8 @@ class illegal_board_access : public std::exception {
     const char* what() const noexcept override { return message.c_str(); }
 };
 
+class MoveList;
+
 class Board {
   private:
     PositionInfo m_StartPos;
@@ -231,7 +233,7 @@ class Board {
     Piece piece_at(int square_idx) const;
     void add_piece(Piece piece, int square_idx);
     void make_move(const Move& move, bool in_search = false);
-    void unmake_last_move(bool in_search = false);
+    void unmake_move(const Move& move, bool in_search = false);
 
     Result<void, std::string> load_from_fen(const std::string& fen);
     Result<void, std::string> load_startpos();
@@ -239,6 +241,8 @@ class Board {
     std::string to_string() const { return diagram(m_WhiteToMove); };
     std::string current_fen(bool include_counters = true) const;
     inline uint64_t current_hash() const { return m_State.Hash; }
+
+    MoveList legal_moves();
 
     friend std::ostream& operator<<(std::ostream& os, const Board& board) {
         os << board.to_string();

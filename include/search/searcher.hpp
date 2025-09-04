@@ -5,6 +5,8 @@
 
 #include "evaluation/evaluation.hpp"
 
+constexpr int MAX_SEARCH_DEPTH = 4;
+
 struct BestMove {
     Move BestMove;
     int BestMoveEval;
@@ -15,6 +17,9 @@ class Searcher {
     Ref<Board> m_Board;
     Evaluator m_Evaluator;
     Option<BestMove> m_BestMoveSoFar{};
+
+  private:
+    std::pair<Move, int> naive_ab(int depth, int alpha, int beta);
 
   public:
     Searcher(Ref<Board> board) : m_Board(board), m_Evaluator(board) {}

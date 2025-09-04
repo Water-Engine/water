@@ -113,19 +113,25 @@ bool Board::can_capture_ep(bool is_white) {
     int from_left = -1, from_right = -1;
 
     if (is_white) {
-        if (rank != 5)
+        if (rank != 5) {
             return false;
-        if (file > 0)
+        }
+        if (file > 0) {
             from_left = ep_square - 9;
-        if (file < 7)
+        }
+        if (file < 7) {
             from_right = ep_square - 7;
+        }
     } else {
-        if (rank != 2)
+        if (rank != 2) {
             return false;
-        if (file > 0)
+        }
+        if (file > 0) {
             from_left = ep_square + 7;
-        if (file < 7)
+        }
+        if (file < 7) {
             from_right = ep_square + 9;
+        }
     }
 
     // We'll need to simulate on the real board, so cast away const (we'll restore)
@@ -143,15 +149,19 @@ bool Board::can_capture_ep(bool is_white) {
     };
 
     auto test_from = [&](int from) -> bool {
-        if (from == -1)
+        if (from == -1) {
             return false;
+        }
         Piece p = piece_at(from);
-        if (p.is_none())
+        if (p.is_none()) {
             return false;
-        if ((is_white && !p.is_white()) || (!is_white && !p.is_black()))
+        }
+        if ((is_white && !p.is_white()) || (!is_white && !p.is_black())) {
             return false;
-        if (!p.is_pawn())
+        }
+        if (!p.is_pawn()) {
             return false;
+        }
 
         // Simulate EP capture: remove moving pawn from 'from', remove captured pawn, and place pawn
         // at ep_square
@@ -161,9 +171,9 @@ bool Board::can_capture_ep(bool is_white) {
         m_StoredPieces[from].clear();
         m_PawnBB.clear_bit(from);
         if (p.is_white())
-            m_WhiteBB.clear_bit(from);
+            {m_WhiteBB.clear_bit(from);}
         else
-            m_BlackBB.clear_bit(from);
+            {m_BlackBB.clear_bit(from);}
         m_AllPieceBB.clear_bit(from);
 
         // remove captured pawn
@@ -172,9 +182,9 @@ bool Board::can_capture_ep(bool is_white) {
             m_StoredPieces[captured_square].clear();
             m_PawnBB.clear_bit(captured_square);
             if (captured.is_white())
-                m_WhiteBB.clear_bit(captured_square);
+                {m_WhiteBB.clear_bit(captured_square);}
             else
-                m_BlackBB.clear_bit(captured_square);
+                {m_BlackBB.clear_bit(captured_square);}
             m_AllPieceBB.clear_bit(captured_square);
         }
 
@@ -182,9 +192,9 @@ bool Board::can_capture_ep(bool is_white) {
         m_StoredPieces[ep_square] = p;
         m_PawnBB.set_bit(ep_square);
         if (p.is_white())
-            m_WhiteBB.set_bit(ep_square);
+            {m_WhiteBB.set_bit(ep_square);}
         else
-            m_BlackBB.set_bit(ep_square);
+            {m_BlackBB.set_bit(ep_square);}
         m_AllPieceBB.set_bit(ep_square);
 
         bool leaves = king_in_check(p.color());

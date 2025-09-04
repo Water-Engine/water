@@ -8,6 +8,7 @@
 #include "generator/knight.hpp"
 #include "generator/pawn.hpp"
 #include "generator/sliders.hpp"
+#include "generator/generator.hpp"
 
 // ================ POSITION INFO ================
 
@@ -679,8 +680,9 @@ void Board::make_move(const Move& move, bool in_search) {
     }
 }
 
-void Board::unmake_last_move(bool in_search) {
-    if (m_AllMoves.empty() || m_RepetitionHistory.empty()) {
+// TODO: Change to incrementally change the board state instead
+void Board::unmake_move([[maybe_unused]] const Move& move, bool in_search) {
+    if (!in_search && (m_AllMoves.empty() || m_RepetitionHistory.empty())) {
         return;
     }
 
@@ -806,4 +808,8 @@ std::string Board::current_fen(bool include_counters) const {
     }
 
     return oss.str();
+}
+
+MoveList Board::legal_moves() {
+    return Generator::generate(*this);
 }

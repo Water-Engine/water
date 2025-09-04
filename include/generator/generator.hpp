@@ -261,7 +261,7 @@ class Generator {
     Generator() = delete;
     Generator(const Generator&) = delete;
 
-    template <PieceColor Color, PromotionsToGenerate Promotions = PromotionsToGenerate::AllTypes>
+    template <PieceColor Color, PromotionsToGenerate Promotions = PromotionsToGenerate::QueenKnightOnly>
     inline static MoveList generate(Board& board) {
         PROFILE_FUNCTION();
         bool is_white = Color == PieceColor::White;

@@ -599,7 +599,7 @@ class InstrumentationTimer {
 };
 
 // In the case that you would like to profile regardless of build mode, uncomment this
-// #define PROFILE
+#define PROFILE
 
 #define CONCAT(x, y) x##y
 
