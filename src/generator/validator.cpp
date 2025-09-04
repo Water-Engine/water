@@ -45,8 +45,8 @@ bool Board::move_leaves_self_checked(Coord start_coord, Coord target_coord, int 
     m_AllPieceBB.clear_bit_unchecked(from);
 
     // 3. Handle captures (regular or en-passant)
-    if (move_flag == PAWN_CAPTURE_FLAG && to == m_State.get_ep_square()) {
-        int captured_square = m_State.get_ep_square() + (piece_start.is_white() ? -8 : 8);
+    if (move_flag == PAWN_CAPTURE_FLAG && to == m_State.EpSquare) {
+        int captured_square = m_State.EpSquare + (piece_start.is_white() ? -8 : 8);
         Piece captured = m_StoredPieces[captured_square];
         if (!captured.is_none()) {
             m_StoredPieces[captured_square].clear();
@@ -102,7 +102,7 @@ bool Board::move_leaves_self_checked(Coord start_coord, Coord target_coord, int 
 }
 
 bool Board::can_capture_ep(bool is_white) {
-    int ep_square = m_State.get_ep_square();
+    int ep_square = m_State.EpSquare;
     if (ep_square == -1) {
         return false;
     }
@@ -170,10 +170,11 @@ bool Board::can_capture_ep(bool is_white) {
         // remove moving pawn from 'from'
         m_StoredPieces[from].clear();
         m_PawnBB.clear_bit(from);
-        if (p.is_white())
-            {m_WhiteBB.clear_bit(from);}
-        else
-            {m_BlackBB.clear_bit(from);}
+        if (p.is_white()) {
+            m_WhiteBB.clear_bit(from);
+        } else {
+            m_BlackBB.clear_bit(from);
+        }
         m_AllPieceBB.clear_bit(from);
 
         // remove captured pawn
@@ -181,20 +182,22 @@ bool Board::can_capture_ep(bool is_white) {
         if (!captured.is_none()) {
             m_StoredPieces[captured_square].clear();
             m_PawnBB.clear_bit(captured_square);
-            if (captured.is_white())
-                {m_WhiteBB.clear_bit(captured_square);}
-            else
-                {m_BlackBB.clear_bit(captured_square);}
+            if (captured.is_white()) {
+                m_WhiteBB.clear_bit(captured_square);
+            } else {
+                m_BlackBB.clear_bit(captured_square);
+            }
             m_AllPieceBB.clear_bit(captured_square);
         }
 
         // place pawn at ep_square
         m_StoredPieces[ep_square] = p;
         m_PawnBB.set_bit(ep_square);
-        if (p.is_white())
-            {m_WhiteBB.set_bit(ep_square);}
-        else
-            {m_BlackBB.set_bit(ep_square);}
+        if (p.is_white()) {
+            m_WhiteBB.set_bit(ep_square);
+        } else {
+            m_BlackBB.set_bit(ep_square);
+        }
         m_AllPieceBB.set_bit(ep_square);
 
         bool leaves = king_in_check(p.color());
@@ -533,7 +536,7 @@ bool Board::validate_pawn_move(Coord start_coord, Coord target_coord, int move_f
             return false;
         }
     } else if (move_flag == EP_FLAG) {
-        int ep_square = m_State.get_ep_square();
+        int ep_square = m_State.EpSquare;
         if (ep_square != target_coord.square_idx_unchecked()) {
             return false;
         }

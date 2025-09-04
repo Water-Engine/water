@@ -172,11 +172,6 @@ class Board {
         }
     }
 
-    inline void cache_self() {
-        m_State.cache_board(m_StoredPieces, m_WhiteBB, m_BlackBB, m_PawnBB, m_KnightBB, m_BishopBB,
-                            m_RookBB, m_QueenBB, m_KingBB, m_AllPieceBB);
-    }
-
     static bool compare_boards(const Board& a, const Board& b);
     static bool verify_bb_match(const Board& a, const Board& b);
 
@@ -216,7 +211,7 @@ class Board {
     };
 
     bool is_square_attacked(int square_idx, PieceColor occupied_color) const;
-    inline int get_ep_square() const { return m_State.get_ep_square(); }
+    inline int get_ep_square() const { return m_State.EpSquare; }
 
     bool king_in_check(PieceColor king_color) const;
 
@@ -232,6 +227,7 @@ class Board {
 
     Piece piece_at(int square_idx) const;
     void add_piece(Piece piece, int square_idx);
+
     void make_move(const Move& move, bool in_search = false);
     void unmake_move(const Move& move, bool in_search = false);
 

@@ -3,6 +3,129 @@
 #include "bitboard/bitboard.hpp"
 #include "game/piece.hpp"
 
+class GameState {
+  public:
+    int EpSquare;
+    int HalfmoveClock;
+    int CastlingRights;
+    uint64_t Hash;
+
+    Piece MovedPiece;
+    Piece CapturedPiece;
+    int CapturedSquare;
+
+  public:
+    GameState()
+        : EpSquare(-1), HalfmoveClock(0), CastlingRights(0b1111), Hash(0), MovedPiece(Pieces::NONE),
+          CapturedPiece(Pieces::NONE), CapturedSquare(-1) {}
+
+    GameState(bool wk, bool wq, bool bk, bool bq, int ep, int halfmove)
+        : EpSquare(ep), HalfmoveClock(halfmove), Hash(0), MovedPiece(Pieces::NONE),
+          CapturedPiece(Pieces::NONE), CapturedSquare(-1) {
+        CastlingRights = 0;
+        if (wk) {
+            CastlingRights |= 1;
+        }
+        if (wq) {
+            CastlingRights |= 2;
+        }
+        if (bk) {
+            CastlingRights |= 4;
+        }
+        if (bq) {
+            CastlingRights |= 8;
+        }
+    }
+
+    inline void try_reset_halfmove_clock() {
+        if (!CapturedPiece.is_none() || CapturedPiece.is_pawn()) {
+            HalfmoveClock = 0;
+        } else {
+            HalfmoveClock += 1;
+        }
+    }
+
+    // Query castling availability
+    inline bool can_white_kingside() const { return CastlingRights & (1 << 0); }
+    inline bool can_white_queenside() const { return CastlingRights & (1 << 1); }
+    inline bool can_black_kingside() const { return CastlingRights & (1 << 2); }
+    inline bool can_black_queenside() const { return CastlingRights & (1 << 3); }
+
+    inline bool has_castle_right(PieceColor color, bool kingside) const {
+        if (color == PieceColor::White) {
+            if (kingside) {
+                return can_white_kingside();
+            } else {
+                return can_white_queenside();
+            }
+        } else {
+            if (kingside) {
+                return can_black_kingside();
+            } else {
+                return can_black_queenside();
+            }
+        }
+    }
+
+    inline bool can_anyone_castle() const {
+        return can_white_kingside() || can_white_queenside() || can_black_kingside() ||
+               can_black_queenside();
+    }
+
+    // Revoke castling rights
+    inline void white_lost_kingside_right() { CastlingRights &= ~(1 << 0); }
+    inline void white_lost_queenside_right() { CastlingRights &= ~(1 << 1); }
+    inline void black_lost_kingside_right() { CastlingRights &= ~(1 << 2); }
+    inline void black_lost_queenside_right() { CastlingRights &= ~(1 << 3); }
+
+    inline void revoke_castle_rights(PieceColor color) {
+        if (color == PieceColor::White) {
+            white_lost_kingside_right();
+            white_lost_queenside_right();
+        } else {
+            black_lost_kingside_right();
+            black_lost_queenside_right();
+        }
+    }
+
+    friend bool operator==(const GameState& a, const GameState& b) {
+        bool same_castle = a.CastlingRights == b.CastlingRights;
+        bool same_ep = a.EpSquare == b.EpSquare;
+        bool same_clock = a.HalfmoveClock == b.HalfmoveClock;
+        bool same_move_piece = a.MovedPiece == b.MovedPiece;
+        bool same_capture_piece = a.CapturedPiece == b.CapturedPiece;
+        bool same_capture_square = a.CapturedSquare == b.CapturedSquare;
+        bool same_hash = a.Hash == b.Hash;
+
+        if (!(same_castle && same_ep && same_clock && same_move_piece && same_capture_piece &&
+              same_capture_square && same_hash)) {
+            std::cerr << "GameState mismatch:\n";
+            if (!same_castle)
+                std::cerr << "  CastlingRights differ: " << a.CastlingRights << " vs "
+                          << b.CastlingRights << "\n";
+            if (!same_ep)
+                std::cerr << "  EpSquare differ: " << a.EpSquare << " vs " << b.EpSquare << "\n";
+            if (!same_clock)
+                std::cerr << "  HalfmoveClock differ: " << a.HalfmoveClock << " vs "
+                          << b.HalfmoveClock << "\n";
+            if (!same_move_piece)
+                std::cerr << "  MovedPiece differ: " << (int)a.MovedPiece << " vs "
+                          << (int)b.MovedPiece << "\n";
+            if (!same_capture_piece)
+                std::cerr << "  CapturedPiece differ: " << (int)a.CapturedPiece << " vs "
+                          << (int)b.CapturedPiece << "\n";
+            if (!same_capture_square)
+                std::cerr << "  CapturedSquare differ: " << a.CapturedSquare << " vs "
+                          << b.CapturedSquare << "\n";
+            if (!same_hash)
+                std::cerr << "  Hash differ: " << a.Hash << " vs " << b.Hash << "\n";
+        }
+
+        return same_castle && same_ep && same_clock && same_move_piece && same_capture_piece &&
+               same_capture_square && same_hash;
+    }
+};
+
 struct BoardBoards {
     std::array<Piece, 64> StoredPieces;
 
@@ -19,7 +142,7 @@ struct BoardBoards {
     Bitboard AllPieceBB;
 };
 
-class GameState {
+class GameStateOld {
   private:
     bool m_WhiteCastleKingside;
     bool m_WhiteCastleQueenside;
@@ -51,8 +174,8 @@ class GameState {
     uint64_t Hash;
 
   public:
-    GameState();
-    GameState(bool wck, bool wcq, bool bck, bool bcq, int ep_square, int hmc);
+    GameStateOld();
+    GameStateOld(bool wck, bool wcq, bool bck, bool bcq, int ep_square, int hmc);
 
     inline bool can_white_kingside() const { return m_WhiteCastleKingside; }
     inline bool can_black_kingside() const { return m_BlackCastleKingside; }
@@ -151,7 +274,7 @@ class GameState {
         };
     }
 
-    friend bool operator==(const GameState& a, const GameState& b) {
+    friend bool operator==(const GameStateOld& a, const GameStateOld& b) {
         bool same_castle = (a.m_WhiteCastleKingside == b.m_WhiteCastleKingside) &&
                            (a.m_WhiteCastleQueenside == b.m_WhiteCastleQueenside) &&
                            (a.m_BlackCastleKingside == b.m_BlackCastleKingside) &&

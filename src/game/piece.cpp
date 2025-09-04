@@ -70,7 +70,7 @@ inline Piece Piece::from_int(int value) {
         return Piece(PieceType::Pawn, PieceColor::Black);
 
     default:
-        return none();
+        return Pieces::NONE;
     }
 }
 

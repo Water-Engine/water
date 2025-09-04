@@ -31,6 +31,7 @@ class Searcher {
     };
 
     inline std::string retrieve_bestmove() const {
-        return fmt::interpolate("bestmove {}", m_BestMoveSoFar.unwrap_or(BestMove{}).BestMove.to_uci());
+        return fmt::interpolate("bestmove {}",
+                                m_BestMoveSoFar.unwrap_or(BestMove{}).BestMove.to_uci());
     }
 };

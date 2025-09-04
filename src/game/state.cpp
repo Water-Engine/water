@@ -3,12 +3,12 @@
 #include "game/board.hpp"
 #include "game/state.hpp"
 
-GameState::GameState()
+GameStateOld::GameStateOld()
     : m_WhiteCastleKingside(false), m_WhiteCastleQueenside(false), m_BlackCastleKingside(false),
       m_BlackCastleQueenside(false), m_EpSquare(-1), m_HalfmoveClock(0),
       m_LastMoveWasCapture(false), m_LastMoveWasPawnMove(false) {}
 
-GameState::GameState(bool wck, bool wcq, bool bck, bool bcq, int ep_square, int hmc)
+GameStateOld::GameStateOld(bool wck, bool wcq, bool bck, bool bcq, int ep_square, int hmc)
     : m_WhiteCastleKingside(wck), m_WhiteCastleQueenside(wcq), m_BlackCastleKingside(bck),
       m_BlackCastleQueenside(bcq), m_EpSquare(ep_square), m_HalfmoveClock(hmc),
       m_LastMoveWasCapture(false), m_LastMoveWasPawnMove(false) {}
@@ -53,14 +53,14 @@ void Board::update_hash(const ValidatedMove& move, int old_castling_mask, int ol
 
     // Castling - XOR out old, XOR in new
     m_State.Hash ^= Zobrist::Castling[old_castling_mask];
-    m_State.Hash ^= Zobrist::Castling[m_State.castle_flags_mask()];
+    m_State.Hash ^= Zobrist::Castling[m_State.CastlingRights];
 
     // EP - XOR in/out if valid
     if (Coord::valid_square_idx(old_ep_square)) {
         m_State.Hash ^= Zobrist::EnPassant[old_ep_square % 8];
     }
 
-    int new_ep_square = m_State.get_ep_square();
+    int new_ep_square = m_State.EpSquare;
     if (Coord::valid_square_idx(new_ep_square)) {
         m_State.Hash ^= Zobrist::EnPassant[new_ep_square % 8];
     }

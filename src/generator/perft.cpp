@@ -15,9 +15,13 @@ uint64_t Bot::perft_recursive(Board& board, int depth) {
     uint64_t total_nodes = 0;
     auto moves = board.legal_moves();
     for (auto& move : moves) {
+        Board pre = board;
         board.make_move(move);
         total_nodes += perft_recursive(board, depth - 1);
         board.unmake_move(move);
+        if (pre != board) {
+            throw std::runtime_error("nope");
+        }
     }
 
     return total_nodes;

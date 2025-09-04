@@ -4,11 +4,11 @@
 
 #include "game/board.hpp"
 
+#include "generator/generator.hpp"
 #include "generator/king.hpp"
 #include "generator/knight.hpp"
 #include "generator/pawn.hpp"
 #include "generator/sliders.hpp"
-#include "generator/generator.hpp"
 
 // ================ POSITION INFO ================
 
@@ -158,18 +158,16 @@ void Board::load_from_position(const PositionInfo& pos) {
         hash ^= Zobrist::Side;
     }
 
-    // Castling
-    auto castling_mask = m_State.castle_flags_mask();
-    hash ^= Zobrist::Castling[castling_mask];
+    // Castling & Ep
+    hash ^= Zobrist::Castling[m_State.CastlingRights];
 
     if (pos.m_EpSquare != -1) {
         int file = pos.m_EpSquare % 8;
         hash ^= Zobrist::EnPassant[file];
     }
 
-    m_State.hash(hash);
+    m_State.Hash = hash;
 
-    cache_self();
     m_StateHistory.emplace_back(m_State);
 }
 
@@ -241,7 +239,7 @@ std::string Board::diagram(bool black_at_top, bool include_fen, bool include_has
     }
 
     if (include_hash) {
-        oss << fmt::interpolate("Hash        : {}", m_State.hash());
+        oss << fmt::interpolate("Hash        : {}", m_State.Hash);
     }
 
     return oss.str();
@@ -408,7 +406,7 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
             return false;
         }
 
-        m_State.set_ep(ep_square);
+        m_State.EpSquare = ep_square;
         move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
                    target_coord.square_idx_unchecked(), piece_from);
     } else if (move_flag == PAWN_CAPTURE_FLAG) {
@@ -421,7 +419,7 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
         move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
                    target_coord.square_idx_unchecked(), piece_from);
     } else if (move_flag == EP_FLAG) {
-        int old_ep_square = m_State.get_ep_square();
+        int old_ep_square = m_State.EpSquare;
 
         if (old_ep_square != target_coord.square_idx_unchecked()) {
             return false;
@@ -434,7 +432,6 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
         // Move and capture involved pawns
         int captured_pawn_square = old_ep_square + (piece_from.is_white() ? -8 : 8);
         remove_piece_at(captured_pawn_square);
-        m_State.indicate_capture();
         move_piece(m_PawnBB, start_coord.square_idx_unchecked(),
                    target_coord.square_idx_unchecked(), piece_from);
     } else if (Move::is_promotion(move_flag)) {
@@ -470,7 +467,6 @@ bool Board::make_pawn_move(Coord start_coord, Coord target_coord, int move_flag,
         return false;
     }
 
-    m_State.indicate_pawn_move();
     return true;
 }
 
@@ -522,12 +518,10 @@ void Board::move_piece(Bitboard& piece_bb, int from, int to, Piece piece) {
     // If there is an enemy piece on the target, remove it BEFORE placing the new piece
     if (piece.is_white()) {
         if (m_BlackBB.bit_value_at(to) == 1) {
-            m_State.indicate_capture();
             remove_piece_at(to);
         }
     } else {
         if (m_WhiteBB.bit_value_at(to) == 1) {
-            m_State.indicate_capture();
             remove_piece_at(to);
         }
     }
@@ -619,16 +613,23 @@ void Board::make_move(const Move& move, bool in_search) {
     if (maybe_validated_move.is_none()) {
         return;
     }
-
     auto validated = maybe_validated_move.unwrap();
+
     Coord start_coord = validated.StartCoord;
     Coord target_coord = validated.TargetCoord;
     Piece piece_start = validated.PieceStart;
     Piece piece_target = validated.PieceTarget;
     int move_flag = validated.MoveFlag;
 
-    int old_castling_rights = m_State.castle_flags_mask();
-    int old_ep = m_State.get_ep_square();
+    GameState undo;
+    undo.Hash = m_State.Hash;
+    undo.EpSquare = m_State.EpSquare;
+    undo.HalfmoveClock = m_State.HalfmoveClock;
+    undo.CastlingRights = m_State.CastlingRights;
+
+    Piece captured = piece_at(target_coord.square_idx_unchecked());
+    undo.CapturedPiece = captured;
+    undo.CapturedSquare = captured.is_none() ? -1 : target_coord.square_idx_unchecked();
 
     // The move has transendendid pseudo-legality
     bool was_valid;
@@ -659,20 +660,30 @@ void Board::make_move(const Move& move, bool in_search) {
         return;
     }
 
+    if (move_flag == EP_FLAG) {
+        undo.CapturedPiece = m_WhiteToMove ? Pieces::BLACK_PAWN : Pieces::WHITE_PAWN;
+        undo.CapturedSquare =
+            target_coord.square_idx_unchecked() + (piece_start.is_white() ? -8 : 8);
+    }
+
     if (!was_valid) {
         return;
     }
 
+    undo.MovedPiece = piece_start;
+
     if (!(piece_start.is_pawn() && move_flag == PAWN_TWO_UP_FLAG)) {
-        m_State.clear_ep();
+        m_State.EpSquare = -1;
     }
 
     m_State.try_reset_halfmove_clock();
-    cache_self();
+    if (piece_start.is_pawn() || !captured.is_none()) {
+        m_State.HalfmoveClock = 0;
+    }
     m_WhiteToMove = !m_WhiteToMove;
 
-    update_hash(validated, old_castling_rights, old_ep, piece_target);
-    m_StateHistory.push_back(m_State);
+    update_hash(validated, undo.CastlingRights, undo.EpSquare, undo.CapturedPiece);
+    m_StateHistory.push_back(undo);
 
     if (!in_search) {
         m_AllMoves.push_back(move);
@@ -680,7 +691,6 @@ void Board::make_move(const Move& move, bool in_search) {
     }
 }
 
-// TODO: Change to incrementally change the board state instead
 void Board::unmake_move([[maybe_unused]] const Move& move, bool in_search) {
     if (!in_search && (m_AllMoves.empty() || m_RepetitionHistory.empty())) {
         return;
@@ -691,22 +701,25 @@ void Board::unmake_move([[maybe_unused]] const Move& move, bool in_search) {
         m_RepetitionHistory.pop_back();
     }
 
+    // Restore old state
+    GameState undo = m_StateHistory.back();
     m_StateHistory.pop_back();
-    m_State = m_StateHistory.back();
+    m_State = undo;
     m_WhiteToMove = !m_WhiteToMove;
 
-    auto bbs = m_State.get_cache();
+    // Undo piece movement
+    Coord start(move.start_square());
+    Coord target(move.target_square());
+    Piece moved_piece = undo.MovedPiece;
 
-    m_StoredPieces = bbs.StoredPieces;
-    m_WhiteBB = bbs.WhiteBB;
-    m_BlackBB = bbs.BlackBB;
-    m_PawnBB = bbs.PawnBB;
-    m_KnightBB = bbs.KnightBB;
-    m_BishopBB = bbs.BishopBB;
-    m_RookBB = bbs.RookBB;
-    m_QueenBB = bbs.QueenBB;
-    m_KingBB = bbs.KingBB;
-    m_AllPieceBB = bbs.AllPieceBB;
+    // Move piece back
+    remove_piece_at(target.square_idx_unchecked());
+    add_piece(moved_piece, start.square_idx_unchecked());
+
+    // Restore captured piece if any
+    if (!undo.CapturedPiece.is_none()) {
+        add_piece(undo.CapturedPiece, undo.CapturedSquare);
+    }
 }
 
 Result<void, std::string> Board::load_from_fen(const std::string& fen) {
@@ -793,7 +806,7 @@ std::string Board::current_fen(bool include_counters) const {
     }
 
     oss << ' ';
-    Coord ep_coord(m_State.get_ep_square());
+    Coord ep_coord(m_State.EpSquare);
     if (ep_coord.valid_square_idx()) {
         oss << ep_coord.as_str();
     } else {
@@ -802,7 +815,7 @@ std::string Board::current_fen(bool include_counters) const {
 
     if (include_counters) {
         oss << ' ';
-        oss << m_State.halfmove_clock();
+        oss << m_State.HalfmoveClock;
         oss << ' ';
         oss << (m_AllMoves.size() / 2) + 1;
     }
@@ -810,6 +823,4 @@ std::string Board::current_fen(bool include_counters) const {
     return oss.str();
 }
 
-MoveList Board::legal_moves() {
-    return Generator::generate(*this);
-}
+MoveList Board::legal_moves() { return Generator::generate(*this); }

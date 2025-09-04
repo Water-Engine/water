@@ -18,9 +18,15 @@ std::pair<Move, int> Searcher::naive_ab(int depth, int alpha, int beta) {
     int best_score = -INF;
 
     for (auto& move : moves) {
-        {PROFILE_SCOPE("Search Make"); m_Board->make_move(move, true);}
+        {
+            PROFILE_SCOPE("Search Make");
+            m_Board->make_move(move, true);
+        }
         int score = -naive_ab(depth - 1, -beta, -alpha).second;
-        {PROFILE_SCOPE("Search Unmake"); m_Board->unmake_move(move, true);}
+        {
+            PROFILE_SCOPE("Search Unmake");
+            m_Board->unmake_move(move, true);
+        }
 
         if (score > best_score) {
             best_move = move;

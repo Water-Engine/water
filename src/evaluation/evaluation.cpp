@@ -26,10 +26,10 @@ MaterialScore::MaterialScore(int num_pawns, int num_knights, int num_bishops, in
 }
 
 int Evaluator::individual_piece_score(const Piece& piece, Bitboard piece_bb,
-                                   float endgame_transition) {
+                                      float endgame_transition) {
     auto& psts = PSTManager::instance();
     int aggregate = 0;
-    
+
     while (piece_bb.value() != 0) {
         int square = piece_bb.pop_lsb();
         aggregate += psts.get_value_tapered_unchecked(piece, square, endgame_transition);
@@ -40,13 +40,26 @@ int Evaluator::individual_piece_score(const Piece& piece, Bitboard piece_bb,
 
 int Evaluator::combined_piece_score(const Bitboard& friendly_bb, PieceColor friendly_color,
                                     float endgame_transition) {
-    int pawn_pst_score = individual_piece_score(Piece(PieceType::Pawn, friendly_color), m_Board->m_PawnBB & friendly_bb, endgame_transition);
-    int knight_pst_score = individual_piece_score(Piece(PieceType::Knight, friendly_color), m_Board->m_KnightBB & friendly_bb, endgame_transition);
-    int bishop_pst_score = individual_piece_score(Piece(PieceType::Bishop, friendly_color), m_Board->m_BishopBB & friendly_bb, endgame_transition);
-    int rook_pst_score = individual_piece_score(Piece(PieceType::Rook, friendly_color), m_Board->m_RookBB & friendly_bb, endgame_transition);
-    int queen_pst_score = individual_piece_score(Piece(PieceType::Queen, friendly_color), m_Board->m_QueenBB & friendly_bb, endgame_transition);
-    int king_pst_score = individual_piece_score(Piece(PieceType::King, friendly_color), m_Board->m_KingBB & friendly_bb, endgame_transition);
-    return pawn_pst_score + knight_pst_score + bishop_pst_score + rook_pst_score + queen_pst_score + king_pst_score;
+    int pawn_pst_score =
+        individual_piece_score(Piece(PieceType::Pawn, friendly_color),
+                               m_Board->m_PawnBB & friendly_bb, endgame_transition);
+    int knight_pst_score =
+        individual_piece_score(Piece(PieceType::Knight, friendly_color),
+                               m_Board->m_KnightBB & friendly_bb, endgame_transition);
+    int bishop_pst_score =
+        individual_piece_score(Piece(PieceType::Bishop, friendly_color),
+                               m_Board->m_BishopBB & friendly_bb, endgame_transition);
+    int rook_pst_score =
+        individual_piece_score(Piece(PieceType::Rook, friendly_color),
+                               m_Board->m_RookBB & friendly_bb, endgame_transition);
+    int queen_pst_score =
+        individual_piece_score(Piece(PieceType::Queen, friendly_color),
+                               m_Board->m_QueenBB & friendly_bb, endgame_transition);
+    int king_pst_score =
+        individual_piece_score(Piece(PieceType::King, friendly_color),
+                               m_Board->m_KingBB & friendly_bb, endgame_transition);
+    return pawn_pst_score + knight_pst_score + bishop_pst_score + rook_pst_score + queen_pst_score +
+           king_pst_score;
 }
 
 MaterialScore Evaluator::get_score(PieceColor color) const {
@@ -68,7 +81,8 @@ int Evaluator::evaluate() {
     const auto& enemy_material = get_score(enemy_color);
     auto material_difference = friendly_material.Aggregate - enemy_material.Aggregate;
 
-    int pst_score = combined_piece_score(friendly_color_bb, friendly_color, friendly_material.EndgameTransition);
+    int pst_score = combined_piece_score(friendly_color_bb, friendly_color,
+                                         friendly_material.EndgameTransition);
 
     int multiplier = white_to_move ? 1 : -1;
     int evaluation_score = material_difference + pst_score;
