@@ -1,12 +1,5 @@
 #pragma once
 
-#include "bitboard/bitboard.hpp"
-
-#include "game/board.hpp"
-#include "game/move.hpp"
-
-#include "generator/generator.hpp"
-
 // Technically arbitrary values for biased ordering
 constexpr int UNBIASED = 0;
 constexpr int LOSING_CAPTURE_BIAS = 2'000'000;
@@ -62,8 +55,8 @@ class MoveOrderer {
     }
 
     /// Order moves heuristically. Assumes a fully validated MoveList, meaning all moves are legal
-    void order_moves(Ref<Board> board, const Move& hash_move, MoveList& moves, bool in_quiescence,
+    void order_moves(Ref<Board> board, const Move& hash_move, Movelist& moves, bool in_quiescence,
                      size_t ply);
 
-    inline std::string label_of_index(const MoveList& moves, size_t idx) const;
+    inline std::string label_of_index(const Movelist& moves, size_t idx) const;
 };

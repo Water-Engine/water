@@ -1,7 +1,5 @@
 #include <pch.hpp>
 
-#include "game/board.hpp"
-
 #include "book/book.hpp"
 #include "book/openings.hpp"
 
@@ -47,7 +45,7 @@ Option<std::string> Book::try_get_book_move(Ref<Board> board, float weight) {
         return Option<std::string>();
     }
 
-    auto current_fen = board->current_fen(false);
+    auto current_fen = board->getFen(false);
     auto weight_power = std::clamp(weight, 0.0f, 1.0f);
     auto weighted_frequency = [&](int play_count) -> int {
         return static_cast<int>(std::ceil(std::pow(play_count, weight_power)));

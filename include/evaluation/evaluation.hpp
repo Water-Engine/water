@@ -1,8 +1,5 @@
 #pragma once
 
-#include "game/board.hpp"
-#include "game/piece.hpp"
-
 const int INF = 1000000000;
 const int NEG_INF = -INF;
 
@@ -49,36 +46,17 @@ class Evaluator {
     Ref<Board> m_Board;
 
   private:
-    template <PieceColor Color> MaterialScore get_score() const {
-        auto friendly_color_bb =
-            (Color == PieceColor::White) ? m_Board->m_WhiteBB : m_Board->m_BlackBB;
-        auto enemy_color_bb =
-            (Color == PieceColor::White) ? m_Board->m_BlackBB : m_Board->m_WhiteBB;
-
-        auto friendly_pawns = friendly_color_bb | m_Board->m_PawnBB;
-        auto enemy_pawns = enemy_color_bb | m_Board->m_PawnBB;
-        auto friendly_knights = friendly_color_bb | m_Board->m_KnightBB;
-        auto friendly_bishops = friendly_color_bb | m_Board->m_BishopBB;
-        auto friendly_rooks = friendly_color_bb | m_Board->m_RookBB;
-        auto friendly_queens = friendly_color_bb | m_Board->m_QueenBB;
-
-        return MaterialScore(friendly_pawns.popcount(), friendly_knights.popcount(),
-                             friendly_bishops.popcount(), friendly_rooks.popcount(),
-                             friendly_queens.popcount(), friendly_pawns.value(),
-                             enemy_pawns.value());
-    }
-
     static int individual_piece_score(const Piece& piece, Bitboard piece_bb,
                                       float endgame_transition);
-    int combined_piece_score(const Bitboard& friendly_bb, PieceColor friendly_color,
+    int combined_piece_score(const Bitboard& friendly_bb, Color friendly_color,
                              float endgame_transition);
 
   public:
     Evaluator(Ref<Board> board) : m_Board(board) {}
 
-    MaterialScore get_score(PieceColor color) const;
-    MaterialScore get_friendly_score() const { return get_score(m_Board->friendly_color()); }
-    MaterialScore get_opponent_score() const { return get_score(m_Board->opponent_color()); }
+    MaterialScore get_score(Color color) const;
+    MaterialScore get_friendly_score() const { return get_score(m_Board->sideToMove()); }
+    MaterialScore get_opponent_score() const { return get_score(~m_Board->sideToMove()); }
 
     int evaluate();
 };

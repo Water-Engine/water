@@ -1,5 +1,5 @@
 # water [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=c%2B%2B&logoColor=white)](https://en.cppreference.com/w/cpp/20.html) [![License](https://img.shields.io/github/license/Water-Engine/water)](LICENSE) [![LOC](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Water-Engine/water/loc/.github/loc_badge.json)](https://github.com/Water-Engine/water/actions/workflows/loc.yml) [![Last commit](https://img.shields.io/github/last-commit/Water-Engine/water)](https://github.com/Water-Engine/water) [![Formatting](https://github.com/Water-Engine/water/actions/workflows/format.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/format.yml) [![CI](https://github.com/Water-Engine/water/actions/workflows/ci.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/ci.yml)
-A chess engine written in C++, powered by magic bitboard and neural networks.
+A chess engine written in C++, powered by Disservin's [chess-library](https://github.com/Disservin/chess-library), utilizing a hybrid approach of classical and neural network evaluation.
 
 # Goals
 While this project is still a major WIP, the end-goal is a dual-mode engine:
@@ -58,6 +58,9 @@ Contributing guidelines, information on tests, formatting, and profiling can be 
 
 # Credits
 Water could not be where it is today without the formative work done by experienced developers in the past. Core references used during development include:
+- [chess-library](https://github.com/Disservin/chess-library) revived my motivation after many failed attempts
+    - Maybe in the future, I'll roll my own core library, but it was taking too much out of me
+    - This library saved a lot of time and frustration for me, so I would like to personally thank the chess-library teams for their hard work
 - [Syzygy](https://www.chessprogramming.org/Syzygy_Bases) tables originally created by Dutch mathematician [Ronald de Man](https://www.chessprogramming.org/Ronald_de_Man)
 - [Fathom](https://github.com/jdart1/Fathom) syzygy tablebase reader - rewritten and catered to the Water engine
 - Sebastian Lague's [Chess Coding Adventure](https://github.com/SebLague/Chess-Coding-Adventure) engine - used for comparative testing for elo estimates

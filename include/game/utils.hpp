@@ -1,5 +1,11 @@
 #pragma once
 
+constexpr std::string_view STARTING_FEN =
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+constexpr std::string_view FILES = "abcdefgh";
+constexpr std::string_view RANKS = "12345678";
+
 class Coord {
   private:
     int m_FileIdx;
@@ -8,8 +14,6 @@ class Coord {
   public:
     Coord() : m_FileIdx(-1), m_RankIdx(-1) {}
     constexpr Coord(int file_idx, int rank_idx) : m_FileIdx(file_idx), m_RankIdx(rank_idx) {}
-
-    Coord(const std::string& square_string);
     constexpr Coord(int square)
         : m_FileIdx(file_from_square(square)), m_RankIdx(rank_from_square(square)) {}
 
@@ -25,11 +29,30 @@ class Coord {
 
     bool is_light_square() const { return (m_FileIdx + m_RankIdx) % 2 != 0; }
 
-    bool valid_square_idx() const;
-    static bool valid_square_idx(int square_idx);
+    inline bool valid_square_idx() const {
+        return m_FileIdx >= 0 && m_FileIdx < 8 && m_RankIdx >= 0 && m_RankIdx < 8;
+    }
+    static bool valid_square_idx(int square_idx) {
+        Coord c(square_idx);
+        return c.valid_square_idx();
+    }
 
-    std::string as_str() const;
-    static std::string as_str(int square_idx);
+    std::string as_str() const {
+        if (!valid_square_idx()) {
+            return std::string();
+        }
+
+        char file_name = FILES[m_FileIdx];
+        char rank_name = RANKS[m_RankIdx];
+
+        char combined[3] = {file_name, rank_name, '\0'};
+        return std::string(combined);
+    }
+
+    static std::string as_str(int square_idx) {
+        Coord c(square_idx);
+        return c.as_str();
+    }
 
     friend bool operator==(const Coord& a, const Coord& b) {
         return a.square_idx_unchecked() == b.square_idx_unchecked();
@@ -65,3 +88,13 @@ enum Index : int {
 };
 // clang-format on
 } // namespace Square
+
+namespace PieceScores {
+enum Scores {
+    Pawn = 100,
+    Knight = 300,
+    Bishop = 300,
+    Rook = 500,
+    Queen = 900,
+};
+}

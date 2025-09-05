@@ -2,10 +2,6 @@
 
 #include "bot.hpp"
 
-#include "game/move.hpp"
-
-#include "generator/generator.hpp"
-
 #include "evaluation/evaluation.hpp"
 #include "evaluation/ordering.hpp"
 
@@ -14,20 +10,25 @@
 void Bot::new_game() {}
 
 Result<void, std::string> Bot::set_position(const std::string& fen) {
-    m_Board->load_from_fen(fen);
-    return Result<void, std::string>();
+    if (m_Board->setFen(fen)) {
+        return Result<void, std::string>();
+    } else {
+        return Result<void, std::string>::Err("Failed to load/parse fen");
+    }
 }
 
 Result<void, std::string> Bot::make_move(const std::string& move_uci) {
-    Move move(m_Board, move_uci);
-    m_Board->make_move(move);
+    Move move = uci::uciToMove(*m_Board, move_uci);
+    m_Board->makeMove(move);
     return Result<void, std::string>();
 }
 
 int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black_ms,
                            int increment_white_ms, int increment_black_ms) {
-    int my_time = m_Board->is_white_to_move() ? time_remaining_white_ms : time_remaining_black_ms;
-    int my_increment = m_Board->is_white_to_move() ? increment_white_ms : increment_black_ms;
+    int my_time =
+        (m_Board->sideToMove() == Color::WHITE) ? time_remaining_white_ms : time_remaining_black_ms;
+    int my_increment =
+        (m_Board->sideToMove() == Color::WHITE) ? increment_white_ms : increment_black_ms;
 
     float think_time_ms = (float)my_time / 40.0;
     if (USE_MAX_THINKING_TIME) {
@@ -53,4 +54,9 @@ Result<void, std::string> Bot::think_timed([[maybe_unused]] int time_ms) {
     fmt::println(m_Searcher.retrieve_bestmove());
 
     return Result<void, std::string>();
+}
+
+std::string Bot::board_str() {
+    // TODO: board diagram
+    return m_Board->getFen();
 }

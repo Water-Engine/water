@@ -42,4 +42,15 @@
 // Custom
 #include "core.hpp"
 
+// Chess Core Library
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wall"
+#pragma GCC diagnostic ignored "-Wextra"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#define CHESS_NO_EXCEPTIONS
+#include "game/chess.hpp"
+#include "game/utils.hpp"
+using namespace chess;
+#pragma GCC diagnostic pop
+
 #endif // WATER_PCH

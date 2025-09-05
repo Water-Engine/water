@@ -1,7 +1,6 @@
 #pragma once
 
-#include "game/coord.hpp"
-#include "game/piece.hpp"
+#include "game/utils.hpp"
 
 // ================ TABLE GROUP ================
 
@@ -159,18 +158,14 @@ class PSTManager {
         return s_instance;
     }
 
-    int static get_value_unchecked(const PST& table, PieceColor piece_color, int square,
+    int static get_value_unchecked(const PST& table, Color piece_color, int square,
                                    Phase phase = Phase::Unified);
-    int static get_value(const PST& table, PieceColor piece_color, int square,
+    int static get_value(const PST& table, Color piece_color, int square,
                          Phase phase = Phase::Unified);
 
     inline int get_value_unchecked(const Piece& piece, int square,
                                    Phase phase = Phase::Unified) const {
-// The compiler really hates the use of piece.index() for any indexing
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warray-bounds"
-        return m_Tables[piece.index()].phase(phase)[square];
-#pragma GCC diagnostic pop
+        return m_Tables[piece].phase(phase)[square];
     }
 
     inline int get_value(const Piece& piece, int square, Phase phase = Phase::Unified) const {
@@ -196,9 +191,6 @@ class PSTManager {
     }
 
     inline std::string to_string(const Piece& piece, Phase phase = Phase::Unified) const {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warray-bounds"
-        return m_Tables[piece.index()].to_string(phase);
-#pragma GCC diagnostic pop
+        return m_Tables[piece].to_string(phase);
     }
 };

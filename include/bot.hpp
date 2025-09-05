@@ -1,7 +1,5 @@
 #pragma once
 
-#include "game/board.hpp"
-
 #include "search/searcher.hpp"
 
 constexpr bool USE_MAX_THINKING_TIME = false;
@@ -31,7 +29,6 @@ class Bot {
     Result<void, std::string> think_timed(int time_ms);
 
     uint64_t perft(int depth);
-    uint64_t perft_parallel(int depth, size_t max_threads = 2);
 
-    std::string board_str() { return m_Board->to_string(); }
+    std::string board_str();
 };

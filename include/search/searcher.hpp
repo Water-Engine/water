@@ -1,8 +1,5 @@
 #pragma once
 
-#include "game/board.hpp"
-#include "game/move.hpp"
-
 #include "evaluation/evaluation.hpp"
 
 constexpr int MAX_SEARCH_DEPTH = 4;
@@ -32,6 +29,6 @@ class Searcher {
 
     inline std::string retrieve_bestmove() const {
         return fmt::interpolate("bestmove {}",
-                                m_BestMoveSoFar.unwrap_or(BestMove{}).BestMove.to_uci());
+                                uci::moveToUci(m_BestMoveSoFar.unwrap_or(BestMove{}).BestMove));
     }
 };
