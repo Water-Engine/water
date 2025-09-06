@@ -3,6 +3,27 @@
 const int INF = 1000000000;
 const int NEG_INF = -INF;
 
+// ================ EVALUATION UTILS ================
+int16_t score_of_piece(PieceType type) {
+    switch (type.internal()) {
+    case PieceType::PAWN:
+        return PieceScores::Pawn;
+    case PieceType::KNIGHT:
+        return PieceScores::Knight;
+    case PieceType::BISHOP:
+        return PieceScores::Bishop;
+    case PieceType::ROOK:
+        return PieceScores::Rook;
+    case PieceType::QUEEN:
+        return PieceScores::Queen;
+    default:
+        return 0;
+    }
+}
+
+Bitboard pawn_attack_rays(Ref<Board> board, Color color);
+Bitboard non_pawn_attack_rays(Ref<Board> board, Color color);
+
 // ================ MATERIAL SCORE ================
 
 struct MaterialScore {

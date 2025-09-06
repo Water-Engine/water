@@ -90,7 +90,7 @@ enum Index : int {
 } // namespace Square
 
 namespace PieceScores {
-enum Scores {
+enum Scores : int16_t {
     Pawn = 100,
     Knight = 300,
     Bishop = 300,

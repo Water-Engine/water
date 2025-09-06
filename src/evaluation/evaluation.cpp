@@ -92,3 +92,7 @@ int Evaluator::evaluate() {
     int evaluation_score = material_difference + pst_score;
     return multiplier * evaluation_score;
 }
+
+Bitboard pawn_attack_rays(Ref<Board> board, Color color) { return Bitboard(); }
+
+Bitboard non_pawn_attack_rays(Ref<Board> board, Color color) { return Bitboard(); }
