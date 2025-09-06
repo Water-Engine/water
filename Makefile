@@ -1,6 +1,7 @@
 TARGET := water
 SRC_DIR := src
 INC_DIR := include
+VENDOR_DIR := vendor
 TEST_DIR := tests
 BUILD_DIR := build
 BIN_ROOT := bin
@@ -9,11 +10,13 @@ C ?= gcc
 CXX ?= g++
 
 DEPFLAGS = -MMD -MP
+INCLUDES := -I$(INC_DIR) -I$(VENDOR_DIR)
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
 SRCS := $(call rwildcard, $(SRC_DIR)/, *.cpp)
-HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
+HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp) \
+           $(wildcard $(VENDOR_DIR)/*.h) $(wildcard $(VENDOR_DIR)/*.hpp)
 
 TEST_SRCS := $(filter-out $(TEST_DIR)/perft.cpp, $(wildcard $(TEST_DIR)/*.cpp))
 TEST_OBJS := $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/tests/%.o,$(TEST_SRCS))
@@ -23,7 +26,7 @@ PERFT_BIN := $(BIN_ROOT)/perft/run_perft$(EXE)
 FMT_SRCS := $(SRCS) \
             $(call rwildcard,$(INC_DIR)/,*.h) \
             $(call rwildcard,$(INC_DIR)/,*.hpp) \
-			$(filter-out $(TEST_DIR)/test_framework/%, $(call rwildcard,$(TEST_DIR)/,*.cpp))
+            $(filter-out $(TEST_DIR)/test_framework/%, $(call rwildcard,$(TEST_DIR)/,*.cpp))
 
 PCH := $(INC_DIR)/pch.hpp
 
@@ -45,7 +48,7 @@ endif
 
 OBJ_DIR_DIST := $(BUILD_DIR)/dist
 BIN_DIR_DIST := $(BIN_ROOT)/dist
-CXXFLAGS_DIST := -std=c++20 -O3 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DDIST
+CXXFLAGS_DIST := -std=c++20 -O3 -Wall -Wextra $(INCLUDES) $(DEPFLAGS) -DDIST
 
 OBJS_DIST := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_DIST)/%.o,$(SRCS))
 PCH_GCH_DIST := $(OBJ_DIR_DIST)/pch.hpp.gch
@@ -55,7 +58,7 @@ TARGET_BIN_DIST := $(BIN_DIR_DIST)/$(TARGET)$(EXE)
 
 OBJ_DIR_RELEASE := $(BUILD_DIR)/release
 BIN_DIR_RELEASE := $(BIN_ROOT)/release
-CXXFLAGS_RELEASE := -std=c++20 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DRELEASE
+CXXFLAGS_RELEASE := -std=c++20 -O2 -Wall -Wextra $(INCLUDES) $(DEPFLAGS) -DRELEASE
 
 OBJS_RELEASE := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_RELEASE)/%.o,$(SRCS))
 PCH_GCH_RELEASE := $(OBJ_DIR_RELEASE)/pch.hpp.gch
@@ -65,7 +68,7 @@ TARGET_BIN_RELEASE := $(BIN_DIR_RELEASE)/$(TARGET)$(EXE)
 
 OBJ_DIR_DEBUG := $(BUILD_DIR)/debug
 BIN_DIR_DEBUG := $(BIN_ROOT)/debug
-CXXFLAGS_DEBUG := -std=c++20 -O0 -Wall -Wextra -g -I$(INC_DIR) $(DEPFLAGS) -DDEBUG -DPROFILE
+CXXFLAGS_DEBUG := -std=c++20 -O0 -Wall -Wextra -g $(INCLUDES) $(DEPFLAGS) -DDEBUG -DPROFILE
 
 OBJS_DEBUG := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_DEBUG)/%.o,$(SRCS))
 PCH_GCH_DEBUG := $(OBJ_DIR_DEBUG)/pch.hpp.gch
@@ -88,15 +91,15 @@ test: $(TEST_BIN)
 TEST_OBJS := $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/tests/%.o,$(TEST_SRCS))
 CATCH_OBJ := $(BUILD_DIR)/tests/catch_amalgamated.o
 LIB_OBJS_FOR_TESTS := $(filter-out $(OBJ_DIR_DEBUG)/main.o,$(OBJS_DEBUG))
-CXXFLAGS_TEST = -std=c++20 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DTEST
+CXXFLAGS_TEST = -std=c++20 -O2 -Wall -Wextra $(INCLUDES) $(DEPFLAGS) -DTEST
 
 $(BUILD_DIR)/tests/%.o: $(TEST_DIR)/%.cpp $(HEADERS) $(PCH_GCH_RELEASE)
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_TEST) -include $(PCH) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS_TEST) -include $(PCH) $(INCLUDES) -I$(TEST_DIR) -c $< -o $@
 
 $(CATCH_OBJ): $(TEST_DIR)/test_framework/catch_amalgamated.cpp
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_TEST) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS_TEST) $(INCLUDES) -I$(TEST_DIR) -c $< -o $@
 
 $(TEST_BIN): $(CATCH_OBJ) $(TEST_OBJS) $(LIB_OBJS_FOR_TESTS)
 	@$(call MKDIR,$(dir $@))
@@ -109,15 +112,15 @@ PERFT_OBJ_DIR := $(BUILD_DIR)/perft
 PERFT_OBJ := $(PERFT_OBJ_DIR)/perft.o
 CATCH_OBJ_PERFT := $(PERFT_OBJ_DIR)/catch_amalgamated.o
 
-CXXFLAGS_PERFT = -std=c++20 -O2 -Wall -Wextra -I$(INC_DIR) $(DEPFLAGS) -DPERFT
+CXXFLAGS_PERFT = -std=c++20 -O2 -Wall -Wextra $(INCLUDES) $(DEPFLAGS) -DPERFT
 
 $(PERFT_OBJ): $(PERFT_TEST_SRC) $(HEADERS) $(PCH_GCH_RELEASE)
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_PERFT) -include $(PCH) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS_PERFT) -include $(PCH) $(INCLUDES) -I$(TEST_DIR) -c $< -o $@
 
 $(CATCH_OBJ_PERFT): $(TEST_DIR)/test_framework/catch_amalgamated.cpp
 	@$(call MKDIR,$(dir $@))
-	$(CXX) $(CXXFLAGS_PERFT) -I$(INC_DIR) -I$(TEST_DIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS_PERFT) $(INCLUDES) -I$(TEST_DIR) -c $< -o $@
 
 $(PERFT_BIN): $(CATCH_OBJ_PERFT) $(PERFT_OBJ) $(LIB_OBJS_FOR_TESTS)
 	@$(call MKDIR,$(dir $@))
@@ -197,7 +200,7 @@ else
 endif
 
 cloc:
-	@cloc Makefile src include tests scripts --not-match-f="(openings.hpp|catch_amalgamated.hpp|catch_amalgamated.cpp|chess.hpp|incbin.h)"
+	@cloc Makefile src include tests scripts --not-match-f="(openings.hpp|catch_amalgamated.hpp|catch_amalgamated.cpp|chess.hpp)"
 
 # ================ FORMATTING ================
 

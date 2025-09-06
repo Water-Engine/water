@@ -6,7 +6,7 @@
 
 #include "bitboard/pawn_shields.hpp"
 
-#include "book/book.hpp"
+#include "search/book.hpp"
 
 #include "evaluation/pst.hpp"
 

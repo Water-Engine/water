@@ -114,6 +114,7 @@ class fmt {
     }
 
     static void println() { std::cout << std::endl; }
+    static void println(const std::string& s) { std::cout << s << std::endl; }
 
     template <typename... Args> static std::string dbg(const Args&... args) {
         std::ostringstream oss;

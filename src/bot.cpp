@@ -5,7 +5,7 @@
 #include "evaluation/evaluation.hpp"
 #include "evaluation/ordering.hpp"
 
-#include "book/book.hpp"
+#include "search/book.hpp"
 
 void Bot::new_game() {}
 

@@ -39,19 +39,21 @@
 #include <variant>
 #include <vector>
 
-// Custom
-#include "core.hpp"
-#include "incbin/incbin.h"
+// SIMD
+#include "xsimd/xsimd.hpp"
+#include <immintrin.h>
 
 // Chess Core Library
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wall"
-#pragma GCC diagnostic ignored "-Wextra"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #define CHESS_NO_EXCEPTIONS
 #include "game/chess.hpp"
-#include "game/utils.hpp"
 using namespace chess;
 #pragma GCC diagnostic pop
+
+// Other
+#include "core.hpp"
+#include "game/utils.hpp"
+#include "incbin/incbin.h"
 
 #endif // WATER_PCH
