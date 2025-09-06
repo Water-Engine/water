@@ -3,6 +3,8 @@
 #include "book/book.hpp"
 #include "book/openings.hpp"
 
+INCBIN(GM_BOOK, "assets/gm2001.bin");
+
 Book::Book() : m_UniformRealDist(0.0f, 1.0f), m_Rng(std::random_device{}()) {
     auto entries = str::split(str::trim(str::from_view(OPENINGS)), "pos");
     m_OpeningMoves.reserve(entries.size());
@@ -76,3 +78,5 @@ Option<std::string> Book::try_get_book_move(Ref<Board> board, float weight) {
         return Option<std::string>();
     }
 }
+
+void Book::read() {}

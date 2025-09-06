@@ -20,6 +20,7 @@ Result<void, std::string> Bot::set_position(const std::string& fen) {
 Result<void, std::string> Bot::make_move(const std::string& move_uci) {
     Move move = uci::uciToMove(*m_Board, move_uci);
     m_Board->makeMove(move);
+    m_LastMove = move;
     return Result<void, std::string>();
 }
 
@@ -57,6 +58,50 @@ Result<void, std::string> Bot::think_timed([[maybe_unused]] int time_ms) {
 }
 
 std::string Bot::board_str() {
-    // TODO: board diagram
-    return m_Board->getFen();
+    std::ostringstream oss;
+    int last_move_square = -1;
+    bool black_at_top = m_Board->sideToMove() == Color::WHITE;
+    if (m_LastMove != 0) {
+        last_move_square = m_LastMove.to().index();
+    }
+
+    for (int y = 0; y < 8; ++y) {
+        int rank_idx = black_at_top ? 7 - y : y;
+        oss << "+---+---+---+---+---+---+---+---+\n";
+        for (int x = 0; x < 8; ++x) {
+            int file_idx = black_at_top ? x : 7 - x;
+            Coord square_coord(file_idx, rank_idx);
+            if (!square_coord.valid_square_idx()) {
+                continue;
+            }
+
+            int square_idx = square_coord.square_idx();
+            bool highlight = square_idx == last_move_square;
+            const Piece& piece = m_Board->at(square_idx);
+            const std::string piece_string =
+                (piece.type() == PieceType::NONE) ? " " : static_cast<std::string>(piece);
+
+            if (highlight) {
+                oss << fmt::interpolate("|({})", piece_string);
+            } else {
+                oss << fmt::interpolate("| {} ", piece_string);
+            }
+        }
+
+        oss << fmt::interpolate("| {}\n", rank_idx + 1);
+    }
+
+    oss << "+---+---+---+---+---+---+---+---+\n";
+    if (black_at_top) {
+        oss << "  a   b   c   d   e   f   g   h  \n\n";
+    } else {
+        oss << "  h   g   f   e   d   c   b   a  \n\n";
+    }
+
+    oss << fmt::interpolate("Fen         : {}\n", m_Board->getFen());
+
+    oss << fmt::interpolate("Hash        : {}", m_Board->hash());
+
+    DBG(m_Board->enpassantSq());
+    return oss.str();
 }

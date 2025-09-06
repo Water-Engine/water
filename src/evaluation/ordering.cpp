@@ -7,7 +7,7 @@
 void MoveOrderer::order_moves(Ref<Board> board, const Move& hash_move, Movelist& moves,
                               bool in_quiescence, size_t ply) {
     PROFILE_FUNCTION();
-    for (size_t i = 0; i < moves.size(); ++i) {
+    for (auto i = 0; i < moves.size(); ++i) {
         auto move = moves[i];
 
         // Highest priority to previously evaluated moves
@@ -25,8 +25,8 @@ void MoveOrderer::order_moves(Ref<Board> board, const Move& hash_move, Movelist&
         Piece piece_to_capture = board->at(target_square);
         bool is_capture = piece_to_capture.type() != PieceType::NONE;
 
-        Bitboard opponent_non_pawn_attacks = non_pawn_attack_rays(board, ~board->sideToMove());
-        Bitboard opponent_pawn_attacks = pawn_attack_rays(board, ~board->sideToMove());
+        Bitboard opponent_non_pawn_attacks = non_pawn_attacks(board, ~board->sideToMove());
+        Bitboard opponent_pawn_attacks = pawn_attacks(board, ~board->sideToMove());
         Bitboard all_opponent_attacks = opponent_non_pawn_attacks | opponent_pawn_attacks;
 
         Evaluator evaluator(board);
@@ -36,7 +36,8 @@ void MoveOrderer::order_moves(Ref<Board> board, const Move& hash_move, Movelist&
         // Capture handling
         if (is_capture) {
             // TODO: Switch to static exchange evaluation
-            int16_t capture_delta = score_of_piece(piece_to_capture.type()) - score_of_piece(piece_to_move.type());
+            int16_t capture_delta =
+                score_of_piece(piece_to_capture.type()) - score_of_piece(piece_to_move.type());
             bool opponent_can_recapture = all_opponent_attacks.check(target_square);
 
             if (opponent_can_recapture) {
@@ -79,9 +80,9 @@ void MoveOrderer::order_moves(Ref<Board> board, const Move& hash_move, Movelist&
             }
         } else if (piece_to_move.type() == PieceType::KING && move.typeOf() == Move::CASTLING) {
             // Castling should be preferred, and kingside should be slightly better usually
-            if (target_square% 8 == 6) {
+            if (target_square % 8 == 6) {
                 score += 25;
-            } else if (target_square% 8 == 2) {
+            } else if (target_square % 8 == 2) {
                 score += 20;
             }
             // TODO: Castling may not always be necessary, may need to contend with in future

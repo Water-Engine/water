@@ -41,6 +41,7 @@
 
 // Custom
 #include "core.hpp"
+#include "incbin/incbin.h"
 
 // Chess Core Library
 #pragma GCC diagnostic push

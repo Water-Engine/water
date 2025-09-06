@@ -4,7 +4,7 @@ const int INF = 1000000000;
 const int NEG_INF = -INF;
 
 // ================ EVALUATION UTILS ================
-int16_t score_of_piece(PieceType type) {
+inline int16_t score_of_piece(PieceType type) {
     switch (type.internal()) {
     case PieceType::PAWN:
         return PieceScores::Pawn;
@@ -21,8 +21,8 @@ int16_t score_of_piece(PieceType type) {
     }
 }
 
-Bitboard pawn_attack_rays(Ref<Board> board, Color color);
-Bitboard non_pawn_attack_rays(Ref<Board> board, Color color);
+Bitboard pawn_attacks(Ref<Board> board, Color color);
+Bitboard non_pawn_attacks(Ref<Board> board, Color color);
 
 // ================ MATERIAL SCORE ================
 

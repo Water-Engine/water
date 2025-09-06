@@ -28,4 +28,6 @@ class Book {
     }
 
     Option<std::string> try_get_book_move(Ref<Board> board, float weight = 0.25);
+
+    static void read();
 };

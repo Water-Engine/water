@@ -73,7 +73,7 @@ class Coord {
     }
 };
 
-namespace Square {
+namespace Squares {
 // clang-format off
 enum Index : int {
     A1 = 0, B1, C1, D1, E1, F1, G1, H1,
@@ -87,7 +87,7 @@ enum Index : int {
     NO_SQ = -1,
 };
 // clang-format on
-} // namespace Square
+} // namespace Squares
 
 namespace PieceScores {
 enum Scores : int16_t {

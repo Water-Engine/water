@@ -93,6 +93,53 @@ int Evaluator::evaluate() {
     return multiplier * evaluation_score;
 }
 
-Bitboard pawn_attack_rays(Ref<Board> board, Color color) { return Bitboard(); }
+Bitboard pawn_attacks(Ref<Board> board, Color color) {
+    auto to_ray_cast = board->us(color) & board->pieces(PieceType::PAWN);
+    Bitboard attacks(0);
 
-Bitboard non_pawn_attack_rays(Ref<Board> board, Color color) { return Bitboard(); }
+    while (to_ray_cast) {
+        int index = to_ray_cast.pop();
+        attacks |= attacks::pawn(color, index);
+    }
+    return attacks;
+}
+
+Bitboard non_pawn_attacks(Ref<Board> board, Color color) {
+    auto occupied = board->us(color) | board->us(~color);
+    auto make_attacks = [&](PieceType type) -> Bitboard {
+        auto to_ray_cast = board->us(color) & board->pieces(type);
+        Bitboard attacks(0);
+
+        if (type == PieceType::KING || type == PieceType::KNIGHT) {
+            auto attack_maker = (type == PieceType::KING) ? attacks::king
+                                : (type == PieceType::KNIGHT)
+                                    ? attacks::knight
+                                    : []([[maybe_unused]] Square sq) { return Bitboard(0); };
+            while (to_ray_cast) {
+                int index = to_ray_cast.pop();
+                attacks |= attack_maker(index);
+            }
+            return attacks;
+        }
+
+        auto attack_maker = (type == PieceType::BISHOP) ? attacks::bishop
+                            : (type == PieceType::ROOK) ? attacks::rook
+                            : (type == PieceType::QUEEN)
+                                ? attacks::queen
+                                : []([[maybe_unused]] Square sq,
+                                     [[maybe_unused]] Bitboard occupied) { return Bitboard(0); };
+        while (to_ray_cast) {
+            int index = to_ray_cast.pop();
+            attacks |= attack_maker(index, occupied);
+        }
+        return attacks;
+    };
+
+    Bitboard attacks(0);
+    attacks |= make_attacks(PieceType::KNIGHT);
+    attacks |= make_attacks(PieceType::BISHOP);
+    attacks |= make_attacks(PieceType::ROOK);
+    attacks |= make_attacks(PieceType::QUEEN);
+    attacks |= make_attacks(PieceType::KING);
+    return attacks;
+}
