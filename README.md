@@ -16,7 +16,7 @@ make -j4 run
 
 _The engine communicates through the UCI protocol for terminal interaction._
 
-# Dependencies
+# Core Dependencies
 - g++ with C++20
 - GNU Make
 - Clang-format

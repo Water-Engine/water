@@ -98,6 +98,14 @@ class fmt {
         std::cout << format(s, args...) << std::endl;
     }
 
+    template <typename... Args> static void eprint(const std::string& s, const Args&... args) {
+        std::cerr << format(s, args...);
+    }
+
+    template <typename... Args> static void eprintln(const std::string& s, const Args&... args) {
+        std::cerr << format(s, args...) << std::endl;
+    }
+
     template <typename... Args>
     static std::string interpolate(const std::string& s, const Args&... args) {
         std::ostringstream oss;
@@ -115,6 +123,17 @@ class fmt {
 
     static void println() { std::cout << std::endl; }
     static void println(const std::string& s) { std::cout << s << std::endl; }
+
+    template <typename T> static void eprint(const T& value) {
+        std::cerr << to_string_custom(value);
+    }
+
+    template <typename T> static void eprintln(const T& value) {
+        std::cerr << to_string_custom(value) << std::endl;
+    }
+
+    static void eprintln() { std::cerr << std::endl; }
+    static void eprintln(const std::string& s) { std::cerr << s << std::endl; }
 
     template <typename... Args> static std::string dbg(const Args&... args) {
         std::ostringstream oss;

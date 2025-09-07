@@ -41,7 +41,6 @@
 
 // SIMD
 #include "xsimd/xsimd.hpp"
-#include <immintrin.h>
 
 // Chess Core Library
 #pragma GCC diagnostic push
@@ -54,6 +53,8 @@ using namespace chess;
 // Other
 #include "core.hpp"
 #include "game/utils.hpp"
+
+#define INCBIN_SILENCE_BITCODE_WARNING
 #include "incbin/incbin.h"
 
 #endif // WATER_PCH

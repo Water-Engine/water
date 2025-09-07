@@ -9,6 +9,7 @@ on:
       - 'src/**'
       - 'include/**'
       - 'tests/**'
+      - 'vendor/**'
   pull_request:
     branches: [main]
     paths:
@@ -17,6 +18,7 @@ on:
       - 'src/**'
       - 'include/**'
       - 'tests/**'
+      - 'vendor/**'
 
 jobs:
   build-test:
