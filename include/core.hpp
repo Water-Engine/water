@@ -279,14 +279,16 @@ class str {
     }
 
     static inline bool starts_with(const std::string& s, const std::string& prefix) {
-        if (prefix.length() > s.length())
+        if (prefix.length() > s.length()) {
             return false;
+        }
         return std::equal(prefix.begin(), prefix.end(), s.begin());
     }
 
     static inline bool ends_with(const std::string& s, const std::string& suffix) {
-        if (suffix.length() > s.length())
+        if (suffix.length() > s.length()) {
             return false;
+        }
         return std::equal(suffix.rbegin(), suffix.rend(), s.rbegin());
     }
 
@@ -579,8 +581,9 @@ class InstrumentationTimer {
     }
 
     ~InstrumentationTimer() {
-        if (!m_Stopped)
+        if (!m_Stopped) {
             stop();
+        }
     }
 
     void stop() {
