@@ -20,7 +20,7 @@ _The engine communicates through the UCI protocol for terminal interaction._
 - g++ with C++20
 - GNU Make
 - Clang-format
-- [Catch2](https://github.com/catchorg/Catch2) (included in this repository)
+- [Catch2](https://github.com/catchorg/Catch2) for tests (included in this repository)
 - [cloc](https://github.com/AlDanial/cloc) for cloc make target (optional)
 - [python](https://www.python.org/downloads/) for script running
 - [Zig](https://ziglang.org/download/) for cross-platform packaging (optional) 
@@ -55,13 +55,13 @@ Contributing guidelines, information on tests, formatting, and profiling can be 
 
 ### Why Contribute?
 - Learn engine internals such as move generation, evaluation, and search  
-- Work on low-level performance optimizations in modern C++  
+- Work on low-level performance optimizations in modern C++ 
 - Explore and improve machine learning fine-tuning for chess 
 
 # Credits
 Water could not be where it is today without the formative work done by experienced developers in the past. Core references used during development include:
 - [chess-library](https://github.com/Disservin/chess-library) revived my motivation after many failed attempts
-    - Maybe in the future, I'll roll my own core library, but it was taking too much out of me
+    - Maybe in the future I'll roll my own core library, but it was taking too much out of me
     - This library saved a lot of time and frustration for me, so I would like to personally thank the chess-library teams for their hard work
 - [Syzygy](https://www.chessprogramming.org/Syzygy_Bases) tables originally created by Dutch mathematician [Ronald de Man](https://www.chessprogramming.org/Ronald_de_Man)
 - [Fathom](https://github.com/jdart1/Fathom) syzygy tablebase reader - rewritten and catered to the Water engine

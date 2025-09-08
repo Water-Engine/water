@@ -60,3 +60,5 @@ full_dataset.bin
 
 .zig-cache
 zig-out
+
+release/
