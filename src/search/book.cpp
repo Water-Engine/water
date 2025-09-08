@@ -158,7 +158,7 @@ void Book::load_external_book(const std::filesystem::path& book_path, bool prese
     auto moves = read_polyglot(reinterpret_cast<const unsigned char*>(data), buffer.size());
 
     if (!preserve_existing) {
-        m_PolyglotMoves.clear();
+        m_PolyglotMoves = {};
     }
     m_PolyglotMoves.merge(normalize_polyglot(moves));
 }

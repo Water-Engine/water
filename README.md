@@ -21,8 +21,9 @@ _The engine communicates through the UCI protocol for terminal interaction._
 - GNU Make
 - Clang-format
 - [Catch2](https://github.com/catchorg/Catch2) (included in this repository)
-- [cloc](https://github.com/AlDanial/cloc) (for cloc make target > optional)
+- [cloc](https://github.com/AlDanial/cloc) for cloc make target (optional)
 - [python](https://www.python.org/downloads/) for script running
+- [Zig](https://ziglang.org/download/) for cross-platform packaging (optional) 
 
 # Building water
 The project's build system uses C++20 and GNU Make, and it is recommended that you run make with the flag `-j4` to run batch jobs. Below is a list of targets with their requirements where applicable:
