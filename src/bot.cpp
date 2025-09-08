@@ -102,6 +102,5 @@ std::string Bot::board_str() {
 
     oss << fmt::interpolate("Hash        : {}", m_Board->hash());
 
-    DBG(m_Board->enpassantSq());
     return oss.str();
 }
