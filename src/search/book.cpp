@@ -2,7 +2,7 @@
 
 #include "search/book.hpp"
 
-INCBIN(GM_BOOK, "assets/gm2001.bin");
+INCBIN(BOOK, "assets/standard_book.bin");
 
 Book::Book() : m_UniformRealDist(0.0f, 1.0f), m_Rng(std::random_device{}()) {
     auto entries = str::split(str::trim(str::from_view(OPENINGS)), "pos");
@@ -40,13 +40,12 @@ Book::Book() : m_UniformRealDist(0.0f, 1.0f), m_Rng(std::random_device{}()) {
         m_OtherMoves.insert({position_fen, moves});
     }
 
-    auto gm_moves =
-        load_polyglot(reinterpret_cast<const unsigned char*>(gGM_BOOKData), gGM_BOOKSize);
-    m_PolyglotMoves.merge(normalize_polyglot(gm_moves));
+    auto moves = read_polyglot(reinterpret_cast<const unsigned char*>(gBOOKData), gBOOKSize);
+    m_PolyglotMoves.merge(normalize_polyglot(moves));
 }
 
 std::unordered_map<uint64_t, std::vector<PolyglotMove>>
-Book::load_polyglot(const unsigned char* data, size_t size) {
+Book::read_polyglot(const unsigned char* data, size_t size) {
     std::unordered_map<uint64_t, std::vector<PolyglotMove>> book_map;
     size_t n = size / 14;
 
@@ -83,7 +82,6 @@ std::unordered_map<uint64_t, std::vector<BookMove>> Book::normalize_polyglot(
 }
 
 bool Book::is_book_pos(Ref<Board> board) {
-    DBG(m_PolyglotMoves.contains(board->hash()));
     return m_PolyglotMoves.contains(board->hash()) || m_OtherMoves.contains(board->getFen(false));
 }
 
@@ -136,4 +134,31 @@ Option<std::string> Book::try_get_book_move(Ref<Board> board, float weight) {
     size_t idx = static_cast<int>(std::distance(prefix.begin(), it));
 
     return Option<std::string>(moves[idx].MoveString);
+}
+
+void Book::load_external_book(const std::filesystem::path& book_path, bool preserve_existing) {
+    if (!std::filesystem::exists(book_path)) {
+        return;
+    }
+
+    std::ifstream file_stream(book_path, std::ios::binary | std::ios::ate);
+    if (!file_stream) {
+        return;
+    }
+
+    std::streamsize size = file_stream.tellg();
+    file_stream.seekg(0, std::ios::beg);
+
+    std::vector<unsigned char> buffer(size);
+    if (!file_stream.read(reinterpret_cast<char*>(buffer.data()), size)) {
+        return;
+    }
+
+    const unsigned char* data = buffer.data();
+    auto moves = read_polyglot(reinterpret_cast<const unsigned char*>(data), buffer.size());
+
+    if (!preserve_existing) {
+        m_PolyglotMoves.clear();
+    }
+    m_PolyglotMoves.merge(normalize_polyglot(moves));
 }

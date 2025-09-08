@@ -27,7 +27,7 @@ class Book {
     inline float rand_float() { return m_UniformRealDist(m_Rng); };
 
     static std::unordered_map<uint64_t, std::vector<PolyglotMove>>
-    load_polyglot(const unsigned char* data, size_t size);
+    read_polyglot(const unsigned char* data, size_t size);
 
     static std::unordered_map<uint64_t, std::vector<BookMove>> normalize_polyglot(
         const std::unordered_map<uint64_t, std::vector<PolyglotMove>>& polyglot_moves);
@@ -45,4 +45,6 @@ class Book {
 
     bool is_book_pos(Ref<Board> board);
     Option<std::string> try_get_book_move(Ref<Board> board, float weight = 0.25);
+
+    void load_external_book(const std::filesystem::path& book_path, bool preserve_existing = true);
 };

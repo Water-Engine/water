@@ -251,6 +251,7 @@ clean             > Remove object files, dependency files, and binaries\n\
 General Targets:\n\
 \n\
 cloc              > Count lines of code in relevant directories\n\
+sliders           > Generate the magic numbers for the rooks and bishops\n\
 help              > Print this help menu\n\
 "
 

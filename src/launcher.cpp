@@ -66,6 +66,8 @@ ParseResult Engine::process_line(const std::string& line) {
     } else if (cmd_lead == "quit") {
         m_Bot->quit();
         return ParseResult::EXIT;
+    } else if (cmd_lead == "setoption") {
+        process_opt_cmd(command);
     }
 
     return ParseResult::SUCCESS;
@@ -126,6 +128,28 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
     }
 
     return m_Bot->think_timed(think_time_ms);
+}
+
+Result<void, std::string> Engine::process_opt_cmd(const std::string& message) {
+    if (str::contains(message, "book") || str::contains(message, "book-add")) {
+        const auto maybe_path_opt1 = try_get_labeled_string(message, "book", OPT_LABELS);
+        const auto maybe_path_opt2 = try_get_labeled_string(message, "book-add", OPT_LABELS);
+        if (maybe_path_opt2.is_some()) {
+            auto& book = Book::instance();
+            book.load_external_book(maybe_path_opt2.unwrap(), true);
+        } else if (maybe_path_opt1.is_some()) {
+            auto& book = Book::instance();
+            book.load_external_book(maybe_path_opt1.unwrap(), true);
+        }
+    } else if (str::contains(message, "book-reset")) {
+        const auto maybe_path = try_get_labeled_string(message, "book-reset", OPT_LABELS);
+        if (maybe_path.is_some()) {
+            auto& book = Book::instance();
+            book.load_external_book(maybe_path.unwrap(), false);
+        }
+    }
+
+    return Result<void, std::string>();
 }
 
 // ================ PARSE UTILS ================

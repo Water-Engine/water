@@ -46,6 +46,7 @@ The project's build system uses C++20 and GNU Make, and it is recommended that y
 
 ## General Targets
 - `cloc`: Count the lines of code in the project's relevant directories
+- `sliders`: Generate the magic numbers for the rooks and bishops
 - `help`: Print this help menu
 
 # For Developers
