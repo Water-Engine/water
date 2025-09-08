@@ -5,6 +5,7 @@
 constexpr std::array<std::string_view, 3> POSITION_LABELS = {"position", "fen", "moves"};
 constexpr std::array<std::string_view, 9> GO_LABELS = {
     "go", "movetime", "wtime", "btime", "winc", "binc", "movestogo", "perft", "parallel"};
+constexpr std::array<std::string_view, 4> OPT_LABELS = {"book", "book-add", "book-reset"};
 
 enum class ParseResult {
     SUCCESS = 0,
@@ -22,8 +23,9 @@ class Engine {
     void prime() { m_Bot->set_position(str::from_view(STARTING_FEN)); }
 
     ParseResult process_line(const std::string& line);
-    Result<void, std::string> process_position_cmd(const std::string& options);
-    Result<void, std::string> process_go_cmd(const std::string& options);
+    Result<void, std::string> process_position_cmd(const std::string& message);
+    Result<void, std::string> process_go_cmd(const std::string& message);
+    Result<void, std::string> process_opt_cmd(const std::string& message);
 };
 
 void launch();

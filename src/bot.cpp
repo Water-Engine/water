@@ -2,32 +2,34 @@
 
 #include "bot.hpp"
 
-#include "game/move.hpp"
-
-#include "generator/generator.hpp"
-
 #include "evaluation/evaluation.hpp"
 #include "evaluation/ordering.hpp"
 
-#include "book/book.hpp"
+#include "search/book.hpp"
 
 void Bot::new_game() {}
 
 Result<void, std::string> Bot::set_position(const std::string& fen) {
-    m_Board->load_from_fen(fen);
-    return Result<void, std::string>();
+    if (m_Board->setFen(fen)) {
+        return Result<void, std::string>();
+    } else {
+        return Result<void, std::string>::Err("Failed to load/parse fen");
+    }
 }
 
 Result<void, std::string> Bot::make_move(const std::string& move_uci) {
-    Move move(m_Board, move_uci);
-    m_Board->make_move(move);
+    Move move = uci::uciToMove(*m_Board, move_uci);
+    m_Board->makeMove(move);
+    m_LastMove = move;
     return Result<void, std::string>();
 }
 
 int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black_ms,
                            int increment_white_ms, int increment_black_ms) {
-    int my_time = m_Board->is_white_to_move() ? time_remaining_white_ms : time_remaining_black_ms;
-    int my_increment = m_Board->is_white_to_move() ? increment_white_ms : increment_black_ms;
+    int my_time =
+        (m_Board->sideToMove() == Color::WHITE) ? time_remaining_white_ms : time_remaining_black_ms;
+    int my_increment =
+        (m_Board->sideToMove() == Color::WHITE) ? increment_white_ms : increment_black_ms;
 
     float think_time_ms = (float)my_time / 40.0;
     if (USE_MAX_THINKING_TIME) {
@@ -53,4 +55,52 @@ Result<void, std::string> Bot::think_timed([[maybe_unused]] int time_ms) {
     fmt::println(m_Searcher.retrieve_bestmove());
 
     return Result<void, std::string>();
+}
+
+std::string Bot::board_str() {
+    std::ostringstream oss;
+    int last_move_square = -1;
+    bool black_at_top = m_Board->sideToMove() == Color::WHITE;
+    if (m_LastMove != 0) {
+        last_move_square = m_LastMove.to().index();
+    }
+
+    for (int y = 0; y < 8; ++y) {
+        int rank_idx = black_at_top ? 7 - y : y;
+        oss << "+---+---+---+---+---+---+---+---+\n";
+        for (int x = 0; x < 8; ++x) {
+            int file_idx = black_at_top ? x : 7 - x;
+            Coord square_coord(file_idx, rank_idx);
+            if (!square_coord.valid_square_idx()) {
+                continue;
+            }
+
+            int square_idx = square_coord.square_idx();
+            bool highlight = square_idx == last_move_square;
+            const Piece& piece = m_Board->at(square_idx);
+            const std::string piece_string =
+                (piece.type() == PieceType::NONE) ? " " : static_cast<std::string>(piece);
+
+            if (highlight) {
+                oss << fmt::interpolate("|({})", piece_string);
+            } else {
+                oss << fmt::interpolate("| {} ", piece_string);
+            }
+        }
+
+        oss << fmt::interpolate("| {}\n", rank_idx + 1);
+    }
+
+    oss << "+---+---+---+---+---+---+---+---+\n";
+    if (black_at_top) {
+        oss << "  a   b   c   d   e   f   g   h  \n\n";
+    } else {
+        oss << "  h   g   f   e   d   c   b   a  \n\n";
+    }
+
+    oss << fmt::interpolate("Fen         : {}\n", m_Board->getFen());
+
+    oss << fmt::interpolate("Hash        : {}", m_Board->hash());
+
+    return oss.str();
 }

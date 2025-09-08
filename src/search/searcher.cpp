@@ -6,10 +6,9 @@
 #include "evaluation/ordering.hpp"
 #include "evaluation/pst.hpp"
 
-#include "generator/generator.hpp"
-
 std::pair<Move, int> Searcher::naive_ab(int depth, int alpha, int beta) {
-    auto moves = m_Board->legal_moves();
+    Movelist moves;
+    movegen::legalmoves(moves, *m_Board);
     if (depth == 0 || moves.size() == 0) {
         return {0, m_Evaluator.evaluate()};
     }
@@ -20,12 +19,12 @@ std::pair<Move, int> Searcher::naive_ab(int depth, int alpha, int beta) {
     for (auto& move : moves) {
         {
             PROFILE_SCOPE("Search Make");
-            m_Board->make_move(move, true);
+            m_Board->makeMove(move);
         }
         int score = -naive_ab(depth - 1, -beta, -alpha).second;
         {
             PROFILE_SCOPE("Search Unmake");
-            m_Board->unmake_move(move, true);
+            m_Board->unmakeMove(move);
         }
 
         if (score > best_score) {
@@ -54,7 +53,7 @@ void Searcher::find_bestmove() {
 
         auto [move, eval] = naive_ab(depth, alpha, beta);
 
-        if (move.valid_move()) {
+        if (move != Move::NO_MOVE) {
             best_move = move;
             best_eval = eval;
             set_bestmove(best_move, best_eval);

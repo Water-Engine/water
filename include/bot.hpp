@@ -1,7 +1,5 @@
 #pragma once
 
-#include "game/board.hpp"
-
 #include "search/searcher.hpp"
 
 constexpr bool USE_MAX_THINKING_TIME = false;
@@ -10,6 +8,7 @@ constexpr int MAX_THINK_TIME_MS = 2500;
 class Bot {
   private:
     Ref<Board> m_Board;
+    Move m_LastMove;
 
     Searcher m_Searcher;
     bool m_Thinking;
@@ -18,7 +17,7 @@ class Bot {
     uint64_t perft_recursive(Board& board, int depth);
 
   public:
-    Bot() : m_Board(CreateRef<Board>()), m_Searcher(m_Board), m_Thinking(false) {}
+    Bot() : m_Board(CreateRef<Board>()), m_LastMove(0), m_Searcher(m_Board), m_Thinking(false) {}
 
     void new_game();
     void stop_thinking() { m_Thinking = false; };
@@ -31,7 +30,6 @@ class Bot {
     Result<void, std::string> think_timed(int time_ms);
 
     uint64_t perft(int depth);
-    uint64_t perft_parallel(int depth, size_t max_threads = 2);
 
-    std::string board_str() { return m_Board->to_string(); }
+    std::string board_str();
 };
