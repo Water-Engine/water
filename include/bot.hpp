@@ -13,15 +13,21 @@ class Bot {
     Searcher m_Searcher;
     bool m_Thinking;
 
+    float m_BookWeight;
+
   private:
     uint64_t perft_recursive(Board& board, int depth);
 
   public:
-    Bot() : m_Board(CreateRef<Board>()), m_LastMove(0), m_Searcher(m_Board), m_Thinking(false) {}
+    Bot()
+        : m_Board(CreateRef<Board>()), m_LastMove(0), m_Searcher(m_Board), m_Thinking(false),
+          m_BookWeight(0.50f) {}
 
     void new_game();
     void stop_thinking() { m_Thinking = false; };
     void quit() { stop_thinking(); }
+
+    inline void set_weight(float weight) { m_BookWeight = weight; }
 
     Result<void, std::string> set_position(const std::string& fen);
     Result<void, std::string> make_move(const std::string& move_uci);

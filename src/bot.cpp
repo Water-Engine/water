@@ -5,7 +5,7 @@
 #include "evaluation/evaluation.hpp"
 #include "evaluation/ordering.hpp"
 
-#include "search/book.hpp"
+#include "polyglot/book.hpp"
 
 void Bot::new_game() {}
 
@@ -45,7 +45,7 @@ int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black
 }
 
 Result<void, std::string> Bot::think_timed([[maybe_unused]] int time_ms) {
-    auto bm = Book::instance().try_get_book_move(m_Board);
+    auto bm = Book::instance().try_get_book_move(m_Board, m_BookWeight);
     if (bm.is_some()) {
         fmt::println("bestmove {}", bm.unwrap());
         return Result<void, std::string>();

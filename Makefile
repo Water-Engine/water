@@ -200,7 +200,7 @@ else
 endif
 
 cloc:
-	@cloc Makefile src include tests scripts --not-match-f="(openings.hpp|catch_amalgamated.hpp|catch_amalgamated.cpp|chess.hpp)"
+	@cloc Makefile src include tests scripts --not-match-f="(catch_amalgamated.hpp|catch_amalgamated.cpp|chess.hpp)"
 
 # ================ FORMATTING ================
 

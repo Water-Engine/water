@@ -57,6 +57,7 @@ result
 generated.txt
 Water-Main.json
 full_dataset.bin
+larger_book.bin
 
 .zig-cache
 zig-out

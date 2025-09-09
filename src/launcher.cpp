@@ -6,7 +6,7 @@
 
 #include "bitboard/pawn_shields.hpp"
 
-#include "search/book.hpp"
+#include "polyglot/book.hpp"
 
 #include "evaluation/pst.hpp"
 
@@ -110,17 +110,22 @@ Result<void, std::string> Engine::process_position_cmd(const std::string& messag
 Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
     int think_time_ms;
     if (str::contains(message, "movetime")) {
-        think_time_ms = try_get_labeled_int(message, "movetime", GO_LABELS).unwrap_or(0);
+        think_time_ms = try_get_labeled_numeric<int>(message, "movetime", GO_LABELS).unwrap_or(0);
     } else if (str::contains(message, "perft")) {
-        int depth = std::abs(try_get_labeled_int(message, "perft", GO_LABELS).unwrap_or(1));
+        int depth =
+            std::abs(try_get_labeled_numeric<int>(message, "perft", GO_LABELS).unwrap_or(1));
         uint64_t nodes = m_Bot->perft(depth);
         fmt::println("Perft test of depth {} found {} nodes", depth, nodes);
         return Result<void, std::string>();
     } else {
-        int time_remaining_white_ms = try_get_labeled_int(message, "wtime", GO_LABELS).unwrap_or(0);
-        int time_remaining_black_ms = try_get_labeled_int(message, "btime", GO_LABELS).unwrap_or(0);
-        int increment_white_ms = try_get_labeled_int(message, "winc", GO_LABELS).unwrap_or(0);
-        int increment_black_ms = try_get_labeled_int(message, "binc", GO_LABELS).unwrap_or(0);
+        int time_remaining_white_ms =
+            try_get_labeled_numeric<int>(message, "wtime", GO_LABELS).unwrap_or(0);
+        int time_remaining_black_ms =
+            try_get_labeled_numeric<int>(message, "btime", GO_LABELS).unwrap_or(0);
+        int increment_white_ms =
+            try_get_labeled_numeric<int>(message, "winc", GO_LABELS).unwrap_or(0);
+        int increment_black_ms =
+            try_get_labeled_numeric<int>(message, "binc", GO_LABELS).unwrap_or(0);
 
         int suggested = m_Bot->choose_think_time(time_remaining_white_ms, time_remaining_black_ms,
                                                  increment_white_ms, increment_black_ms);
@@ -131,43 +136,39 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
 }
 
 Result<void, std::string> Engine::process_opt_cmd(const std::string& message) {
-    if (str::contains(message, "book") || str::contains(message, "book-add")) {
+    // Depth option only has an effect when paired with a new pgn book
+    int depth = 8;
+    if (str::contains(message, "depth")) {
+        depth = try_get_labeled_numeric<int>(message, "depth", OPT_LABELS).unwrap_or(8);
+    }
+
+    // Different book options, mutually exclusive
+    if (str::contains(message, "book-reset")) {
+        const auto maybe_path = try_get_labeled_string(message, "book-reset", OPT_LABELS);
+        if (maybe_path.is_some()) {
+            auto& book = Book::instance();
+            book.load_external_book(maybe_path.unwrap(), false, depth);
+        }
+    } else if (str::contains(message, "book") || str::contains(message, "book-add")) {
         const auto maybe_path_opt1 = try_get_labeled_string(message, "book", OPT_LABELS);
         const auto maybe_path_opt2 = try_get_labeled_string(message, "book-add", OPT_LABELS);
         if (maybe_path_opt2.is_some()) {
             auto& book = Book::instance();
-            book.load_external_book(maybe_path_opt2.unwrap(), true);
+            book.load_external_book(maybe_path_opt2.unwrap(), true, depth);
         } else if (maybe_path_opt1.is_some()) {
             auto& book = Book::instance();
-            book.load_external_book(maybe_path_opt1.unwrap(), true);
+            book.load_external_book(maybe_path_opt1.unwrap(), true, depth);
         }
-    } else if (str::contains(message, "book-reset")) {
-        const auto maybe_path = try_get_labeled_string(message, "book-reset", OPT_LABELS);
-        if (maybe_path.is_some()) {
-            auto& book = Book::instance();
-            book.load_external_book(maybe_path.unwrap(), false);
-        }
+    } else if (str::contains(message, "weight")) {
+        const auto weight =
+            try_get_labeled_numeric<float>(message, "weight", OPT_LABELS).unwrap_or(0.50f);
+        m_Bot->set_weight(weight);
     }
 
     return Result<void, std::string>();
 }
 
 // ================ PARSE UTILS ================
-
-Option<int> try_get_labeled_int(const std::string& text, const std::string& label,
-                                std::span<const std::string_view> all_labels) {
-    Option<std::string> maybe_string = try_get_labeled_string(text, label, all_labels);
-    if (maybe_string.is_some()) {
-        try {
-            int labeled_value = std::stoi(str::split(maybe_string.unwrap())[0]);
-            return Option<int>(labeled_value);
-        } catch (...) {
-            return Option<int>();
-        }
-    }
-
-    return Option<int>();
-}
 
 Option<std::string> try_get_labeled_string(const std::string& text, const std::string& label,
                                            std::span<const std::string_view> all_labels) {
