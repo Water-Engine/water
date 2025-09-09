@@ -2,7 +2,64 @@
 
 #include "polyglot/horizon.hpp"
 
+void PGNVisitor::write_entry(std::ostringstream& oss, const PolyEntry& e) {
+    auto put16 = [&](uint16_t v) {
+        unsigned char buf[2] = {static_cast<unsigned char>(v >> 8),
+                                static_cast<unsigned char>(v & 0xFF)};
+        oss.write(reinterpret_cast<const char*>(buf), 2);
+    };
+    auto put64 = [&](uint64_t v) {
+        unsigned char buf[8];
+        for (int i = 7; i >= 0; --i) {
+            buf[7 - i] = static_cast<unsigned char>((v >> (i * 8)) & 0xFF);
+        }
+        oss.write(reinterpret_cast<const char*>(buf), 8);
+    };
+
+    put64(e.key);
+    put16(e.move);
+    put16(e.weight);
+    put16(e.learn);
+}
+
+void PGNVisitor::flush() {
+    PROFILE_FUNCTION();
+    if (m_Buffer.empty()) {
+        return;
+    }
+
+    for (const auto& entry : m_Buffer) {
+        write_entry(m_OutData, entry);
+    }
+
+    m_Buffer.clear();
+}
+
+void PGNVisitor::try_flush() {
+    PROFILE_FUNCTION();
+    for (auto it = m_PositionMap.begin(); it != m_PositionMap.end();) {
+        uint64_t key = it->first;
+        auto& moves = it->second;
+
+        for (auto move_it = moves.begin(); move_it != moves.end();) {
+            uint16_t move = move_it->first;
+            uint16_t weight = move_it->second;
+
+            m_Buffer.push_back({key, move, weight, 0});
+            move_it = moves.erase(move_it);
+
+            if (m_Buffer.size() >= MAX_BUFFER_SIZE) {
+                flush();
+            }
+        }
+
+        // If all moves for this key are processed, erase the key
+        it = moves.empty() ? m_PositionMap.erase(it) : ++it;
+    }
+}
+
 void PGNVisitor::startPgn() {
+
     m_Board.setFen(constants::STARTPOS);
     m_NumHalfMovesSoFar = 0;
 }

@@ -1,7 +1,6 @@
 #include <pch.hpp>
 
 #include "polyglot/book.hpp"
-
 #include "polyglot/horizon.hpp"
 
 INCBIN(BOOK, "assets/8moves_v3.bin");
@@ -24,6 +23,7 @@ Book::read_polyglot(const unsigned char* data, size_t size) {
             key = (key << 8) | ptr[j];
         }
 
+        // Big-endian decoding to match encoder's endian 
         uint16_t move = (ptr[8] << 8) | ptr[9];
         uint16_t weight = (ptr[10] << 8) | ptr[11];
         uint16_t learn = (ptr[12] << 8) | ptr[13];
