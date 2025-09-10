@@ -1,12 +1,14 @@
 #pragma once
 
-// ================ CONCEPTS ================
+// ================ CONCEPTS & TEMPLATE MAGIC ================
 
 template <typename T>
 concept Iterable = requires(T t) {
     std::begin(t);
     std::end(t);
 } && (!std::same_as<T, std::string>);
+
+template <typename> inline constexpr bool always_false = false;
 
 // ================ PRETTY PRINT FORMATTING SUITE & DBG ================
 
