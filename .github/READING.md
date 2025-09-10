@@ -9,6 +9,10 @@
 - More advanced concepts, optimization, and walkthrough: https://youtu.be/_vqlIPDR2TU?si=TsFC_y-vNylaVEVO
 - Transposition Tables: https://www.chessprogramming.org/Transposition_Table
 - UCI: https://gist.github.com/DOBRO/2592c6dad754ba67e6dcaec8c90165bf
+- Syzygy tb: https://www.chessprogramming.org/Syzygy_Bases
+- Fathom tb prober: https://github.com/jdart1/Fathom
+- Probabilistic testing: https://www.chessprogramming.org/Sequential_Probability_Ratio_Test 
+- Static Exchange Evaluation (SEE): https://www.chessprogramming.org/Static_Exchange_Evaluation
 
 # Iterative Approaches (Not full NN) 
 - Negamax: https://www.chessprogramming.org/Negamax

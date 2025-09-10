@@ -1,6 +1,6 @@
 ## Description
 
-Explain what problem (issue # if applicable) this PR solves and why it was needed.
+Explain what problem (issue # if applicable) this PR solves, why it was needed, just simply give a brief overview.
 
 ## Requirements:
 <!-- Your pull request will NOT be considered if these are not complete. -->

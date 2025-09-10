@@ -18,12 +18,26 @@ void PawnShields::create_shields(int square) {
 
     for (int file_offset = -1; file_offset <= 1; ++file_offset) {
         // One square ahead horizontally
-        white_shield.set_bit(Coord(file + file_offset, rank + 1));
-        black_shield.set_bit(Coord(file + file_offset, rank - 1));
+        Coord white_1(file + file_offset, rank + 1);
+        if (white_1.valid_square_idx()) {
+            white_shield.set(white_1);
+        }
+
+        Coord black_1(file + file_offset, rank - 1);
+        if (black_1.valid_square_idx()) {
+            white_shield.set(black_1);
+        }
 
         // Two squares ahead horizontally
-        white_shield.set_bit(Coord(file + file_offset, rank + 2));
-        black_shield.set_bit(Coord(file + file_offset, rank - 2));
+        Coord white_2(file + file_offset, rank + 2);
+        if (white_2.valid_square_idx()) {
+            white_shield.set(white_2);
+        }
+
+        Coord black_2(file + file_offset, rank - 2);
+        if (black_2.valid_square_idx()) {
+            white_shield.set(black_2);
+        }
     }
 
     m_WhiteShields[square] = white_shield;

@@ -45,17 +45,21 @@ TEST_CASE("position moves processing") {
 }
 
 TEST_CASE("go options") {
-    auto no_movetime = try_get_labeled_int("go", "movetime", GO_LABELS);
+    auto no_movetime = try_get_labeled_numeric<int>("go", "movetime", GO_LABELS);
     REQUIRE(no_movetime.is_none());
 
-    auto movetime = try_get_labeled_int("go movetime 10", "movetime", GO_LABELS);
+    auto movetime = try_get_labeled_numeric<int>("go movetime 10", "movetime", GO_LABELS);
     REQUIRE(movetime.is_some());
     REQUIRE(movetime.unwrap() == 10);
 
-    auto wtime = try_get_labeled_int("go wtime 10 btime 11 winc 12 binc 13", "wtime", GO_LABELS);
-    auto btime = try_get_labeled_int("go wtime 10 btime 11 winc 12 binc 13", "btime", GO_LABELS);
-    auto winc = try_get_labeled_int("go wtime 10 btime 11 winc 12 binc 13", "winc", GO_LABELS);
-    auto binc = try_get_labeled_int("go wtime 10 btime 11 winc 12 binc 13", "binc", GO_LABELS);
+    auto wtime =
+        try_get_labeled_numeric<int>("go wtime 10 btime 11 winc 12 binc 13", "wtime", GO_LABELS);
+    auto btime =
+        try_get_labeled_numeric<int>("go wtime 10 btime 11 winc 12 binc 13", "btime", GO_LABELS);
+    auto winc =
+        try_get_labeled_numeric<int>("go wtime 10 btime 11 winc 12 binc 13", "winc", GO_LABELS);
+    auto binc =
+        try_get_labeled_numeric<int>("go wtime 10 btime 11 winc 12 binc 13", "binc", GO_LABELS);
 
     REQUIRE(wtime.is_some());
     REQUIRE(btime.is_some());

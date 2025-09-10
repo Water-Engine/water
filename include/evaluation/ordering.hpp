@@ -1,19 +1,12 @@
 #pragma once
 
-#include "bitboard/bitboard.hpp"
-
-#include "game/board.hpp"
-#include "game/move.hpp"
-
-#include "generator/generator.hpp"
-
 // Technically arbitrary values for biased ordering
-constexpr int UNBIASED = 0;
-constexpr int LOSING_CAPTURE_BIAS = 2'000'000;
-constexpr int KILLER_MOVE_BIAS = 4'000'000;
-constexpr int PROMOTING_MOVE_BIAS = 6'000'000;
-constexpr int WINNING_CAPTURE_BIAS = 8'000'000;
-constexpr int HASH_MOVE_BIAS = 100'000'000;
+constexpr int16_t UNBIASED = 0;
+constexpr int16_t LOSING_CAPTURE_BIAS = 2'000;
+constexpr int16_t KILLER_MOVE_BIAS = 4'000;
+constexpr int16_t PROMOTING_MOVE_BIAS = 6'000;
+constexpr int16_t WINNING_CAPTURE_BIAS = 8'000;
+constexpr int16_t HASH_MOVE_BIAS = 10'000;
 
 constexpr std::array<std::pair<int, std::string_view>, 6> BIASES = {
     {{UNBIASED, "Unbiased"},
@@ -61,9 +54,6 @@ class MoveOrderer {
         clear_killers();
     }
 
-    /// Order moves heuristically. Assumes a fully validated MoveList, meaning all moves are legal
-    void order_moves(Ref<Board> board, const Move& hash_move, MoveList& moves, bool in_quiescence,
+    void order_moves(Ref<Board> board, const Move& hash_move, Movelist& moves, bool in_quiescence,
                      size_t ply);
-
-    inline std::string label_of_index(const MoveList& moves, size_t idx) const;
 };

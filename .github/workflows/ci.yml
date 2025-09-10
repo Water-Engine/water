@@ -9,6 +9,7 @@ on:
       - 'src/**'
       - 'include/**'
       - 'tests/**'
+      - 'vendor/**'
   pull_request:
     branches: [main]
     paths:
@@ -17,6 +18,7 @@ on:
       - 'src/**'
       - 'include/**'
       - 'tests/**'
+      - 'vendor/**'
 
 jobs:
   build-test:
@@ -43,10 +45,29 @@ jobs:
 
       - name: Install build tools (Windows)
         if: runner.os == 'Windows'
-        run: |
-          choco install mingw make -y
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          msystem: UCRT64
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-make
 
-      - name: Run tests
+      - name: Fix make alias (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          ln -s /ucrt64/bin/mingw32-make.exe /ucrt64/bin/make
+        shell: msys2 {0}
+
+      - name: Run tests (Linux/macOS)
+        if: runner.os != 'Windows'
         run: |
           make clean
           make test
+
+      - name: Run tests (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          make clean
+          make test
+        shell: msys2 {0}

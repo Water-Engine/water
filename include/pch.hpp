@@ -4,6 +4,9 @@
 // I/O
 #include <csignal>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -17,13 +20,12 @@
 #include <chrono>
 #include <climits>
 #include <concepts>
-#include <fstream>
 #include <functional>
-#include <iomanip>
 #include <memory>
 #include <mutex>
 #include <numeric>
 #include <random>
+#include <stdexcept>
 #include <thread>
 #include <type_traits>
 #include <utility>
@@ -38,10 +40,22 @@
 #include <variant>
 #include <vector>
 
-// Exceptions
-#include <stdexcept>
+// SIMD
+#include "xsimd/xsimd.hpp"
 
-// Custom
+// Chess Core Library
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#define CHESS_NO_EXCEPTIONS
+#include "game/chess.hpp"
+using namespace chess;
+#pragma GCC diagnostic pop
+
+// Other
 #include "core.hpp"
+#include "game/utils.hpp"
+
+#define INCBIN_SILENCE_BITCODE_WARNING
+#include "incbin/incbin.h"
 
 #endif // WATER_PCH

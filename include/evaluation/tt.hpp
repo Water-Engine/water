@@ -1,14 +1,6 @@
 #pragma once
 
-#include "game/board.hpp"
-#include "game/move.hpp"
-
-enum class NodeType {
-    Void,
-    Exact,
-    UpperBound,
-    LowerBound,
-};
+enum class NodeType { Void, Exact, UpperBound, LowerBound };
 
 struct Node {
     uint64_t ZobristKey;
@@ -38,7 +30,7 @@ class TranspositionTable {
     TranspositionTable(Ref<Board> board, size_t table_size_mb);
 
     inline void clear() { reset_nodes(); }
-    inline uint64_t current_idx() const { return m_Board->current_hash() % m_Count; }
+    inline uint64_t current_idx() const { return m_Board->hash() % m_Count; }
 
     inline Option<Move> try_get_best_move() const { return try_get_best_move(current_idx()); }
     Option<Move> try_get_best_move(size_t index) const;

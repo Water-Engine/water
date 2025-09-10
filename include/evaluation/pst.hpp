@@ -1,7 +1,6 @@
 #pragma once
 
-#include "game/coord.hpp"
-#include "game/piece.hpp"
+#include "game/utils.hpp"
 
 // ================ TABLE GROUP ================
 
@@ -20,16 +19,16 @@ constexpr std::array<int, 64> flip_table(const std::array<int, 64>& table) {
 enum class Phase { Unified, Early, Late };
 constexpr int PHASE_SENTINEL = 3; // WATCH ME - MUST BE NUM PHASE ENUM VALS
 
-struct Table {
+struct PST {
     std::array<int, 64> EarlyGame;
     std::array<int, 64> LateGame;
 
-    Table() = default;
-    constexpr Table(const std::array<int, 64>& unified) : EarlyGame(unified), LateGame(unified) {}
-    constexpr Table(const std::array<int, 64>& early, const std::array<int, 64>& late)
+    PST() = default;
+    constexpr PST(const std::array<int, 64>& unified) : EarlyGame(unified), LateGame(unified) {}
+    constexpr PST(const std::array<int, 64>& early, const std::array<int, 64>& late)
         : EarlyGame(early), LateGame(late) {}
 
-    constexpr Table flip() const { return Table{flip_table(EarlyGame), flip_table(LateGame)}; }
+    constexpr PST flip() const { return PST{flip_table(EarlyGame), flip_table(LateGame)}; }
 
     inline const std::array<int, 64>& phase(Phase p) const {
         if (p == Phase::Early) {
@@ -37,6 +36,27 @@ struct Table {
         } else {
             return LateGame;
         }
+    }
+
+    inline std::string to_string(Phase p) const {
+        const std::array<int, 64>& table = (p == Phase::Early) ? EarlyGame : LateGame;
+        int max_width = 0;
+        for (int square : table) {
+            max_width = std::max(max_width, static_cast<int>(std::to_string(square).size()));
+        }
+
+        std::ostringstream oss;
+        for (int rank = 0; rank < 8; ++rank) {
+            for (int file = 0; file < 8; ++file) {
+                oss << std::setw(max_width + 1) << table[rank * 8 + file];
+            }
+
+            if (rank < 7) {
+                oss << '\n';
+            }
+        }
+
+        return oss.str();
     }
 };
 
@@ -52,8 +72,8 @@ constexpr std::array<int, 64> PawnLate = {
     50, 50, 30, 30, 30, 30, 30, 30, 30, 30, 20, 20, 20, 20, 20, 20, 20, 20, 10, 10, 10, 10,
     10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0,  0,  0,  0,  0,  0,  0,  0};
 
-constexpr Table WhitePawnTable{PawnEarly, PawnLate};
-constexpr Table BlackPawnTable = WhitePawnTable.flip();
+constexpr PST WhitePawnTable{PawnEarly, PawnLate};
+constexpr PST BlackPawnTable = WhitePawnTable.flip();
 
 // ================ ROOK PST ================
 
@@ -62,8 +82,8 @@ constexpr std::array<int, 64> RookUnified = {
     0, -5, -5, 0,  0,  0, 0, 0, 0, -5, -5, 0,  0,  0,  0,  0, 0,  -5, -5, 0, 0, 0,
     0, 0,  0,  -5, -5, 0, 0, 0, 0, 0,  0,  -5, 0,  0,  0,  5, 5,  0,  0,  0};
 
-constexpr Table WhiteRookTable{RookUnified, RookUnified};
-constexpr Table BlackRookTable = WhiteRookTable.flip();
+constexpr PST WhiteRookTable{RookUnified, RookUnified};
+constexpr PST BlackRookTable = WhiteRookTable.flip();
 
 // ================ KNIGHT PST ================
 
@@ -74,8 +94,8 @@ constexpr std::array<int, 64> KnightUnified = {
     -40, -20, 0,   5,   5,   0,   -20, -40, -50, -40, -30, -30, -30, -30, -40, -50,
 };
 
-constexpr Table WhiteKnightTable{KnightUnified, KnightUnified};
-constexpr Table BlackKnightTable = WhiteKnightTable.flip();
+constexpr PST WhiteKnightTable{KnightUnified, KnightUnified};
+constexpr PST BlackKnightTable = WhiteKnightTable.flip();
 
 // ================ BISHOP PST ================
 
@@ -86,8 +106,8 @@ constexpr std::array<int, 64> BishopUnified = {
     -10, 5,   0,   0,   0,   0,   5,   -10, -20, -10, -10, -10, -10, -10, -10, -20,
 };
 
-constexpr Table WhiteBishopTable{BishopUnified, BishopUnified};
-constexpr Table BlackBishopTable = WhiteBishopTable.flip();
+constexpr PST WhiteBishopTable{BishopUnified, BishopUnified};
+constexpr PST BlackBishopTable = WhiteBishopTable.flip();
 
 // ================ QUEEN PST ================
 
@@ -97,16 +117,16 @@ constexpr std::array<int, 64> QueenUnified = {
     0,   0,   5,   5,  5,  5,   0,   -5,  -10, 5,   5,   5,  5,  5,   0,   -10,
     -10, 0,   5,   0,  0,  0,   0,   -10, -20, -10, -10, -5, -5, -10, -10, -20};
 
-constexpr Table WhiteQueenTable{QueenUnified, QueenUnified};
-constexpr Table BlackQueenTable = WhiteQueenTable.flip();
+constexpr PST WhiteQueenTable{QueenUnified, QueenUnified};
+constexpr PST BlackQueenTable = WhiteQueenTable.flip();
 
 // ================ KING PSTs ================
 
 constexpr std::array<int, 64> KingEarly = {
-    -80, -70, -70, -70, -70, -70, -70, -80, -60, -60, -60, -60, -60, -60, -60, -60,
-    -40, -50, -50, -60, -60, -50, -50, -40, -30, -40, -40, -50, -50, -40, -40, -30,
-    -20, -30, -30, -40, -40, -30, -30, -20, -10, -20, -20, -20, -20, -20, -20, -10,
-    20,  20,  -5,  -5,  -5,  -5,  20,  20,  20,  30,  10,  0,   0,   10,  30,  20};
+    -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30,
+    -20, -30, -30, -40, -40, -30, -30, -20, -10, -20, -20, -30, -30, -20, -20, -10,
+    20,  20,  -10, -20, -20, -10, 20,  20,  20,  30,  10,  0,   0,   10,  30,  20};
 
 constexpr std::array<int, 64> KingLate = {
     -20, -10, -10, -10, -10, -10, -10, -20, -5,  0,   5,   5,   5,   5,   0,   -5,
@@ -114,42 +134,38 @@ constexpr std::array<int, 64> KingLate = {
     -20, -15, 30,  40,  40,  30,  -15, -20, -25, -20, 20,  25,  25,  20,  -20, -25,
     -30, -25, 0,   0,   0,   0,   -25, -30, -50, -30, -30, -30, -30, -30, -30, -50};
 
-constexpr Table WhiteKingTable{KingEarly, KingLate};
-constexpr Table BlackKingTable = WhiteKingTable.flip();
+constexpr PST WhiteKingTable{KingEarly, KingLate};
+constexpr PST BlackKingTable = WhiteKingTable.flip();
 
 // ================ PST MANAGER GENERATED ONCE AT RUNTIME ================
 
 /// Piece-square-table manager - returns 0 for invalid checked square indices
-class PST {
+class PSTManager {
   private:
-    std::array<Table, 12> m_Tables;
+    std::array<PST, 12> m_Tables;
 
   private:
-    PST();
+    PSTManager();
 
   public:
-    PST(const PST&) = delete;
-    PST& operator=(const PST&) = delete;
-    PST(PST&&) = delete;
-    PST& operator=(PST&&) = delete;
+    PSTManager(const PSTManager&) = delete;
+    PSTManager& operator=(const PSTManager&) = delete;
+    PSTManager(PSTManager&&) = delete;
+    PSTManager& operator=(PSTManager&&) = delete;
 
-    static PST& instance() {
-        static PST s_instance;
+    static PSTManager& instance() {
+        static PSTManager s_instance;
         return s_instance;
     }
 
-    int static get_value_unchecked(const Table& table, PieceColor piece_color, int square,
+    int static get_value_unchecked(const PST& table, Color piece_color, int square,
                                    Phase phase = Phase::Unified);
-    int static get_value(const Table& table, PieceColor piece_color, int square,
+    int static get_value(const PST& table, Color piece_color, int square,
                          Phase phase = Phase::Unified);
 
     inline int get_value_unchecked(const Piece& piece, int square,
                                    Phase phase = Phase::Unified) const {
-// The compiler really hates the use of piece.index() for any indexing
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warray-bounds"
-        return m_Tables[piece.index()].phase(phase)[square];
-#pragma GCC diagnostic pop
+        return m_Tables[piece].phase(phase)[square];
     }
 
     inline int get_value(const Piece& piece, int square, Phase phase = Phase::Unified) const {
@@ -168,5 +184,13 @@ class PST {
         }
 
         return get_value_tapered_unchecked(piece, square, endgame_transition);
+    }
+
+    inline static std::string to_string(const PST& table, Phase phase = Phase::Unified) {
+        return table.to_string(phase);
+    }
+
+    inline std::string to_string(const Piece& piece, Phase phase = Phase::Unified) const {
+        return m_Tables[piece].to_string(phase);
     }
 };
