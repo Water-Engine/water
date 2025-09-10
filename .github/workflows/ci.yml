@@ -59,15 +59,15 @@ jobs:
           ln -s /ucrt64/bin/mingw32-make.exe /ucrt64/bin/make
         shell: msys2 {0}
 
-      - name: Run example (Linux/macOS)
+      - name: Run tests (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
           make clean
-          make example
+          make test
 
-      - name: Run example (Windows)
+      - name: Run tests (Windows)
         if: runner.os == 'Windows'
         run: |
           make clean
-          make example
+          make test
         shell: msys2 {0}
