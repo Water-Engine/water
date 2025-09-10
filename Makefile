@@ -235,9 +235,9 @@ Build Specific Targets:\n\
 default           > Builds the release configuration (default)\n\
 install           > Alias for release (to be updated)\n\
 all               > Builds all optimization configurations (dist, release, debug)\n\
-dist              > Max optimization, profiling disabled\n\
-release           > Slightly fewer optimizations, no DEBUG define\n\
-debug             > No optimization, PROFILE and DEBUG defined\n\
+dist              > Max optimization, DIST defined\n\
+release           > Slightly fewer optimizations, RELEASE defined\n\
+debug             > No optimization, PROFILE & DEBUG defined\n\
 test              > Run unit tests (excludes perft tests)\n\
 perft             > Run the perft tests\n\
 run               > Build and run the release binary\n\

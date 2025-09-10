@@ -32,8 +32,8 @@ The project's build system uses C++20 and GNU Make, and it is recommended that y
 - `default`: Builds the release configuration (default)
 - `install`: Builds the dist config (to be updated)
 - `all`: Builds all optimization configurations for the project (dist, release, and debug)
-- `dist`: Builds the project with maximum optimization and disabled profiling
-- `release`: Builds the project with slightly fewer optimizations and no DEBUG define
+- `dist`: Builds the project with maximum optimization and DIST define
+- `release`: Builds the project with slightly fewer optimizations and RELEASE define
 - `debug`: Builds the project with no optimization, defining both PROFILE and DEBUG
 - `test`: Run the project's unit tests Excludes perft testing
 - `perft`: Run the perft tests
