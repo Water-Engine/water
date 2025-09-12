@@ -73,6 +73,22 @@ class Coord {
     }
 };
 
+inline Option<Piece> is_capture(const Move& move, Ref<Board> board) {
+    auto target_piece = board->at(move.to().index());
+
+    if (target_piece.type() != PieceType::NONE && target_piece.color() != board->sideToMove()) {
+        return Option<Piece>(target_piece);
+    }
+
+    if (move.typeOf() == Move::ENPASSANT) {
+        int offset = (board->sideToMove() == Color::WHITE) ? -8 : 8;
+        auto ep_piece = board->at(move.to().index() + offset);
+        return Option<Piece>(ep_piece);
+    }
+
+    return Option<Piece>();
+}
+
 namespace Squares {
 // clang-format off
 enum Index : int {

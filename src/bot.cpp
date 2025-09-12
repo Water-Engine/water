@@ -44,20 +44,18 @@ int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black
     return std::ceil(std::max(min_think_time, think_time_ms));
 }
 
-Result<void, std::string> Bot::think_timed([[maybe_unused]] int time_ms) {
+Result<void, std::string> Bot::think_timed(int time_ms) {
     auto bm = Book::instance().try_get_book_move(m_Board, m_BookWeight);
     if (bm.is_some()) {
         fmt::println("bestmove {}", bm.unwrap());
         return Result<void, std::string>();
     }
 
-    m_Searcher.find_bestmove();
-    fmt::println(m_Searcher.retrieve_bestmove());
-
+    m_Searcher.find_bestmove(time_ms);
     return Result<void, std::string>();
 }
 
-std::string Bot::board_str() {
+std::string Bot::board_diagram() {
     std::ostringstream oss;
     int last_move_square = -1;
     bool black_at_top = m_Board->sideToMove() == Color::WHITE;

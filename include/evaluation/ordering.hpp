@@ -43,6 +43,10 @@ class MoveOrderer {
     /// Indexed as [color][from][to]
     std::array<std::array<std::array<int, 64>, 64>, 2> m_HistoryHeuristic;
 
+  private:
+    int king_safety_bonus(Ref<Board> board, const Move& move);
+    int shield_bias(Ref<Board> board, const Move& move);
+
   public:
     MoveOrderer() = default;
 
@@ -56,4 +60,6 @@ class MoveOrderer {
 
     void order_moves(Ref<Board> board, const Move& hash_move, Movelist& moves, bool in_quiescence,
                      size_t ply);
+
+    friend class Searcher;
 };

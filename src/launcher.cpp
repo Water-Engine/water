@@ -4,10 +4,9 @@
 
 #include "bot.hpp"
 
-#include "bitboard/pawn_shields.hpp"
-
 #include "polyglot/book.hpp"
 
+#include "evaluation/pawn_shields.hpp"
 #include "evaluation/pst.hpp"
 
 void launch() {
@@ -60,7 +59,7 @@ ParseResult Engine::process_line(const std::string& line) {
     } else if (cmd_lead == "go") {
         process_go_cmd(command);
     } else if (cmd_lead == "d") {
-        fmt::println(m_Bot->board_str());
+        fmt::println(m_Bot->board_diagram());
     } else if (cmd_lead == "stop") {
         m_Bot->stop_thinking();
     } else if (cmd_lead == "quit") {
@@ -117,6 +116,8 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
         uint64_t nodes = m_Bot->perft(depth);
         fmt::println("Perft test of depth {} found {} nodes", depth, nodes);
         return Result<void, std::string>();
+    } else if (str::contains(message, "infinite")) {
+        return m_Bot->think_timed(0);
     } else {
         int time_remaining_white_ms =
             try_get_labeled_numeric<int>(message, "wtime", GO_LABELS).unwrap_or(0);
@@ -127,9 +128,8 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
         int increment_black_ms =
             try_get_labeled_numeric<int>(message, "binc", GO_LABELS).unwrap_or(0);
 
-        int suggested = m_Bot->choose_think_time(time_remaining_white_ms, time_remaining_black_ms,
+        think_time_ms = m_Bot->choose_think_time(time_remaining_white_ms, time_remaining_black_ms,
                                                  increment_white_ms, increment_black_ms);
-        think_time_ms = (suggested == 0) ? INT32_MAX : suggested;
     }
 
     return m_Bot->think_timed(think_time_ms);
@@ -163,6 +163,14 @@ Result<void, std::string> Engine::process_opt_cmd(const std::string& message) {
         const auto weight =
             try_get_labeled_numeric<float>(message, "weight", OPT_LABELS).unwrap_or(0.50f);
         m_Bot->set_weight(weight);
+    }
+
+    // Search options, not necessarily mutually exclusive
+    if (str::contains(message, "ttmb")) {
+        const auto maybe_new_size = try_get_labeled_numeric<size_t>(message, "ttmb", OPT_LABELS);
+        if (maybe_new_size.is_some()) {
+            m_Bot->resize_tt(maybe_new_size.unwrap());
+        }
     }
 
     return Result<void, std::string>();

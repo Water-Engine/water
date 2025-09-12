@@ -1,6 +1,6 @@
 #include <pch.hpp>
 
-#include "bitboard/pawn_shields.hpp"
+#include "evaluation/pawn_shields.hpp"
 
 PawnShields::PawnShields() {
     for (size_t square = 0; square < 64; ++square) {

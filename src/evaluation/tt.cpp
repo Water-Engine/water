@@ -13,7 +13,6 @@ void TranspositionTable::reset_nodes() {
 }
 
 TranspositionTable::TranspositionTable(Ref<Board> board, size_t table_size_mb) : m_Board(board) {
-
     size_t table_size_bytes = table_size_mb * 1024 * 1024;
     size_t total_capacity = table_size_bytes / NodeSize;
 
@@ -21,7 +20,23 @@ TranspositionTable::TranspositionTable(Ref<Board> board, size_t table_size_mb) :
     m_Entries.resize(m_Count);
 }
 
-Option<Move> TranspositionTable::try_get_best_move(size_t index) const {
+void TranspositionTable::resize(size_t new_table_size_mb) {
+    size_t new_count = (new_table_size_mb * 1024 * 1024) / NodeSize;
+    std::vector<Node> new_entries(new_count);
+
+    // Rehash old nodes
+    for (auto& node : m_Entries) {
+        if (node.Type != NodeType::Void) {
+            new_entries[current_idx(node.ZobristKey)] = node;
+        }
+    }
+
+    m_Entries = std::move(new_entries);
+    m_Count = new_count;
+}
+
+Option<Move> TranspositionTable::try_get_best_move(uint64_t key) const {
+    auto index = current_idx(key);
     if (index >= m_Count) {
         return Option<Move>();
     }
@@ -31,5 +46,19 @@ Option<Move> TranspositionTable::try_get_best_move(size_t index) const {
         return Option<Move>();
     } else {
         return Option<Move>(node.BestMove);
+    }
+}
+
+Option<Node> TranspositionTable::probe(uint64_t key) const {
+    auto index = current_idx(key);
+    if (index >= m_Count) {
+        return Option<Node>();
+    }
+
+    auto node = m_Entries[index];
+    if (node.Type == NodeType::Void) {
+        return Option<Node>();
+    } else {
+        return Option<Node>(node);
     }
 }

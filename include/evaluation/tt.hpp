@@ -30,11 +30,17 @@ class TranspositionTable {
     TranspositionTable(Ref<Board> board, size_t table_size_mb);
 
     inline void clear() { reset_nodes(); }
+    void resize(size_t new_table_size_mb);
+
     inline uint64_t current_idx() const { return m_Board->hash() % m_Count; }
+    inline uint64_t current_idx(uint64_t key) const { return key % m_Count; }
 
-    inline Option<Move> try_get_best_move() const { return try_get_best_move(current_idx()); }
-    Option<Move> try_get_best_move(size_t index) const;
+    inline Option<Move> try_get_best_move() const { return try_get_best_move(m_Board->hash()); }
+    Option<Move> try_get_best_move(uint64_t key) const;
 
-    void insert(size_t index, const Node& node) { m_Entries[index] = node; }
-    void insert(const Node& node) { insert(current_idx(), node); }
+    inline Option<Node> probe() const { return probe(m_Board->hash()); };
+    Option<Node> probe(uint64_t key) const;
+
+    inline void insert(const Node& node) { insert(current_idx(), node); }
+    inline void insert(size_t index, const Node& node) { m_Entries[index] = node; }
 };
