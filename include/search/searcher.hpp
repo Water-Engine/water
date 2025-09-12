@@ -38,7 +38,8 @@ class Searcher {
     int quiescence(int alpha, int beta);
 
   public:
-    Searcher(Ref<Board> board, size_t tt_size_mb = DEFAULT_TT_MB) : m_Board(board), m_Evaluator(board), m_TT(board, tt_size_mb) {}
+    Searcher(Ref<Board> board, size_t tt_size_mb = DEFAULT_TT_MB)
+        : m_Board(board), m_Evaluator(board), m_TT(board, tt_size_mb) {}
 
     ~Searcher() {
         stop_search();
