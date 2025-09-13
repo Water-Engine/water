@@ -37,6 +37,12 @@ class Searcher {
 
     void run_iterative_deepening();
     inline bool should_stop() const;
+    void halt() {
+        stop_search();
+        if (m_SearchThread.joinable()) {
+            m_SearchThread.join();
+        }
+    }
 
     int quiescence(int alpha, int beta);
 
@@ -44,16 +50,17 @@ class Searcher {
     Searcher(Ref<Board> board, size_t tt_size_mb = DEFAULT_TT_MB)
         : m_Board(board), m_Evaluator(board), m_TT(board, tt_size_mb) {}
 
-    ~Searcher() {
-        stop_search();
-        if (m_SearchThread.joinable()) {
-            m_SearchThread.join();
-        }
-    }
+    ~Searcher() { halt(); }
 
     inline void resize_tt(size_t new_tt_size_mb) { m_TT.resize(new_tt_size_mb); }
     inline void set_nnue_opt(bool nnue) { m_Evaluator.m_UseNNUE = nnue; }
     inline void set_search_info(bool show) { m_SearchInfo = show; }
+
+    inline void reset() {
+        halt();
+        m_TT.clear();
+        m_Orderer.clear();
+    }
 
     void find_bestmove(int time_limit_ms);
     void stop_search() { m_StopFlag = true; }

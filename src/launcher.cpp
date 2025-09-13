@@ -69,6 +69,8 @@ ParseResult Engine::process_line(const std::string& line) {
         return ParseResult::EXIT;
     } else if (cmd_lead == "setoption") {
         process_opt_cmd(command);
+    } else if (cmd_lead == "eval") {
+        fmt::println("score {}", m_Bot->evaluate_current());
     }
 
     return ParseResult::SUCCESS;

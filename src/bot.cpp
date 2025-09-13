@@ -7,7 +7,13 @@
 
 #include "polyglot/book.hpp"
 
-void Bot::new_game() {}
+void Bot::new_game() {
+    m_Board->setFen(constants::STARTPOS);
+    m_Searcher.reset();
+    m_LastMove = Move::NO_MOVE;
+}
+
+int Bot::evaluate_current() { return Evaluator(m_Board).evaluate(); }
 
 Result<void, std::string> Bot::set_position(const std::string& fen) {
     if (m_Board->setFen(fen)) {

@@ -27,6 +27,7 @@ class Bot {
     inline void set_weight(float weight) { m_BookWeight = weight; }
     inline void set_nnue(bool nnue) { m_Searcher.set_nnue_opt(nnue); }
     inline void set_search_info(bool show) { m_Searcher.set_search_info(show); }
+    int evaluate_current();
 
     Result<void, std::string> set_position(const std::string& fen);
     Result<void, std::string> make_move(const std::string& move_uci);
