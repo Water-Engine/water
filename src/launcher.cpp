@@ -6,7 +6,7 @@
 
 #include "polyglot/book.hpp"
 
-#include "evaluation/pawn_shields.hpp"
+#include "evaluation/eval_bits.hpp"
 #include "evaluation/pst.hpp"
 
 void launch() {
@@ -17,7 +17,9 @@ void launch() {
         PROFILE_SCOPE("Initialization");
         Book::instance();
         PSTManager::instance();
-        PawnShields::instance();
+        PawnMasks::instance();
+        FileMasks::instance();
+        Distance::instance();
 
         e.prime();
     }
@@ -166,17 +168,47 @@ Result<void, std::string> Engine::process_opt_cmd(const std::string& message) {
     }
 
     // Search options, not necessarily mutually exclusive
-    if (str::contains(message, "ttmb")) {
-        const auto maybe_new_size = try_get_labeled_numeric<size_t>(message, "ttmb", OPT_LABELS);
+    if (str::contains(message, "hash")) {
+        const auto maybe_new_size = try_get_labeled_numeric<size_t>(message, "hash", OPT_LABELS);
         if (maybe_new_size.is_some()) {
             m_Bot->resize_tt(maybe_new_size.unwrap());
         }
+    }
+
+    if (str::contains(message, "usennue")) {
+        const auto use_nnue = try_get_labeled_bool(message, "usennue", OPT_LABELS).unwrap_or(false);
+        m_Bot->set_nnue(use_nnue);
+    }
+
+    if (str::contains(message, "searchinfo")) {
+        const auto show_search_info =
+            try_get_labeled_bool(message, "searchinfo", OPT_LABELS).unwrap_or(true);
+        m_Bot->set_search_info(show_search_info);
     }
 
     return Result<void, std::string>();
 }
 
 // ================ PARSE UTILS ================
+
+Option<bool> try_get_labeled_bool(const std::string& text, const std::string& label,
+                                  std::span<const std::string_view> all_labels) {
+    Option<std::string> maybe_string = try_get_labeled_string(text, label, all_labels);
+    if (!maybe_string.is_some()) {
+        return Option<bool>();
+    }
+
+    std::string token = str::split(maybe_string.unwrap())[0];
+    str::to_lower(token);
+
+    if (token == "true" || token == "1" || token == "yes" || token == "on") {
+        return Option<bool>(true);
+    } else if (token == "false" || token == "0" || token == "no" || token == "off") {
+        return Option<bool>(false);
+    } else {
+        return Option<bool>();
+    }
+}
 
 Option<std::string> try_get_labeled_string(const std::string& text, const std::string& label,
                                            std::span<const std::string_view> all_labels) {

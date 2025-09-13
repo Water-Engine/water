@@ -4,8 +4,8 @@
 #include "evaluation/ordering.hpp"
 #include "evaluation/tt.hpp"
 
-constexpr int MAX_SEARCH_DEPTH = 4;
-constexpr size_t DEFAULT_TT_MB = 64;
+constexpr int MAX_SEARCH_DEPTH = 1000;
+constexpr size_t DEFAULT_TT_MB = 10;
 
 struct BestMove {
     Move BestMove;
@@ -25,12 +25,15 @@ class Searcher {
     std::atomic<bool> m_StopFlag{false};
     std::thread m_SearchThread;
 
+    std::atomic<uint64_t> m_NodesVisited{0};
+    std::atomic<bool> m_SearchInfo{false}; // TODO: Fix this once searching is correctly implemented
+
     std::chrono::steady_clock::time_point m_StartTime;
     int m_TimeLimitMs = 0;
     bool m_IsInfiniteSearch{true};
 
   private:
-    std::pair<Move, int> alpha_beta(int depth, int alpha, int beta);
+    std::pair<Move, int> alpha_beta(int depth, int alpha, int beta, std::vector<Move>& pv);
 
     void run_iterative_deepening();
     inline bool should_stop() const;
@@ -49,6 +52,8 @@ class Searcher {
     }
 
     inline void resize_tt(size_t new_tt_size_mb) { m_TT.resize(new_tt_size_mb); }
+    inline void set_nnue_opt(bool nnue) { m_Evaluator.m_UseNNUE = nnue; }
+    inline void set_search_info(bool show) { m_SearchInfo = show; }
 
     void find_bestmove(int time_limit_ms);
     void stop_search() { m_StopFlag = true; }

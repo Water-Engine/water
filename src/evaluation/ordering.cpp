@@ -1,14 +1,14 @@
 #include <pch.hpp>
 
+#include "evaluation/eval_bits.hpp"
 #include "evaluation/evaluation.hpp"
 #include "evaluation/ordering.hpp"
-#include "evaluation/pawn_shields.hpp"
 #include "evaluation/pst.hpp"
 
 int MoveOrderer::king_safety_bonus(Ref<Board> board, const Move& move) {
     Color c = board->sideToMove();
     int king_sq_after = move.to().index();
-    Bitboard shield = PawnShields::instance().get(c, king_sq_after);
+    Bitboard shield = PawnMasks::instance().get_shield(c, king_sq_after);
 
     // Count how many friendly pawns are protecting the squares
     int pawns_covering = 0;
@@ -34,7 +34,7 @@ int MoveOrderer::shield_bias(Ref<Board> board, const Move& move) {
 
     // Get shield for king's square
     int king_sq = board->kingSq(c).index();
-    Bitboard shield = PawnShields::instance().get(c, king_sq);
+    Bitboard shield = PawnMasks::instance().get_shield(c, king_sq);
 
     bool from_in_shield = shield.check(from_sq);
     bool to_in_shield = shield.check(to_sq);

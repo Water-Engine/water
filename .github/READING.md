@@ -13,6 +13,7 @@
 - Fathom tb prober: https://github.com/jdart1/Fathom
 - Probabilistic testing: https://www.chessprogramming.org/Sequential_Probability_Ratio_Test 
 - Static Exchange Evaluation (SEE): https://www.chessprogramming.org/Static_Exchange_Evaluation
+- Principal Variation: https://www.chessprogramming.org/Principal_Variation
 
 # Iterative Approaches (Not full NN) 
 - Negamax: https://www.chessprogramming.org/Negamax
@@ -22,6 +23,9 @@
 - Killer Moves: https://www.chessprogramming.org/Killer_Move
 - Move Ordering: https://www.chessprogramming.org/Move_Ordering
 - History Heuristic: https://www.chessprogramming.org/History_Heuristic
+- Mop-Up Evaluation: https://www.chessprogramming.org/Mop-up_Evaluation
+- Distances: https://www.chessprogramming.org/Distance
+- Manhattan distance: https://www.chessprogramming.org/Manhattan-Distance
 
 # Neural Networks
 - Neural Networks: https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi

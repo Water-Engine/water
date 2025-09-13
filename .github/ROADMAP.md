@@ -15,7 +15,7 @@
 
 # Search Core
 - [x] Make/Unmake move system, including null moves for evaluation if needed
-- [ ] Search thread - `go` command should not halt io operations
+- [x] Search thread - `go` command should not halt io operations
 - [ ] Evaluating positions with NNUE and piece-square-tables (after NN implemented)
 - [x] Opening book for well-played openings
 
@@ -45,8 +45,8 @@
 - [x] All pieces move as expected
 - [x] Legal move generation
 - [x] Implement perft for regression testing
-- [ ] Non-blocking commands
-- [ ] Iterative search
+- [x] Non-blocking commands
+- [x] Iterative search
 - [ ] Basic NN setup
 - [ ] Basic Neural Net setup (forward pass + policy/value heads)
 - [ ] NN Trainer and Self-Play implemented

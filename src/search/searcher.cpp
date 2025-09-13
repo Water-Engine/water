@@ -6,7 +6,8 @@
 #include "evaluation/ordering.hpp"
 #include "evaluation/pst.hpp"
 
-std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta) {
+std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, std::vector<Move>& pv) {
+    m_NodesVisited += 1;
     Move tt_move = Move::NO_MOVE;
     auto tt_node_opt = m_TT.probe();
     int alpha_original = alpha;
@@ -54,13 +55,18 @@ std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta) {
             break;
         }
 
+        std::vector<Move> child_pv;
         m_Board->makeMove(move);
-        int score = -alpha_beta(depth - 1, -beta, -alpha).second;
+        int score = -alpha_beta(depth - 1, -beta, -alpha, child_pv).second;
         m_Board->unmakeMove(move);
 
         if (score > best_score) {
             best_move = move;
             best_score = score;
+
+            pv.clear();
+            pv.push_back(move);
+            pv.insert(pv.end(), child_pv.begin(), child_pv.end());
         }
 
         if (score >= beta) {
@@ -112,12 +118,29 @@ void Searcher::run_iterative_deepening() {
         int alpha = -INF;
         int beta = INF;
 
-        auto [move, eval] = alpha_beta(depth, alpha, beta);
+        auto start_time = std::chrono::steady_clock::now();
+
+        std::vector<Move> pv;
+        auto [move, eval] = alpha_beta(depth, alpha, beta, pv);
+
+        auto end_time = std::chrono::steady_clock::now();
+        auto elapsed_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        int nps = m_NodesVisited * 1000 / std::max(static_cast<int64_t>(1), elapsed_ms);
 
         if (move != Move::NO_MOVE) {
             best_move = move;
             best_eval = eval;
             set_bestmove(best_move, best_eval);
+        }
+
+        if (m_SearchInfo) {
+            std::ostringstream oss;
+            for (auto pv_move : pv) {
+                oss << uci::moveToUci(pv_move) << " ";
+            }
+            fmt::println("info depth {} score {} nodes {} nps {} time {} pv {}", depth, eval,
+                         m_NodesVisited.load(), nps, elapsed_ms, oss.str());
         }
     }
 
@@ -137,6 +160,7 @@ inline bool Searcher::should_stop() const {
 }
 
 int Searcher::quiescence(int alpha, int beta) {
+    m_NodesVisited += 1;
     int eval = m_Evaluator.evaluate();
 
     if (eval >= beta) {

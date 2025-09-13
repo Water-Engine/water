@@ -22,9 +22,11 @@ class Bot {
     void new_game();
     inline void stop_thinking() { m_Searcher.stop_search(); };
     void quit() { stop_thinking(); }
-    void resize_tt(size_t new_tt_size_mb) { m_Searcher.resize_tt(new_tt_size_mb); }
 
+    inline void resize_tt(size_t new_tt_size_mb) { m_Searcher.resize_tt(new_tt_size_mb); }
     inline void set_weight(float weight) { m_BookWeight = weight; }
+    inline void set_nnue(bool nnue) { m_Searcher.set_nnue_opt(nnue); }
+    inline void set_search_info(bool show) { m_Searcher.set_search_info(show); }
 
     Result<void, std::string> set_position(const std::string& fen);
     Result<void, std::string> make_move(const std::string& move_uci);
