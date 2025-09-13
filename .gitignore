@@ -47,6 +47,10 @@ target
 **/mutants.out*/
 /target
 
+# Zig build system
+.zig-cache
+zig-out
+
 # Custom ignores
 .vscode
 .vs
@@ -59,7 +63,6 @@ Water-Main.json
 full_dataset.bin
 larger_book.bin
 
-.zig-cache
-zig-out
+**.nnue
 
 release/
