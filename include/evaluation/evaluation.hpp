@@ -2,9 +2,6 @@
 
 #include "evaluation/material.hpp"
 
-const int INF = 1'000'000'000;
-const int NEG_INF = -INF;
-
 /// Simple evaluation takes after Sebastian Lague's engine. This will not be the default.
 
 class Evaluator {

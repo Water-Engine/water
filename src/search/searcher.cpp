@@ -50,6 +50,8 @@ std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, std::v
     Move best_move = 0;
     int best_score = -INF;
 
+    int score;
+    bool is_first = true;
     for (auto& move : moves) {
         if (should_stop()) {
             break;
@@ -57,7 +59,15 @@ std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, std::v
 
         std::vector<Move> child_pv;
         m_Board->makeMove(move);
-        int score = -alpha_beta(depth - 1, -beta, -alpha, child_pv).second;
+        if (is_first) {
+            score = -alpha_beta(depth - 1, -beta, -alpha, child_pv).second;
+            is_first = false;
+        } else {
+            score = -alpha_beta(depth - 1, -alpha - 1, -alpha, child_pv).second;
+            if (score > alpha && score < beta) {
+                score = -alpha_beta(depth - 1, -beta, -alpha, child_pv).second;
+            }
+        }
         m_Board->unmakeMove(move);
 
         if (score > best_score) {
@@ -86,7 +96,7 @@ std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, std::v
         }
 
         alpha = std::max(alpha, score);
-        if (alpha > beta) {
+        if (alpha >= beta) {
             break;
         }
     }
@@ -171,8 +181,7 @@ int Searcher::quiescence(int alpha, int beta) {
         alpha = eval;
     }
 
-    Movelist moves;
-    movegen::legalmoves<movegen::MoveGenType::CAPTURE>(moves, *m_Board);
+    auto moves = tactical_moves(m_Board);
 
     for (auto& move : moves) {
         if (should_stop()) {

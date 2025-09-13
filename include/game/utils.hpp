@@ -182,3 +182,55 @@ inline Bitboard non_pawn_attacks(Ref<Board> board, Color color) {
     attacks |= make_attacks(PieceType::KING);
     return attacks;
 }
+
+namespace std {
+template <> struct hash<Move> {
+    std::size_t operator()(const Move& m) const {
+        return std::hash<int>()(m.from().index()) ^ (std::hash<int>()(m.to().index()) << 1);
+    }
+};
+} // namespace std
+
+/// CAUTION: Does not preserve order!
+template <Iterable Container, typename Compare>
+inline Container combine(const Container& a, const Container& b, Compare compare) {
+    Container combined = a;
+    combined.insert(combined.end(), b.begin(), b.end());
+
+    std::sort(combined.begin(), combined.end(), compare);
+    auto last =
+        std::unique(combined.begin(), combined.end(), [&compare](const auto& lhs, const auto& rhs) {
+            return !compare(lhs, rhs) && !compare(rhs, lhs);
+        });
+    combined.erase(last, combined.end());
+    return combined;
+}
+
+/// Appends all moves that fulfill the predicate to the output container
+template <Iterable Container, typename Predicate>
+inline void filter(Container& output, const Container& input, Predicate pred) {
+    for (auto& item : input) {
+        if (pred(item)) {
+            result.push_back(item);
+        }
+    }
+}
+
+/// Generates a movelist containing captures, checks, and promotions
+inline Movelist tactical_moves(Ref<Board> board) {
+    Movelist capture_moves;
+    movegen::legalmoves<movegen::MoveGenType::CAPTURE>(capture_moves, *board);
+
+    Movelist pawn_moves;
+    movegen::legalmoves(pawn_moves, *board, PieceGenType::PAWN);
+    Movelist promotion_moves;
+    filter(promotion_moves, pawn_moves,
+           [](const Move& move) { return move.typeOf() == Move::PROMOTION; });
+
+    // TODO: include checks as a tactical move
+
+    auto moves = combine(capture_moves, promotion_moves,
+                         [](const Move& a, const Move& b) { return a.move() < b.move(); });
+
+    return moves;
+}

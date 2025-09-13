@@ -7,6 +7,9 @@
 constexpr int MAX_SEARCH_DEPTH = 1000;
 constexpr size_t DEFAULT_TT_MB = 10;
 
+const int INF = 1'000'000'000;
+const int NEG_INF = -INF;
+
 struct BestMove {
     Move BestMove;
     int BestMoveEval;
