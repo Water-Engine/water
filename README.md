@@ -7,6 +7,8 @@ While this project is still a major WIP, the end-goal is a dual-mode engine:
 - A neural network-powered engine using Monte Carlo Tree Search (MCTS)
 
 # Getting Started
+Before building, ensure you have the necessary NNUE files, which can be fetched using `python scripts/stockfish_nnue.py`. Note that this script requires the [requests](https://pypi.org/project/requests/) package to work properly.
+
 For a quick build of the project, run:
 ```shell
 git clone https://github.com/Water-Engine/water.git

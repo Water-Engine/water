@@ -25,6 +25,13 @@ Result<void, std::string> Bot::set_position(const std::string& fen) {
 
 Result<void, std::string> Bot::make_move(const std::string& move_uci) {
     Move move = uci::uciToMove(*m_Board, move_uci);
+
+    // The move maker assumes full legality, so this needs to be verified
+    if (!is_move_legal(m_Board, move)) {
+        return Result<void, std::string>::Err(
+            fmt::interpolate("Requested move '{}' is not legal in the current position", move_uci));
+    }
+
     m_Board->makeMove(move);
     m_LastMove = move;
     return Result<void, std::string>();

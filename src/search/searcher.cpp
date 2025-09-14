@@ -128,14 +128,11 @@ void Searcher::run_iterative_deepening() {
         int alpha = -INF;
         int beta = INF;
 
-        auto start_time = std::chrono::steady_clock::now();
-
         std::vector<Move> pv;
         auto [move, eval] = alpha_beta(depth, alpha, beta, pv);
 
-        auto end_time = std::chrono::steady_clock::now();
-        auto elapsed_ms =
-            std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_StartTime).count();
         int nps = m_NodesVisited * 1000 / std::max(static_cast<int64_t>(1), elapsed_ms);
 
         if (move != Move::NO_MOVE) {

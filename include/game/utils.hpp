@@ -191,46 +191,63 @@ template <> struct hash<Move> {
 };
 } // namespace std
 
-/// CAUTION: Does not preserve order!
-template <Iterable Container, typename Compare>
-inline Container combine(const Container& a, const Container& b, Compare compare) {
-    Container combined = a;
-    combined.insert(combined.end(), b.begin(), b.end());
-
-    std::sort(combined.begin(), combined.end(), compare);
-    auto last =
-        std::unique(combined.begin(), combined.end(), [&compare](const auto& lhs, const auto& rhs) {
-            return !compare(lhs, rhs) && !compare(rhs, lhs);
-        });
-    combined.erase(last, combined.end());
-    return combined;
-}
-
-/// Appends all moves that fulfill the predicate to the output container
-template <Iterable Container, typename Predicate>
-inline void filter(Container& output, const Container& input, Predicate pred) {
-    for (auto& item : input) {
-        if (pred(item)) {
-            result.push_back(item);
-        }
-    }
-}
-
 /// Generates a movelist containing captures, checks, and promotions
 inline Movelist tactical_moves(Ref<Board> board) {
+    // TODO: More efficient generation
+    PROFILE_FUNCTION();
+    // Generate all captures
     Movelist capture_moves;
     movegen::legalmoves<movegen::MoveGenType::CAPTURE>(capture_moves, *board);
 
+    // Generate all promotions
     Movelist pawn_moves;
     movegen::legalmoves(pawn_moves, *board, PieceGenType::PAWN);
     Movelist promotion_moves;
-    filter(promotion_moves, pawn_moves,
-           [](const Move& move) { return move.typeOf() == Move::PROMOTION; });
+    for (auto& move : pawn_moves) {
+        if (move.typeOf() == Move::PROMOTION) {
+            promotion_moves.add(move);
+        }
+    }
 
-    // TODO: include checks as a tactical move
+    // Generate all checks
+    Movelist all_moves;
+    movegen::legalmoves(all_moves, *board);
+    Movelist check_moves;
+    for (auto& move : all_moves) {
+        if (board->givesCheck(move) != CheckType::NO_CHECK) {
+            check_moves.add(move);
+        }
+    }
 
-    auto moves = combine(capture_moves, promotion_moves,
-                         [](const Move& a, const Move& b) { return a.move() < b.move(); });
+    // Combine all moves
+    std::unordered_set<Move> seen_moves;
+    seen_moves.reserve(all_moves.size());
+    Movelist tactical;
 
-    return moves;
+    auto try_add_tacticals = [&](const Movelist& movelist) {
+        for (auto& move : movelist) {
+            if (seen_moves.emplace(move).second) {
+                tactical.add(move);
+            }
+        }
+    };
+
+    try_add_tacticals(capture_moves);
+    try_add_tacticals(promotion_moves);
+    try_add_tacticals(check_moves);
+
+    return tactical;
+}
+
+inline bool is_move_legal(Ref<Board> board, const Move& move) {
+    Movelist legals;
+    movegen::legalmoves(legals, *board);
+
+    for (auto& legal : legals) {
+        if (legal == move) {
+            return true;
+        }
+    }
+
+    return false;
 }
