@@ -42,5 +42,5 @@ class TranspositionTable {
     Option<Node> probe(uint64_t key) const;
 
     inline void insert(const Node& node) { insert(current_idx(), node); }
-    inline void insert(size_t index, const Node& node) { m_Entries[index] = node; }
+    void insert(size_t index, const Node& node);
 };

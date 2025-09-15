@@ -26,6 +26,9 @@
 - Mop-Up Evaluation: https://www.chessprogramming.org/Mop-up_Evaluation
 - Distances: https://www.chessprogramming.org/Distance
 - Manhattan distance: https://www.chessprogramming.org/Manhattan-Distance
+- Null Move Pruning: https://www.chessprogramming.org/Null_Move_Pruning
+- Late Move Reduction: https://www.chessprogramming.org/Late_Move_Reductions
+- Futility Pruning: https://www.chessprogramming.org/Futility_Pruning
 
 # Neural Networks
 - Neural Networks: https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi

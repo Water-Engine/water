@@ -73,7 +73,7 @@ class Coord {
     }
 };
 
-inline Option<Piece> is_capture(const Move& move, Ref<Board> board) {
+inline Option<Piece> probe_capture(const Move& move, Ref<Board> board) {
     auto target_piece = board->at(move.to().index());
 
     if (target_piece.type() != PieceType::NONE && target_piece.color() != board->sideToMove()) {
@@ -191,8 +191,9 @@ template <> struct hash<Move> {
 };
 } // namespace std
 
-/// Generates a movelist containing captures, checks, and promotions
-inline Movelist tactical_moves(Ref<Board> board) {
+/// Generates a movelist containing captures, promotions, and checks. Checks are opt-in as it is
+/// very expensive
+inline Movelist tactical_moves(Ref<Board> board, bool generate_checks = false) {
     // TODO: More efficient generation
     PROFILE_FUNCTION();
     // Generate all captures
@@ -209,19 +210,9 @@ inline Movelist tactical_moves(Ref<Board> board) {
         }
     }
 
-    // Generate all checks
-    Movelist all_moves;
-    movegen::legalmoves(all_moves, *board);
-    Movelist check_moves;
-    for (auto& move : all_moves) {
-        if (board->givesCheck(move) != CheckType::NO_CHECK) {
-            check_moves.add(move);
-        }
-    }
-
     // Combine all moves
     std::unordered_set<Move> seen_moves;
-    seen_moves.reserve(all_moves.size());
+    seen_moves.reserve(constants::MAX_MOVES);
     Movelist tactical;
 
     auto try_add_tacticals = [&](const Movelist& movelist) {
@@ -234,7 +225,19 @@ inline Movelist tactical_moves(Ref<Board> board) {
 
     try_add_tacticals(capture_moves);
     try_add_tacticals(promotion_moves);
-    try_add_tacticals(check_moves);
+
+    // Generate all checks if requested
+    if (generate_checks) {
+        Movelist all_moves;
+        movegen::legalmoves(all_moves, *board);
+        Movelist check_moves;
+        for (auto& move : all_moves) {
+            if (board->givesCheck(move) != CheckType::NO_CHECK) {
+                check_moves.add(move);
+            }
+        }
+        try_add_tacticals(check_moves);
+    }
 
     return tactical;
 }

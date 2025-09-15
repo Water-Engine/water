@@ -165,8 +165,8 @@ int Evaluator::simple_eval() {
     SimpleEvalData friendly_eval;
     SimpleEvalData opponent_eval;
 
-    auto friendly_material = get_friendly_score();
-    auto opponent_material = get_opponent_score();
+    auto friendly_material = get_friendly_material();
+    auto opponent_material = get_opponent_material();
 
     friendly_eval.MaterialScore = friendly_material.Aggregate;
     opponent_eval.MaterialScore = opponent_material.Aggregate;
@@ -193,7 +193,7 @@ int Evaluator::simple_eval() {
 
 int Evaluator::nnue_eval() { return 0; }
 
-Material Evaluator::get_material_score(Color color) const {
+Material Evaluator::get_material(Color color) const {
     auto friendly_color_bb = m_Board->us(color);
     auto enemy_color_bb = m_Board->them(color);
 
@@ -214,5 +214,79 @@ int Evaluator::evaluate() {
         return nnue_eval();
     } else {
         return simple_eval();
+    }
+}
+
+int Evaluator::see(const Move& move) {
+    Square target = move.to().index();
+    Color side = m_Board->sideToMove();
+    auto our_attacks = attacks::attackers(*m_Board, side, target);
+
+    Piece victim = m_Board->at(target);
+    int gain[32];
+    int depth = 0;
+
+    gain[depth] = score_of_piece(victim.type());
+
+    while (true) {
+        auto lva = least_valuable_attacker(our_attacks);
+        Piece attacker_piece = lva.first;
+        int attacker_index = lva.second.index();
+
+        if (attacker_piece.type() == PieceType::NONE) {
+            break;
+        }
+
+        // Update gain for this step
+        gain[depth + 1] = score_of_piece(attacker_piece.type()) - gain[depth];
+        depth++;
+
+        // Remove attacker from attack set
+        our_attacks &= ~(1ULL << attacker_index);
+
+        // Switch sides
+        side = ~side;
+    }
+
+    // Negamax backward evaluation
+    for (int i = depth - 1; i >= 0; --i) {
+        gain[i] = std::min(-gain[i + 1], gain[i]);
+    }
+
+    return gain[0];
+}
+
+std::pair<Evaluator::VictimValue, Evaluator::AttackerValue> Evaluator::mvv_lva(const Move& move) {
+    Piece attacker = m_Board->at(move.from().index());
+    Piece victim = m_Board->at(move.to().index());
+
+    int attacker_value = score_of_piece(attacker.type());
+    int victim_value = score_of_piece(victim.type());
+
+    return {victim_value, attacker_value};
+}
+
+std::pair<Piece, Square> Evaluator::least_valuable_attacker(Bitboard attackers) {
+    Square best_sq = -1;
+    if (attackers == 0) {
+        return {Piece::NONE, best_sq};
+    }
+
+    int best_value = INT_MAX;
+    while (attackers != 0) {
+        int square_index = attackers.pop();
+        Piece piece = m_Board->at(square_index);
+
+        int val = score_of_piece(piece.type());
+        if (val < best_value) {
+            best_value = val;
+            best_sq = square_index;
+        }
+    }
+
+    if (best_sq == -1) {
+        return {Piece::NONE, best_sq};
+    } else {
+        return {m_Board->at(best_sq), best_sq};
     }
 }

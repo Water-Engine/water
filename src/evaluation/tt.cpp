@@ -62,3 +62,11 @@ Option<Node> TranspositionTable::probe(uint64_t key) const {
         return Option<Node>(node);
     }
 }
+
+void TranspositionTable::insert(size_t index, const Node& node) {
+    auto& old_node = m_Entries[index];
+    if (old_node.Type == NodeType::Void || node.Type == NodeType::Exact ||
+        node.Depth >= old_node.Depth) {
+        old_node = node;
+    }
+}

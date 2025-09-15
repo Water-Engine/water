@@ -6,6 +6,9 @@
 
 class Evaluator {
   private:
+    using VictimValue = int;
+    using AttackerValue = int;
+
     static constexpr std::array<int, 7> PP_BONUS{0, 120, 80, 50, 30, 15, 15};
     static constexpr std::array<int, 9> ISO_PAWN{0, -10, -25, -50, -75, -75, -75, -75, -75};
     static constexpr std::array<int, 6> KING_SHIELD{4, 7, 4, 3, 6, 3};
@@ -46,11 +49,15 @@ class Evaluator {
   public:
     Evaluator(Ref<Board> board) : m_Board(board) {}
 
-    Material get_material_score(Color color) const;
-    Material get_friendly_score() const { return get_material_score(m_Board->sideToMove()); }
-    Material get_opponent_score() const { return get_material_score(~m_Board->sideToMove()); }
+    Material get_material(Color color) const;
+    Material get_friendly_material() const { return get_material(m_Board->sideToMove()); }
+    Material get_opponent_material() const { return get_material(~m_Board->sideToMove()); }
 
     int evaluate();
+
+    int see(const Move& move);
+    std::pair<VictimValue, AttackerValue> mvv_lva(const Move& move);
+    std::pair<Piece, Square> least_valuable_attacker(Bitboard attackers);
 
     friend class Searcher;
 };

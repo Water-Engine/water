@@ -48,7 +48,7 @@ endif
 
 OBJ_DIR_DIST := $(BUILD_DIR)/dist
 BIN_DIR_DIST := $(BIN_ROOT)/dist
-CXXFLAGS_DIST := -std=c++20 -O3 -Wall -Wextra $(INCLUDES) $(DEPFLAGS) -DDIST
+CXXFLAGS_DIST := -std=c++20 -O3 -Wall -Wextra $(INCLUDES) $(DEPFLAGS) -DDIST -DNDEBUG
 
 OBJS_DIST := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_DIST)/%.o,$(SRCS))
 PCH_GCH_DIST := $(OBJ_DIR_DIST)/pch.hpp.gch
@@ -58,7 +58,7 @@ TARGET_BIN_DIST := $(BIN_DIR_DIST)/$(TARGET)$(EXE)
 
 OBJ_DIR_RELEASE := $(BUILD_DIR)/release
 BIN_DIR_RELEASE := $(BIN_ROOT)/release
-CXXFLAGS_RELEASE := -std=c++20 -O2 -Wall -Wextra $(INCLUDES) $(DEPFLAGS) -DRELEASE
+CXXFLAGS_RELEASE := -std=c++20 -O2 -Wall -Wextra $(INCLUDES) $(DEPFLAGS) -DRELEASE -DNDEBUG
 
 OBJS_RELEASE := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_RELEASE)/%.o,$(SRCS))
 PCH_GCH_RELEASE := $(OBJ_DIR_RELEASE)/pch.hpp.gch

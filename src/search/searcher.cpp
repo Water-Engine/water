@@ -6,8 +6,25 @@
 #include "evaluation/ordering.hpp"
 #include "evaluation/pst.hpp"
 
-std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, std::vector<Move>& pv) {
+std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, int ply,
+                                          std::vector<Move>& pv) {
     m_NodesVisited += 1;
+    if (ply == 0 && should_stop()) {
+        auto bm = m_BestMoveSoFar.unwrap_or(BestMove{});
+        return {bm.BestMove, bm.BestMoveEval};
+    }
+
+    Movelist moves;
+    movegen::legalmoves(moves, *m_Board);
+    if (moves.size() == 0) {
+        if (m_Board->inCheck()) {
+            int score = -MATE_SCORE + ply;
+            return {Move::NO_MOVE, adjust_mate_score(score, ply)};
+        } else {
+            return {Move::NO_MOVE, 0};
+        }
+    }
+
     Move tt_move = Move::NO_MOVE;
     auto tt_node_opt = m_TT.probe();
     int alpha_original = alpha;
@@ -19,10 +36,11 @@ std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, std::v
         // Node is deep enough to use
         if (tt_node.Depth >= depth) {
             NodeType type = tt_node.Type;
-            int score = tt_node.EvaluationScore;
+            int score = adjust_mate_score(tt_node.EvaluationScore, ply);
 
             switch (type) {
             case NodeType::Exact:
+                pv.push_back(tt_move);
                 return {tt_move, score};
             case NodeType::LowerBound:
                 alpha = std::max(alpha, score);
@@ -40,37 +58,66 @@ std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, std::v
         }
     }
 
-    Movelist moves;
-    movegen::legalmoves(moves, *m_Board);
     if (depth == 0 || moves.size() == 0 || should_stop()) {
-        return {Move::NO_MOVE, quiescence(alpha, beta)};
+        return {Move::NO_MOVE, quiescence(alpha, beta, ply)};
     }
-    m_Orderer.order_moves(m_Board, tt_move, moves, depth <= 0, 0);
+    m_Orderer.order_moves(m_Board, tt_move, moves, false, 0);
 
-    Move best_move = 0;
+    // Perform null move pruning
+    if (depth >= 3 && !m_Board->inCheck() && !is_endgame()) {
+        m_Board->makeNullMove();
+        int R = std::min(3, depth / 2);
+        int score = -alpha_beta(depth - 1 - R, -beta, -beta + 1, ply + 1, pv).second;
+        m_Board->unmakeNullMove();
+        if (score >= beta) {
+            return {Move::NO_MOVE, score};
+        }
+    }
+
+    Move best_move = moves[0];
     int best_score = -INF;
 
-    int score;
     bool is_first = true;
-    for (auto& move : moves) {
+    for (auto i = 0; i < moves.size(); ++i) {
         if (should_stop()) {
             break;
         }
 
-        std::vector<Move> child_pv;
-        m_Board->makeMove(move);
-        if (is_first) {
-            score = -alpha_beta(depth - 1, -beta, -alpha, child_pv).second;
-            is_first = false;
-        } else {
-            score = -alpha_beta(depth - 1, -alpha - 1, -alpha, child_pv).second;
-            if (score > alpha && score < beta) {
-                score = -alpha_beta(depth - 1, -beta, -alpha, child_pv).second;
+        auto& move = moves[i];
+
+        // Futility pruning
+        if (depth <= 3 && !m_Board->isCapture(move)) {
+            int static_eval = m_Evaluator.evaluate();
+            const int FUTILITY_MARGIN = 1.5f * static_cast<float>(PieceScores::Pawn);
+            if (static_eval + FUTILITY_MARGIN <= alpha) {
+                continue;
             }
         }
+
+        std::vector<Move> child_pv;
+        m_Board->makeMove(move);
+
+        int score;
+        if (m_Board->isRepetition(1)) {
+            score = 0;
+        } else {
+            if (is_first) {
+                score = -alpha_beta(depth - 1, -beta, -alpha, ply + 1, child_pv).second;
+                is_first = false;
+            } else {
+                // Late move reduction
+                int reduced_depth = depth - 1;
+                if (!m_Board->isCapture(move) && depth >= 3) {
+                    int reduction = 1 + std::log(depth) + ((i > 3) ? 1 : 0);
+                    reduced_depth = std::max(1, depth - reduction);
+                }
+                score = -alpha_beta(reduced_depth, -beta, -alpha, ply + 1, child_pv).second;
+            }
+        }
+
         m_Board->unmakeMove(move);
 
-        if (score > best_score) {
+        if (!should_stop() && score > best_score) {
             best_move = move;
             best_score = score;
 
@@ -81,7 +128,7 @@ std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, std::v
 
         if (score >= beta) {
             // Only add non-capture moves as killer moves
-            if (is_capture(move, m_Board).is_none() &&
+            if (!m_Board->isCapture(move) &&
                 static_cast<uint64_t>(depth) < m_Orderer.MAX_KILLER_MOVE_PLY) {
                 m_Orderer.m_KillersHeuristic[depth].add(move);
             }
@@ -114,6 +161,52 @@ std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, std::v
     return {best_move, best_score};
 }
 
+int Searcher::quiescence(int alpha, int beta, int ply) {
+    m_NodesVisited += 1;
+    m_QNodesVisited += 1;
+
+    int eval = m_Evaluator.evaluate();
+
+    if (eval >= beta) {
+        return beta;
+    }
+
+    alpha = std::max(alpha, eval);
+
+    auto moves = tactical_moves(m_Board);
+    MoveOrderer::OrderFlag flags = MoveOrderer::OrderFlag::MVVLVA | MoveOrderer::OrderFlag::Promotion | MoveOrderer::OrderFlag::HashMove;
+    m_Orderer.order_moves(m_Board, Move::NO_MOVE, moves, true, ply, flags);
+
+    for (auto& move : moves) {
+        if (should_stop()) {
+            break;
+        }
+
+        if (m_Evaluator.see(move) <= 0) {
+            continue;
+        }
+
+        m_Board->makeMove(move);
+        if (m_Board->isRepetition(1)) {
+            continue;
+        } else if (m_Board->givesCheck(move) != CheckType::NO_CHECK) {
+            continue;
+        }
+        
+        int score = -quiescence(-beta, -alpha, ply + 1);
+        m_Board->unmakeMove(move);
+
+        if (score >= beta) {
+            return beta;
+        }
+        if (score > alpha) {
+            alpha = score;
+        }
+    }
+
+    return adjust_mate_score(alpha, ply);
+}
+
 void Searcher::run_iterative_deepening() {
     m_BestMoveSoFar = Option<BestMove>();
 
@@ -129,25 +222,39 @@ void Searcher::run_iterative_deepening() {
         int beta = INF;
 
         std::vector<Move> pv;
-        auto [move, eval] = alpha_beta(depth, alpha, beta, pv);
+        auto [move, score] = alpha_beta(depth, alpha, beta, 0, pv);
 
         auto now = std::chrono::steady_clock::now();
-        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_StartTime).count();
+        auto elapsed_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_StartTime).count();
         int nps = m_NodesVisited * 1000 / std::max(static_cast<int64_t>(1), elapsed_ms);
 
-        if (move != Move::NO_MOVE) {
+        if (!should_stop() && move != Move::NO_MOVE) {
             best_move = move;
-            best_eval = eval;
+            best_eval = score;
             set_bestmove(best_move, best_eval);
         }
 
-        if (m_SearchInfo) {
+        if (!should_stop() && m_SearchInfo) {
             std::ostringstream oss;
             for (auto pv_move : pv) {
                 oss << uci::moveToUci(pv_move) << " ";
             }
-            fmt::println("info depth {} score {} nodes {} nps {} time {} pv {}", depth, eval,
-                         m_NodesVisited.load(), nps, elapsed_ms, oss.str());
+            if (std::abs(score) > MATE_THRESHOLD) {
+                int mate_in = (MATE_SCORE - std::abs(score) + 1) / 2;
+                fmt::println("info depth {} score mate {} nodes {} qnodes {} nps {} time {} pv {}",
+                             depth, mate_in, m_NodesVisited.load(), m_QNodesVisited.load(), nps,
+                             elapsed_ms, oss.str());
+            } else {
+                fmt::println("info depth {} score cp {} nodes {} qnodes {} nps {} time {} pv {}",
+                             depth, score, m_NodesVisited.load(), m_QNodesVisited.load(), nps,
+                             elapsed_ms, oss.str());
+            }
+        }
+
+        if (depth > INFINITE_DEPTH_CAP) {
+            stop_search();
+            return;
         }
     }
 
@@ -166,45 +273,14 @@ inline bool Searcher::should_stop() const {
     return !m_IsInfiniteSearch && elapsed >= m_TimeLimitMs;
 }
 
-int Searcher::quiescence(int alpha, int beta) {
-    m_NodesVisited += 1;
-    int eval = m_Evaluator.evaluate();
-
-    if (eval >= beta) {
-        return beta;
-    }
-
-    if (eval > alpha) {
-        alpha = eval;
-    }
-
-    auto moves = tactical_moves(m_Board);
-
-    for (auto& move : moves) {
-        if (should_stop()) {
-            break;
-        }
-
-        m_Board->makeMove(move);
-        int score = -quiescence(-beta, -alpha);
-        m_Board->unmakeMove(move);
-
-        if (score >= beta) {
-            return beta;
-        }
-        if (score > alpha) {
-            alpha = score;
-        }
-    }
-
-    return alpha;
-}
-
 void Searcher::find_bestmove(int time_limit_ms) {
     m_StopFlag = false;
     m_IsInfiniteSearch = time_limit_ms <= 0;
     m_TimeLimitMs = time_limit_ms;
     m_StartTime = std::chrono::steady_clock::now();
+    m_NodesVisited = 0;
+    m_QNodesVisited = 0;
+    m_BestMoveSoFar = Option<BestMove>();
 
     // Wait for a previous search to stop
     if (m_SearchThread.joinable()) {

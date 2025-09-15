@@ -2,18 +2,16 @@
 
 // Technically arbitrary values for biased ordering
 constexpr int16_t UNBIASED = 0;
-constexpr int16_t LOSING_CAPTURE_BIAS = 2'000;
 constexpr int16_t KILLER_MOVE_BIAS = 4'000;
 constexpr int16_t PROMOTING_MOVE_BIAS = 6'000;
-constexpr int16_t WINNING_CAPTURE_BIAS = 8'000;
+constexpr int16_t MVV_LVA_BIAS = 8'000;
 constexpr int16_t HASH_MOVE_BIAS = 10'000;
 
 constexpr std::array<std::pair<int, std::string_view>, 6> BIASES = {
     {{UNBIASED, "Unbiased"},
-     {LOSING_CAPTURE_BIAS, "Losing Capture"},
      {KILLER_MOVE_BIAS, "Killer Move"},
      {PROMOTING_MOVE_BIAS, "Promotion"},
-     {WINNING_CAPTURE_BIAS, "Winning Capture"},
+     {MVV_LVA_BIAS, "MVV LVA"},
      {HASH_MOVE_BIAS, "Hash Move"}}};
 
 struct KillerMove {
@@ -48,6 +46,29 @@ class MoveOrderer {
     int shield_bias(Ref<Board> board, const Move& move);
 
   public:
+    enum class OrderFlag : uint8_t {
+        None = 0,
+        HashMove = 1 << 0,
+        KillerMove = 1 << 1,
+        Promotion = 1 << 2,
+        MVVLVA = 1 << 3,
+        PST = 1 << 4
+    };
+
+    constexpr inline friend OrderFlag operator|(OrderFlag a, OrderFlag b) {
+        return static_cast<OrderFlag>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+    }
+
+    constexpr inline bool has_flag(OrderFlag flags, OrderFlag flag) {
+        return static_cast<uint8_t>(flags) & static_cast<uint8_t>(flag);
+    }
+
+    static constexpr OrderFlag FULL_ORDERING = static_cast<OrderFlag>(
+        static_cast<uint8_t>(OrderFlag::HashMove) | static_cast<uint8_t>(OrderFlag::KillerMove) |
+        static_cast<uint8_t>(OrderFlag::Promotion) | static_cast<uint8_t>(OrderFlag::MVVLVA) |
+        static_cast<uint8_t>(OrderFlag::PST));
+
+  public:
     MoveOrderer() = default;
 
     inline void clear_history() { std::memset(&m_HistoryHeuristic, 0, sizeof(m_HistoryHeuristic)); }
@@ -59,7 +80,7 @@ class MoveOrderer {
     }
 
     void order_moves(Ref<Board> board, const Move& hash_move, Movelist& moves, bool in_quiescence,
-                     size_t ply);
+                     size_t ply, OrderFlag flags = FULL_ORDERING);
 
     friend class Searcher;
 };
