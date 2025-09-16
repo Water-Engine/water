@@ -4,6 +4,8 @@
 #include "evaluation/ordering.hpp"
 #include "evaluation/tt.hpp"
 
+#include "search/syzygy.hpp"
+
 constexpr int MAX_SEARCH_DEPTH = 256;
 constexpr int INFINITE_DEPTH_CAP = 10 * MAX_SEARCH_DEPTH;
 constexpr size_t DEFAULT_TT_MB = 10;
@@ -30,6 +32,7 @@ class Searcher {
 
     TranspositionTable m_TT;
     MoveOrderer m_Orderer;
+    SyzygyManager m_Syzygy;
 
     std::atomic<bool> m_StopFlag{false};
     std::thread m_SearchThread;
@@ -76,7 +79,7 @@ class Searcher {
 
   public:
     Searcher(Ref<Board> board, size_t tt_size_mb = DEFAULT_TT_MB)
-        : m_Board(board), m_Evaluator(board), m_TT(board, tt_size_mb) {}
+        : m_Board(board), m_Evaluator(board), m_TT(board, tt_size_mb), m_Syzygy(board) {}
 
     ~Searcher() { halt(); }
 

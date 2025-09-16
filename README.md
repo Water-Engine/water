@@ -67,7 +67,7 @@ Water could not be where it is today without the formative work done by experien
     - Maybe in the future I'll roll my own core library, but it was taking too much out of me
     - This library saved a lot of time and frustration for me, so I would like to personally thank the chess-library teams for their hard work
 - [Syzygy](https://www.chessprogramming.org/Syzygy_Bases) tables originally created by Dutch mathematician [Ronald de Man](https://www.chessprogramming.org/Ronald_de_Man)
-- [Fathom](https://github.com/jdart1/Fathom) syzygy tablebase reader - rewritten and catered to the Water engine
+- [Fathom](https://github.com/jdart1/Fathom) syzygy tablebase reader - extracted and placed into the engine
 - Sebastian Lague's [Chess Coding Adventure](https://github.com/SebLague/Chess-Coding-Adventure) engine - used for comparative testing for elo estimates
 - The [Aurora](https://github.com/kjljixx/Aurora-Chess-Engine) chess engine which previously implemented a similar hybrid evaluation approach
 - The legendary [Stockfish](https://github.com/official-stockfish/Stockfish) engine - used for verifying certain tests on the fly

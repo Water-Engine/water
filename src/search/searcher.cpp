@@ -58,7 +58,31 @@ std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, int pl
         }
     }
 
-    if (depth == 0 || moves.size() == 0 || should_stop()) {
+    if (depth == 0 || should_stop()) {
+        // Try Syzygy WDL probe before q search
+        if (m_Syzygy.is_loaded()) {
+            uint64_t wdl = m_Syzygy.probe_wdl();
+            if (wdl != TB_RESULT_FAILED) {
+                int score;
+                switch (TB_GET_WDL(wdl)) {
+                case TB_WIN:
+                    score = MATE_SCORE - ply;
+                    break;
+                case TB_LOSS:
+                    score = -MATE_SCORE + ply;
+                    break;
+                case TB_DRAW:
+                    score = 0;
+                    break;
+                default:
+                    score = 0;
+                    break;
+                }
+
+                return {Move::NO_MOVE, adjust_mate_score(score, ply)};
+            }
+        }
+        
         return {Move::NO_MOVE, quiescence(alpha, beta, ply)};
     }
     m_Orderer.order_moves(m_Board, tt_move, moves, false, 0);
@@ -174,7 +198,9 @@ int Searcher::quiescence(int alpha, int beta, int ply) {
     alpha = std::max(alpha, eval);
 
     auto moves = tactical_moves(m_Board);
-    MoveOrderer::OrderFlag flags = MoveOrderer::OrderFlag::MVVLVA | MoveOrderer::OrderFlag::Promotion | MoveOrderer::OrderFlag::HashMove;
+    MoveOrderer::OrderFlag flags = MoveOrderer::OrderFlag::MVVLVA |
+                                   MoveOrderer::OrderFlag::Promotion |
+                                   MoveOrderer::OrderFlag::HashMove;
     m_Orderer.order_moves(m_Board, Move::NO_MOVE, moves, true, ply, flags);
 
     for (auto& move : moves) {
@@ -192,7 +218,7 @@ int Searcher::quiescence(int alpha, int beta, int ply) {
         } else if (m_Board->givesCheck(move) != CheckType::NO_CHECK) {
             continue;
         }
-        
+
         int score = -quiescence(-beta, -alpha, ply + 1);
         m_Board->unmakeMove(move);
 
@@ -208,6 +234,38 @@ int Searcher::quiescence(int alpha, int beta, int ply) {
 }
 
 void Searcher::run_iterative_deepening() {
+    // Try DTZ root probe first before doing any actual searching
+    if (m_Syzygy.is_loaded()) {
+        auto start = std::chrono::steady_clock::now();
+        auto dtz_opt = m_Syzygy.probe_dtz();
+        auto end = std::chrono::steady_clock::now();
+        auto elapsed_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        auto nps = 1 * 1000 / std::max(static_cast<int64_t>(1), elapsed_ms);
+
+        if (dtz_opt.is_some()) {
+            TbRootMoves root_moves = dtz_opt.unwrap();
+            if (root_moves.size > 0) {
+                auto selected_move = root_moves.moves[0];
+                Move tb_move(selected_move.move);
+                int tb_score = root_moves.moves[0].tbScore;
+
+                std::ostringstream oss;
+                for (size_t i = 0; i < selected_move.pvSize; ++i) {
+                    Move pv_move(selected_move.pv[i]);
+                    oss << uci::moveToUci(pv_move) << " ";
+                }
+
+                fmt::println("info depth {} score dtz {} nodes {} qnodes {} nps {} time {} pv {}",
+                             0, tb_score, 1, 0, nps, oss.str());
+
+                set_bestmove(tb_move, tb_score);
+                print_bestmove();
+                return;
+            }
+        }
+    }
+
     m_BestMoveSoFar = Option<BestMove>();
 
     Move best_move = 0;

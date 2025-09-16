@@ -6,7 +6,7 @@ TEST_DIR := tests
 BUILD_DIR := build
 BIN_ROOT := bin
 
-C ?= gcc
+CC ?= gcc
 CXX ?= g++
 
 DEPFLAGS = -MMD -MP
@@ -14,7 +14,12 @@ INCLUDES := -I$(INC_DIR) -I$(VENDOR_DIR)
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
-SRCS := $(call rwildcard, $(SRC_DIR)/, *.cpp)
+SRCS := \
+    $(call rwildcard,$(SRC_DIR)/,*.c) \
+    $(call rwildcard,$(SRC_DIR)/,*.cpp) \
+    $(call rwildcard,$(VENDOR_DIR)/,*.c) \
+    $(call rwildcard,$(VENDOR_DIR)/,*.cpp)
+
 HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp) \
            $(wildcard $(VENDOR_DIR)/*.h) $(wildcard $(VENDOR_DIR)/*.hpp)
 
@@ -51,6 +56,10 @@ BIN_DIR_DIST := $(BIN_ROOT)/dist
 CXXFLAGS_DIST := -std=c++20 -O3 -Wall -Wextra $(INCLUDES) $(DEPFLAGS) -DDIST -DNDEBUG
 
 OBJS_DIST := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_DIST)/%.o,$(SRCS))
+OBJS_DIST := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR_DIST)/%.o,$(OBJS_DIST))
+OBJS_DIST := $(patsubst $(VENDOR_DIR)/%.cpp,$(OBJ_DIR_DIST)/vendor/%.o,$(OBJS_DIST))
+OBJS_DIST := $(patsubst $(VENDOR_DIR)/%.c,$(OBJ_DIR_DIST)/vendor/%.o,$(OBJS_DIST))
+
 PCH_GCH_DIST := $(OBJ_DIR_DIST)/pch.hpp.gch
 TARGET_BIN_DIST := $(BIN_DIR_DIST)/$(TARGET)$(EXE)
 
@@ -61,6 +70,10 @@ BIN_DIR_RELEASE := $(BIN_ROOT)/release
 CXXFLAGS_RELEASE := -std=c++20 -O2 -Wall -Wextra $(INCLUDES) $(DEPFLAGS) -DRELEASE -DNDEBUG
 
 OBJS_RELEASE := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_RELEASE)/%.o,$(SRCS))
+OBJS_RELEASE := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR_RELEASE)/%.o,$(OBJS_RELEASE))
+OBJS_RELEASE := $(patsubst $(VENDOR_DIR)/%.cpp,$(OBJ_DIR_RELEASE)/vendor/%.o,$(OBJS_RELEASE))
+OBJS_RELEASE := $(patsubst $(VENDOR_DIR)/%.c,$(OBJ_DIR_RELEASE)/vendor/%.o,$(OBJS_RELEASE))
+
 PCH_GCH_RELEASE := $(OBJ_DIR_RELEASE)/pch.hpp.gch
 TARGET_BIN_RELEASE := $(BIN_DIR_RELEASE)/$(TARGET)$(EXE)
 
@@ -71,6 +84,10 @@ BIN_DIR_DEBUG := $(BIN_ROOT)/debug
 CXXFLAGS_DEBUG := -std=c++20 -O0 -Wall -Wextra -g $(INCLUDES) $(DEPFLAGS) -DDEBUG -DPROFILE
 
 OBJS_DEBUG := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR_DEBUG)/%.o,$(SRCS))
+OBJS_DEBUG := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR_DEBUG)/%.o,$(OBJS_DEBUG))
+OBJS_DEBUG := $(patsubst $(VENDOR_DIR)/%.cpp,$(OBJ_DIR_DEBUG)/vendor/%.o,$(OBJS_DEBUG))
+OBJS_DEBUG := $(patsubst $(VENDOR_DIR)/%.c,$(OBJ_DIR_DEBUG)/vendor/%.o,$(OBJS_DEBUG))
+
 PCH_GCH_DEBUG := $(OBJ_DIR_DEBUG)/pch.hpp.gch
 TARGET_BIN_DEBUG := $(BIN_DIR_DEBUG)/$(TARGET)$(EXE)
 
@@ -145,15 +162,54 @@ $(TARGET_BIN_DEBUG): $(OBJS_DEBUG)
 
 # ================ OBJECT DIRECTORIES ================
 
+# ================ DIST OBJECTS ================
 $(OBJ_DIR_DIST)/%.o: $(SRC_DIR)/%.cpp $(HEADERS) $(PCH_GCH_DIST)
 	@$(call MKDIR,$(dir $@))
 	$(CXX) $(CXXFLAGS_DIST) -include $(PCH) -c $< -o $@
 
+$(OBJ_DIR_DIST)/%.o: $(SRC_DIR)/%.c $(HEADERS) $(PCH_GCH_DIST)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_DIST) -include $(PCH) -c $< -o $@
+
+$(OBJ_DIR_DIST)/vendor/%.o: $(VENDOR_DIR)/%.cpp $(HEADERS) $(PCH_GCH_DIST)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_DIST) -include $(PCH) -c $< -o $@
+
+$(OBJ_DIR_DIST)/vendor/%.o: $(VENDOR_DIR)/%.c $(HEADERS) $(PCH_GCH_DIST)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_DIST) -include $(PCH) -c $< -o $@
+
+# ================ RELEASE OBJECTS ================
 $(OBJ_DIR_RELEASE)/%.o: $(SRC_DIR)/%.cpp $(HEADERS) $(PCH_GCH_RELEASE)
 	@$(call MKDIR,$(dir $@))
 	$(CXX) $(CXXFLAGS_RELEASE) -include $(PCH) -c $< -o $@
 
+$(OBJ_DIR_RELEASE)/%.o: $(SRC_DIR)/%.c $(HEADERS) $(PCH_GCH_RELEASE)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_RELEASE) -include $(PCH) -c $< -o $@
+
+$(OBJ_DIR_RELEASE)/vendor/%.o: $(VENDOR_DIR)/%.cpp $(HEADERS) $(PCH_GCH_RELEASE)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_RELEASE) -include $(PCH) -c $< -o $@
+
+$(OBJ_DIR_RELEASE)/vendor/%.o: $(VENDOR_DIR)/%.c $(HEADERS) $(PCH_GCH_RELEASE)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_RELEASE) -include $(PCH) -c $< -o $@
+
+# ================ DEBUG OBJECTS ================
 $(OBJ_DIR_DEBUG)/%.o: $(SRC_DIR)/%.cpp $(HEADERS) $(PCH_GCH_DEBUG)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_DEBUG) -include $(PCH) -c $< -o $@
+
+$(OBJ_DIR_DEBUG)/%.o: $(SRC_DIR)/%.c $(HEADERS) $(PCH_GCH_DEBUG)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_DEBUG) -include $(PCH) -c $< -o $@
+
+$(OBJ_DIR_DEBUG)/vendor/%.o: $(VENDOR_DIR)/%.cpp $(HEADERS) $(PCH_GCH_DEBUG)
+	@$(call MKDIR,$(dir $@))
+	$(CXX) $(CXXFLAGS_DEBUG) -include $(PCH) -c $< -o $@
+
+$(OBJ_DIR_DEBUG)/vendor/%.o: $(VENDOR_DIR)/%.c $(HEADERS) $(PCH_GCH_DEBUG)
 	@$(call MKDIR,$(dir $@))
 	$(CXX) $(CXXFLAGS_DEBUG) -include $(PCH) -c $< -o $@
 
@@ -219,7 +275,7 @@ sliders: $(SLIDER_BIN)
 
 $(SLIDER_BIN): scripts/slider_generators.c
 	@$(call MKDIR,$(BIN_ROOT))
-	$(C) -std=c11 $< -o $@
+	$(CC) -std=c11 $< -o $@
 
 # ================ HELP ME ================
 

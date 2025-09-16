@@ -16,10 +16,25 @@ void Bot::new_game() {
 int Bot::evaluate_current() { return Evaluator(m_Board).evaluate(); }
 
 Result<void, std::string> Bot::set_position(const std::string& fen) {
+    std::string old_fen = m_Board->getFen();
     if (m_Board->setFen(fen)) {
+        // Ensure the side not to move is not in check
+        m_Board->makeNullMove();
+        bool ntm_in_check = m_Board->inCheck();
+        m_Board->unmakeNullMove();
+
+        // Ensure pawns are not located on the first or 8th rank
+        Bitboard illegal_pawn_mask(0xFF000000000000FF);
+        bool pawn_18 = (m_Board->pieces(PieceType::PAWN) & illegal_pawn_mask) != 0;
+
+        if (ntm_in_check || pawn_18) {
+            m_Board->setFen(old_fen);
+            return Result<void, std::string>::Err("Illegal FEN: side not to move in check or pawn on rank 1/8");
+        }
+
         return Result<void, std::string>();
     } else {
-        return Result<void, std::string>::Err("Failed to load/parse fen");
+        return Result<void, std::string>::Err("Failed to load/parse fen as string was malformed or position was illegal");
     }
 }
 
