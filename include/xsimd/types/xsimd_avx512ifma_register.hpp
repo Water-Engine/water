@@ -14,20 +14,18 @@
 
 #include "./xsimd_avx512bw_register.hpp"
 
-namespace xsimd
-{
+namespace xsimd {
 
-    /**
-     * @ingroup architectures
-     *
-     * AVX512IFMA instructions
-     */
-    struct avx512ifma : avx512bw
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_AVX512IFMA; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr char const* name() noexcept { return "avx512ifma"; }
-    };
+/**
+ * @ingroup architectures
+ *
+ * AVX512IFMA instructions
+ */
+struct avx512ifma : avx512bw {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_AVX512IFMA; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr char const* name() noexcept { return "avx512ifma"; }
+};
 
 #if XSIMD_WITH_AVX512IFMA
 
@@ -35,17 +33,14 @@ namespace xsimd
 #error "architecture inconsistency: avx512ifma requires avx512bw"
 #endif
 
-    namespace types
-    {
-        template <class T>
-        struct get_bool_simd_register<T, avx512ifma>
-        {
-            using type = simd_avx512_bool_register<T>;
-        };
+namespace types {
+template <class T> struct get_bool_simd_register<T, avx512ifma> {
+    using type = simd_avx512_bool_register<T>;
+};
 
-        XSIMD_DECLARE_SIMD_REGISTER_ALIAS(avx512ifma, avx512bw);
+XSIMD_DECLARE_SIMD_REGISTER_ALIAS(avx512ifma, avx512bw);
 
-    }
+} // namespace types
 #endif
-}
+} // namespace xsimd
 #endif

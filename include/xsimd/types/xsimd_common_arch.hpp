@@ -17,31 +17,27 @@
 /**
  * @defgroup architectures Architecture description
  * */
-namespace xsimd
-{
-    /**
-     * @ingroup architectures
-     *
-     * Base class for all architectures.
-     */
-    struct common
-    {
-        /// Whether this architecture is supported at compile-time.
-        static constexpr bool supported() noexcept { return true; }
-        /// Whether this architecture is available at run-time.
-        static constexpr bool available() noexcept { return true; }
-        /// If this architectures supports aligned memory accesses, the required
-        /// alignment.
-        static constexpr std::size_t alignment() noexcept { return 0; }
-        /// Whether this architecture requires aligned memory access.
-        static constexpr bool requires_alignment() noexcept { return false; }
-        /// Name of the architecture.
-        static constexpr char const* name() noexcept { return "common"; }
-    };
+namespace xsimd {
+/**
+ * @ingroup architectures
+ *
+ * Base class for all architectures.
+ */
+struct common {
+    /// Whether this architecture is supported at compile-time.
+    static constexpr bool supported() noexcept { return true; }
+    /// Whether this architecture is available at run-time.
+    static constexpr bool available() noexcept { return true; }
+    /// If this architectures supports aligned memory accesses, the required
+    /// alignment.
+    static constexpr std::size_t alignment() noexcept { return 0; }
+    /// Whether this architecture requires aligned memory access.
+    static constexpr bool requires_alignment() noexcept { return false; }
+    /// Name of the architecture.
+    static constexpr char const* name() noexcept { return "common"; }
+};
 
-    struct unsupported
-    {
-    };
-}
+struct unsupported {};
+} // namespace xsimd
 
 #endif

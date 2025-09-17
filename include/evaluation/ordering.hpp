@@ -84,7 +84,8 @@ class MoveOrderer {
     }
 
     void order_moves(Ref<chess::Board> board, const chess::Move& hash_move, chess::Movelist& moves,
-                     bool in_quiescence, size_t ply, const SyzygyManager& tb_manager, OrderFlag flags = FULL_ORDERING);
+                     bool in_quiescence, size_t ply, const SyzygyManager& tb_manager,
+                     OrderFlag flags = FULL_ORDERING);
 
     friend class Searcher;
 };

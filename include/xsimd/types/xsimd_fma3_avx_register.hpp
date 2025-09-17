@@ -14,23 +14,19 @@
 
 #include "./xsimd_avx_register.hpp"
 
-namespace xsimd
-{
-    template <typename arch>
-    struct fma3;
+namespace xsimd {
+template <typename arch> struct fma3;
 
-    /**
-     * @ingroup architectures
-     *
-     * AVX + FMA instructions
-     */
-    template <>
-    struct fma3<avx> : avx
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_FMA3_AVX; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr char const* name() noexcept { return "fma3+avx"; }
-    };
+/**
+ * @ingroup architectures
+ *
+ * AVX + FMA instructions
+ */
+template <> struct fma3<avx> : avx {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_FMA3_AVX; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr char const* name() noexcept { return "fma3+avx"; }
+};
 
 #if XSIMD_WITH_FMA3_AVX
 
@@ -38,13 +34,12 @@ namespace xsimd
 #error "architecture inconsistency: fma3+avx requires avx"
 #endif
 
-    namespace types
-    {
+namespace types {
 
-        XSIMD_DECLARE_SIMD_REGISTER_ALIAS(fma3<avx>, avx);
-
-    }
-#endif
+XSIMD_DECLARE_SIMD_REGISTER_ALIAS(fma3<avx>, avx);
 
 }
+#endif
+
+} // namespace xsimd
 #endif

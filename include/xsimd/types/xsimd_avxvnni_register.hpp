@@ -14,19 +14,17 @@
 
 #include "./xsimd_avx2_register.hpp"
 
-namespace xsimd
-{
-    /**
-     * @ingroup architectures
-     *
-     * AVXVNNI instructions
-     */
-    struct avxvnni : avx2
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_AVXVNNI; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr char const* name() noexcept { return "avxvnni"; }
-    };
+namespace xsimd {
+/**
+ * @ingroup architectures
+ *
+ * AVXVNNI instructions
+ */
+struct avxvnni : avx2 {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_AVXVNNI; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr char const* name() noexcept { return "avxvnni"; }
+};
 
 #if XSIMD_WITH_AVXVNNI
 
@@ -34,11 +32,10 @@ namespace xsimd
 #error "architecture inconsistency: avxvnni requires avx2"
 #endif
 
-    namespace types
-    {
-        XSIMD_DECLARE_SIMD_REGISTER_ALIAS(avxvnni, avx2);
-    }
-#endif
+namespace types {
+XSIMD_DECLARE_SIMD_REGISTER_ALIAS(avxvnni, avx2);
 }
+#endif
+} // namespace xsimd
 
 #endif

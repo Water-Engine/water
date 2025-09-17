@@ -14,20 +14,18 @@
 
 #include "./xsimd_avx512ifma_register.hpp"
 
-namespace xsimd
-{
+namespace xsimd {
 
-    /**
-     * @ingroup architectures
-     *
-     * AVX512VBMI instructions
-     */
-    struct avx512vbmi : avx512ifma
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_AVX512VBMI; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr char const* name() noexcept { return "avx512vbmi"; }
-    };
+/**
+ * @ingroup architectures
+ *
+ * AVX512VBMI instructions
+ */
+struct avx512vbmi : avx512ifma {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_AVX512VBMI; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr char const* name() noexcept { return "avx512vbmi"; }
+};
 
 #if XSIMD_WITH_AVX512VBMI
 
@@ -35,17 +33,14 @@ namespace xsimd
 #error "architecture inconsistency: avx512vbmi requires avx512ifma"
 #endif
 
-    namespace types
-    {
-        template <class T>
-        struct get_bool_simd_register<T, avx512vbmi>
-        {
-            using type = simd_avx512_bool_register<T>;
-        };
+namespace types {
+template <class T> struct get_bool_simd_register<T, avx512vbmi> {
+    using type = simd_avx512_bool_register<T>;
+};
 
-        XSIMD_DECLARE_SIMD_REGISTER_ALIAS(avx512vbmi, avx512ifma);
+XSIMD_DECLARE_SIMD_REGISTER_ALIAS(avx512vbmi, avx512ifma);
 
-    }
+} // namespace types
 #endif
-}
+} // namespace xsimd
 #endif
