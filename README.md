@@ -25,7 +25,7 @@ _The engine communicates through the UCI protocol for terminal interaction._
 - [Catch2](https://github.com/catchorg/Catch2) for tests (included in this repository)
 - [cloc](https://github.com/AlDanial/cloc) for cloc make target (optional)
 - [python](https://www.python.org/downloads/) for script running
-- [Zig](https://ziglang.org/download/) for cross-platform packaging (optional)
+- [Zig 0.15.1](https://ziglang.org/download/) for cross-platform packaging (optional)
 
 
 # Building water
