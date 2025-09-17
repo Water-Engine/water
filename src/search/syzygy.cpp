@@ -54,7 +54,7 @@ uint64_t SyzygyManager::probe_wdl() const {
         return TB_RESULT_FAILED;
     }
 
-    if (m_Board->all().count() > MAX_TB_PIECES) {
+    if (m_Board->all().count() > static_cast<int>(TB_LARGEST)) {
         return TB_RESULT_FAILED;
     }
 
@@ -108,4 +108,11 @@ Option<TbRootMoves> SyzygyManager::probe_dtz() const {
     } else {
         return Option<TbRootMoves>(results);
     }
+}
+
+std::string SyzygyManager::status() const {
+    bool loaded = is_loaded();
+    int largest = TB_LARGEST;
+    auto out = fmt::interpolate("info string tb loaded {} max men {}", loaded, largest);
+    return out;
 }

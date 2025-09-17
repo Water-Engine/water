@@ -1,7 +1,5 @@
 #pragma once
 
-#define MAX_TB_PIECES 7
-
 struct TbRootMoves;
 
 class SyzygyManager {
@@ -26,4 +24,5 @@ class SyzygyManager {
 
     uint64_t probe_wdl() const;
     Option<TbRootMoves> probe_dtz() const;
+    std::string status() const;
 };

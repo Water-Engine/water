@@ -1,13 +1,16 @@
 # water [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=c%2B%2B&logoColor=white)](https://en.cppreference.com/w/cpp/20.html) [![License](https://img.shields.io/github/license/Water-Engine/water)](LICENSE) [![LOC](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Water-Engine/water/loc/.github/loc_badge.json)](https://github.com/Water-Engine/water/actions/workflows/loc.yml) [![Last commit](https://img.shields.io/github/last-commit/Water-Engine/water)](https://github.com/Water-Engine/water) [![Formatting](https://github.com/Water-Engine/water/actions/workflows/format.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/format.yml) [![CI](https://github.com/Water-Engine/water/actions/workflows/ci.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/ci.yml)
 A chess engine written in C++, powered by Disservin's [chess-library](https://github.com/Disservin/chess-library), utilizing a hybrid approach of classical and neural network evaluation.
 
+> [!WARNING]
+> The `port` branch of this repository is currently the main focus of development, working to rewrite the entire project in Zig. As such, C++ related guidelines, documentation, issues, or PRs will be put on hold indefinitely. Please be patient with us as we tackle this task.
+
 # Goals
 While this project is still a major WIP, the end-goal is a dual-mode engine:
 - An iterative search engine with Alpha-Beta Pruning, Quiescence, etc.
 - A neural network-powered engine using Monte Carlo Tree Search (MCTS)
 
 # Getting Started
-Before building, ensure you have the necessary NNUE files, which can be fetched using `python scripts/stockfish_nnue.py`. Note that this script requires the [requests](https://pypi.org/project/requests/) package to work properly.
+Before building, ensure you have the necessary NNUE files, which can be fetched using `python scripts/stockfish_nnue.py`. Note that this script requires the [requests](https://pypi.org/project/requests/) package to work properly. While not necessary for building, you can also download some helpful syzygy bases to use during runtime by running `python scripts/syzygy.py`
 
 For a quick build of the project, run:
 ```shell

@@ -89,6 +89,7 @@ class Searcher {
     inline void set_search_info(bool show) { m_SearchInfo = show; }
     inline bool load_tb_files(const std::string& folder) { return m_Syzygy.init(folder); }
     inline void free_tb_files() { m_Syzygy.clear(); }
+    inline std::string tb_status() const { return m_Syzygy.status(); }
 
     inline void reset() {
         halt();

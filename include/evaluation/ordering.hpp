@@ -1,18 +1,22 @@
 #pragma once
 
+#include "search/syzygy.hpp"
+
 // Technically arbitrary values for biased ordering
 constexpr int16_t UNBIASED = 0;
 constexpr int16_t KILLER_MOVE_BIAS = 4'000;
 constexpr int16_t PROMOTING_MOVE_BIAS = 6'000;
 constexpr int16_t MVV_LVA_BIAS = 8'000;
 constexpr int16_t HASH_MOVE_BIAS = 10'000;
+constexpr int16_t TB_MOVE_BIAS = 12'000;
 
-constexpr std::array<std::pair<int, std::string_view>, 6> BIASES = {
+constexpr std::array<std::pair<int, std::string_view>, 7> BIASES = {
     {{UNBIASED, "Unbiased"},
      {KILLER_MOVE_BIAS, "Killer Move"},
      {PROMOTING_MOVE_BIAS, "Promotion"},
      {MVV_LVA_BIAS, "MVV LVA"},
-     {HASH_MOVE_BIAS, "Hash Move"}}};
+     {HASH_MOVE_BIAS, "Hash Move"},
+     {TB_MOVE_BIAS, "Tablebase Move"}}};
 
 struct KillerMove {
     chess::Move a;
@@ -80,7 +84,7 @@ class MoveOrderer {
     }
 
     void order_moves(Ref<chess::Board> board, const chess::Move& hash_move, chess::Movelist& moves,
-                     bool in_quiescence, size_t ply, OrderFlag flags = FULL_ORDERING);
+                     bool in_quiescence, size_t ply, const SyzygyManager& tb_manager, OrderFlag flags = FULL_ORDERING);
 
     friend class Searcher;
 };

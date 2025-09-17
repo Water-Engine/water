@@ -89,7 +89,7 @@ std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, int pl
 
         return {Move::NO_MOVE, quiescence(alpha, beta, ply)};
     }
-    m_Orderer.order_moves(m_Board, tt_move, moves, false, 0);
+    m_Orderer.order_moves(m_Board, tt_move, moves, false, 0, m_Syzygy);
 
     // Perform null move pruning
     if (depth >= 3 && !m_Board->inCheck() && !is_endgame()) {
@@ -205,7 +205,7 @@ int Searcher::quiescence(int alpha, int beta, int ply) {
     MoveOrderer::OrderFlag flags = MoveOrderer::OrderFlag::MVVLVA |
                                    MoveOrderer::OrderFlag::Promotion |
                                    MoveOrderer::OrderFlag::HashMove;
-    m_Orderer.order_moves(m_Board, Move::NO_MOVE, moves, true, ply, flags);
+    m_Orderer.order_moves(m_Board, Move::NO_MOVE, moves, true, ply, m_Syzygy, flags);
 
     for (auto& move : moves) {
         if (should_stop()) {
@@ -250,9 +250,11 @@ void Searcher::run_iterative_deepening() {
         if (dtz_opt.is_some()) {
             TbRootMoves root_moves = dtz_opt.unwrap();
             if (root_moves.size > 0) {
-                auto selected_move = root_moves.moves[0];
+                auto all_tb_moves = root_moves.moves;
+
+                auto selected_move = all_tb_moves[0];
                 Move tb_move(selected_move.move);
-                int tb_score = root_moves.moves[0].tbScore;
+                int tb_score = all_tb_moves[0].tbScore;
 
                 std::ostringstream oss;
                 for (size_t i = 0; i < selected_move.pvSize; ++i) {
@@ -261,11 +263,13 @@ void Searcher::run_iterative_deepening() {
                 }
 
                 fmt::println("info depth {} score dtz {} nodes {} qnodes {} nps {} time {} pv {}",
-                             0, tb_score, 1, 0, nps, oss.str());
+                             0, tb_score, 1, 0, nps, elapsed_ms, oss.str());
 
-                set_bestmove(tb_move, tb_score);
-                print_bestmove();
-                return;
+                if (std::abs(tb_score) >= MATE_SCORE - 10) {
+                    set_bestmove(tb_move, tb_score);
+                    print_bestmove();
+                    return;
+                }
             }
         }
     }

@@ -32,6 +32,7 @@ class Bot {
     int evaluate_current();
     Result<void, std::string> load_tb_files(const std::string& folder);
     inline void free_tb_files() { m_Searcher.free_tb_files(); }
+    inline void print_tb_status() { fmt::println(m_Searcher.tb_status()); }
     
     Result<void, std::string> set_position(const std::string& fen);
     Result<void, std::string> make_move(const std::string& move_uci);

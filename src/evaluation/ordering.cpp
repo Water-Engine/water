@@ -1,5 +1,7 @@
 #include <pch.hpp>
 
+#include "fathom/tbprobe.h"
+
 #include "evaluation/eval_bits.hpp"
 #include "evaluation/evaluation.hpp"
 #include "evaluation/ordering.hpp"
@@ -50,11 +52,43 @@ int MoveOrderer::shield_bias(Ref<Board> board, const Move& move) {
 }
 
 void MoveOrderer::order_moves(Ref<Board> board, const Move& hash_move, Movelist& moves,
-                              bool in_quiescence, size_t ply, OrderFlag flags) {
+                              bool in_quiescence, size_t ply, const SyzygyManager& tb_manager,
+                              OrderFlag flags) {
     PROFILE_FUNCTION();
+
+    std::unordered_map<Move, int> tb_move_map;
+    if (tb_manager.is_loaded()) {
+        auto maybe_root_moves = tb_manager.probe_dtz();
+        if (maybe_root_moves.is_some()) {
+            TbRootMoves root_moves = maybe_root_moves.unwrap();
+            tb_move_map.reserve(root_moves.size);
+            for (size_t i = 0; i < root_moves.size; ++i) {
+                tb_move_map.insert({Move(root_moves.moves[i].move), root_moves.moves[i].tbScore});
+            }
+        }
+    }
 
     for (auto i = 0; i < moves.size(); ++i) {
         auto move = moves[i];
+        if (!tb_move_map.empty() && tb_move_map.contains(move)) {
+            int tb_score = tb_move_map[move];
+            int wdl = TB_GET_WDL(tb_score);
+            int bias = 0;
+            switch (wdl) {
+            case TB_WIN:
+                bias = +1;
+                break;
+            case TB_DRAW:
+                bias = 0;
+                break;
+            case TB_LOSS:
+                bias = -1;
+                break;
+            }
+            moves[i].setScore(bias * TB_MOVE_BIAS);
+            continue;
+        }
+
         int16_t score = UNBIASED;
         int start_square = move.from().index();
         int target_square = move.to().index();

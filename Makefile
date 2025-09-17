@@ -5,7 +5,7 @@ TEST_DIR := tests
 BUILD_DIR := build
 BIN_ROOT := bin
 
-CC ?= gcc
+CC := gcc
 CXX ?= g++
 
 DEPFLAGS = -MMD -MP

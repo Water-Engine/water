@@ -196,6 +196,8 @@ Result<void, std::string> Engine::process_opt_cmd(const std::string& message) {
         if (maybe_path.is_some()) {
             m_Bot->load_tb_files(maybe_path.unwrap());
         }
+    } else if (str::contains(message, "tbstatus")) {
+        m_Bot->print_tb_status();
     } else if (str::contains(message, "tb")) {
         const auto maybe_path = try_get_labeled_string(message, "tb", OPT_LABELS);
         if (maybe_path.is_some()) {
