@@ -14,20 +14,18 @@
 
 #include "./xsimd_avx512dq_register.hpp"
 
-namespace xsimd
-{
+namespace xsimd {
 
-    /**
-     * @ingroup architectures
-     *
-     * AVX512ER instructions
-     */
-    struct avx512er : avx512cd
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_AVX512ER; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr char const* name() noexcept { return "avx512er"; }
-    };
+/**
+ * @ingroup architectures
+ *
+ * AVX512ER instructions
+ */
+struct avx512er : avx512cd {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_AVX512ER; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr char const* name() noexcept { return "avx512er"; }
+};
 
 #if XSIMD_WITH_AVX512ER
 
@@ -35,17 +33,14 @@ namespace xsimd
 #error "architecture inconsistency: avx512er requires avx512cd"
 #endif
 
-    namespace types
-    {
-        template <class T>
-        struct get_bool_simd_register<T, avx512er>
-        {
-            using type = simd_avx512_bool_register<T>;
-        };
+namespace types {
+template <class T> struct get_bool_simd_register<T, avx512er> {
+    using type = simd_avx512_bool_register<T>;
+};
 
-        XSIMD_DECLARE_SIMD_REGISTER_ALIAS(avx512er, avx512cd);
+XSIMD_DECLARE_SIMD_REGISTER_ALIAS(avx512er, avx512cd);
 
-    }
+} // namespace types
 #endif
-}
+} // namespace xsimd
 #endif

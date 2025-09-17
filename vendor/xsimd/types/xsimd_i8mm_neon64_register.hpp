@@ -14,23 +14,19 @@
 
 #include "./xsimd_neon64_register.hpp"
 
-namespace xsimd
-{
-    template <typename arch>
-    struct i8mm;
+namespace xsimd {
+template <typename arch> struct i8mm;
 
-    /**
-     * @ingroup architectures
-     *
-     * Neon64 + i8mm instructions
-     */
-    template <>
-    struct i8mm<neon64> : neon64
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_I8MM_NEON64; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr char const* name() noexcept { return "i8mm+neon64"; }
-    };
+/**
+ * @ingroup architectures
+ *
+ * Neon64 + i8mm instructions
+ */
+template <> struct i8mm<neon64> : neon64 {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_I8MM_NEON64; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr char const* name() noexcept { return "i8mm+neon64"; }
+};
 
 #if XSIMD_WITH_I8MM_NEON64
 
@@ -38,18 +34,15 @@ namespace xsimd
 #error "architecture inconsistency: i8mm+neon64 requires neon64"
 #endif
 
-    namespace types
-    {
+namespace types {
 
-        XSIMD_DECLARE_SIMD_REGISTER_ALIAS(i8mm<neon64>, neon64);
+XSIMD_DECLARE_SIMD_REGISTER_ALIAS(i8mm<neon64>, neon64);
 
-        template <class T>
-        struct get_bool_simd_register<T, i8mm<neon64>>
-            : detail::neon_bool_simd_register<T, i8mm<neon64>>
-        {
-        };
-    }
+template <class T>
+struct get_bool_simd_register<T, i8mm<neon64>> : detail::neon_bool_simd_register<T, i8mm<neon64>> {
+};
+} // namespace types
 #endif
 
-}
+} // namespace xsimd
 #endif

@@ -18,19 +18,17 @@
 #include <x86intrin.h>
 #endif
 
-namespace xsimd
-{
-    /**
-     * @ingroup architectures
-     *
-     * SSE4.2 + FMA4 instructions
-     */
-    struct fma4 : sse4_2
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_FMA4; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr char const* name() noexcept { return "fma4"; }
-    };
+namespace xsimd {
+/**
+ * @ingroup architectures
+ *
+ * SSE4.2 + FMA4 instructions
+ */
+struct fma4 : sse4_2 {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_FMA4; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr char const* name() noexcept { return "fma4"; }
+};
 
 #if XSIMD_WITH_FMA4
 
@@ -38,13 +36,12 @@ namespace xsimd
 #error "architecture inconsistency: fma4 requires sse4.2"
 #endif
 
-    namespace types
-    {
+namespace types {
 
-        XSIMD_DECLARE_SIMD_REGISTER_ALIAS(fma4, sse4_2);
-
-    }
-#endif
+XSIMD_DECLARE_SIMD_REGISTER_ALIAS(fma4, sse4_2);
 
 }
+#endif
+
+} // namespace xsimd
 #endif

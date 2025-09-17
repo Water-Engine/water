@@ -14,19 +14,17 @@
 
 #include "./xsimd_avx_register.hpp"
 
-namespace xsimd
-{
-    /**
-     * @ingroup architectures
-     *
-     * AVX2 instructions
-     */
-    struct avx2 : avx
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_AVX2; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr char const* name() noexcept { return "avx2"; }
-    };
+namespace xsimd {
+/**
+ * @ingroup architectures
+ *
+ * AVX2 instructions
+ */
+struct avx2 : avx {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_AVX2; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr char const* name() noexcept { return "avx2"; }
+};
 
 #if XSIMD_WITH_AVX2
 
@@ -34,11 +32,10 @@ namespace xsimd
 #error "architecture inconsistency: avx2 requires avx"
 #endif
 
-    namespace types
-    {
-        XSIMD_DECLARE_SIMD_REGISTER_ALIAS(avx2, avx);
-    }
-#endif
+namespace types {
+XSIMD_DECLARE_SIMD_REGISTER_ALIAS(avx2, avx);
 }
+#endif
+} // namespace xsimd
 
 #endif

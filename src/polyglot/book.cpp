@@ -5,6 +5,8 @@
 
 INCBIN(BOOK, "assets/8moves_v3.bin");
 
+using namespace chess;
+
 Book::Book() : m_UniformRealDist(0.0f, 1.0f), m_Rng(std::random_device{}()) {
     auto moves = read_polyglot(reinterpret_cast<const unsigned char*>(gBOOKData), gBOOKSize);
     m_PolyglotMoves.merge(normalize_polyglot(moves));

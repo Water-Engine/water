@@ -73,6 +73,23 @@ class Coord {
     }
 };
 
+inline Option<chess::Piece> probe_capture(const chess::Move& move, Ref<chess::Board> board) {
+    using namespace chess;
+    auto target_piece = board->at(move.to().index());
+
+    if (target_piece.type() != PieceType::NONE && target_piece.color() != board->sideToMove()) {
+        return Option<Piece>(target_piece);
+    }
+
+    if (move.typeOf() == Move::ENPASSANT) {
+        int offset = (board->sideToMove() == Color::WHITE) ? -8 : 8;
+        auto ep_piece = board->at(move.to().index() + offset);
+        return Option<Piece>(ep_piece);
+    }
+
+    return Option<Piece>();
+}
+
 namespace Squares {
 // clang-format off
 enum Index : int {
@@ -97,4 +114,149 @@ enum Scores : int16_t {
     Rook = 500,
     Queen = 900,
 };
+}
+
+inline int16_t score_of_piece(chess::PieceType type) {
+    using namespace chess;
+    switch (type.internal()) {
+    case PieceType::PAWN:
+        return PieceScores::Pawn;
+    case PieceType::KNIGHT:
+        return PieceScores::Knight;
+    case PieceType::BISHOP:
+        return PieceScores::Bishop;
+    case PieceType::ROOK:
+        return PieceScores::Rook;
+    case PieceType::QUEEN:
+        return PieceScores::Queen;
+    default:
+        return 0;
+    }
+}
+
+inline chess::Bitboard pawn_attacks(Ref<chess::Board> board, chess::Color color) {
+    using namespace chess;
+    auto to_ray_cast = board->us(color) & board->pieces(PieceType::PAWN);
+    Bitboard attacks(0);
+
+    while (to_ray_cast) {
+        int index = to_ray_cast.pop();
+        attacks |= attacks::pawn(color, index);
+    }
+    return attacks;
+}
+
+inline chess::Bitboard non_pawn_attacks(Ref<chess::Board> board, chess::Color color) {
+    using namespace chess;
+    auto occupied = board->us(color) | board->us(~color);
+    auto make_attacks = [&](PieceType type) -> Bitboard {
+        auto to_ray_cast = board->us(color) & board->pieces(type);
+        Bitboard attacks(0);
+
+        if (type == PieceType::KING || type == PieceType::KNIGHT) {
+            auto attack_maker = (type == PieceType::KING) ? attacks::king
+                                : (type == PieceType::KNIGHT)
+                                    ? attacks::knight
+                                    : []([[maybe_unused]] Square sq) { return Bitboard(0); };
+            while (to_ray_cast) {
+                int index = to_ray_cast.pop();
+                attacks |= attack_maker(index);
+            }
+            return attacks;
+        }
+
+        auto attack_maker = (type == PieceType::BISHOP) ? attacks::bishop
+                            : (type == PieceType::ROOK) ? attacks::rook
+                            : (type == PieceType::QUEEN)
+                                ? attacks::queen
+                                : []([[maybe_unused]] Square sq,
+                                     [[maybe_unused]] Bitboard occupied) { return Bitboard(0); };
+        while (to_ray_cast) {
+            int index = to_ray_cast.pop();
+            attacks |= attack_maker(index, occupied);
+        }
+        return attacks;
+    };
+
+    Bitboard attacks(0);
+    attacks |= make_attacks(PieceType::KNIGHT);
+    attacks |= make_attacks(PieceType::BISHOP);
+    attacks |= make_attacks(PieceType::ROOK);
+    attacks |= make_attacks(PieceType::QUEEN);
+    attacks |= make_attacks(PieceType::KING);
+    return attacks;
+}
+
+namespace std {
+template <> struct hash<chess::Move> {
+    std::size_t operator()(const chess::Move& m) const {
+        return std::hash<int>()(m.from().index()) ^ (std::hash<int>()(m.to().index()) << 1);
+    }
+};
+} // namespace std
+
+/// Generates a movelist containing captures, promotions, and checks. Checks are opt-in as it is
+/// very expensive
+inline chess::Movelist tactical_moves(Ref<chess::Board> board, bool generate_checks = false) {
+    using namespace chess;
+    // TODO: More efficient generation
+    PROFILE_FUNCTION();
+    // Generate all captures
+    Movelist capture_moves;
+    movegen::legalmoves<movegen::MoveGenType::CAPTURE>(capture_moves, *board);
+
+    // Generate all promotions
+    Movelist pawn_moves;
+    movegen::legalmoves(pawn_moves, *board, PieceGenType::PAWN);
+    Movelist promotion_moves;
+    for (auto& move : pawn_moves) {
+        if (move.typeOf() == Move::PROMOTION) {
+            promotion_moves.add(move);
+        }
+    }
+
+    // Combine all moves
+    std::unordered_set<Move> seen_moves;
+    seen_moves.reserve(constants::MAX_MOVES);
+    Movelist tactical;
+
+    auto try_add_tacticals = [&](const Movelist& movelist) {
+        for (auto& move : movelist) {
+            if (seen_moves.emplace(move).second) {
+                tactical.add(move);
+            }
+        }
+    };
+
+    try_add_tacticals(capture_moves);
+    try_add_tacticals(promotion_moves);
+
+    // Generate all checks if requested
+    if (generate_checks) {
+        Movelist all_moves;
+        movegen::legalmoves(all_moves, *board);
+        Movelist check_moves;
+        for (auto& move : all_moves) {
+            if (board->givesCheck(move) != CheckType::NO_CHECK) {
+                check_moves.add(move);
+            }
+        }
+        try_add_tacticals(check_moves);
+    }
+
+    return tactical;
+}
+
+inline bool is_move_legal(Ref<chess::Board> board, const chess::Move& move) {
+    using namespace chess;
+    Movelist legals;
+    movegen::legalmoves(legals, *board);
+
+    for (auto& legal : legals) {
+        if (legal == move) {
+            return true;
+        }
+    }
+
+    return false;
 }

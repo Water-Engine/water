@@ -40,22 +40,20 @@
 #include <variant>
 #include <vector>
 
-// SIMD
+// Vendored libraries
 #include "xsimd/xsimd.hpp"
+#define INCBIN_SILENCE_BITCODE_WARNING
+#include "incbin/incbin.h"
 
 // Chess Core Library
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #define CHESS_NO_EXCEPTIONS
 #include "game/chess.hpp"
-using namespace chess;
 #pragma GCC diagnostic pop
 
 // Other
 #include "core.hpp"
 #include "game/utils.hpp"
-
-#define INCBIN_SILENCE_BITCODE_WARNING
-#include "incbin/incbin.h"
 
 #endif // WATER_PCH

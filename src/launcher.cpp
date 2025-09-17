@@ -4,11 +4,12 @@
 
 #include "bot.hpp"
 
-#include "bitboard/pawn_shields.hpp"
-
 #include "polyglot/book.hpp"
 
+#include "evaluation/eval_bits.hpp"
 #include "evaluation/pst.hpp"
+
+using namespace chess;
 
 void launch() {
     std::string line;
@@ -18,7 +19,9 @@ void launch() {
         PROFILE_SCOPE("Initialization");
         Book::instance();
         PSTManager::instance();
-        PawnShields::instance();
+        PawnMasks::instance();
+        FileMasks::instance();
+        Distance::instance();
 
         e.prime();
     }
@@ -60,7 +63,7 @@ ParseResult Engine::process_line(const std::string& line) {
     } else if (cmd_lead == "go") {
         process_go_cmd(command);
     } else if (cmd_lead == "d") {
-        fmt::println(m_Bot->board_str());
+        fmt::println(m_Bot->board_diagram());
     } else if (cmd_lead == "stop") {
         m_Bot->stop_thinking();
     } else if (cmd_lead == "quit") {
@@ -68,6 +71,8 @@ ParseResult Engine::process_line(const std::string& line) {
         return ParseResult::EXIT;
     } else if (cmd_lead == "setoption") {
         process_opt_cmd(command);
+    } else if (cmd_lead == "eval") {
+        fmt::println("score {}", m_Bot->evaluate_current());
     }
 
     return ParseResult::SUCCESS;
@@ -117,6 +122,8 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
         uint64_t nodes = m_Bot->perft(depth);
         fmt::println("Perft test of depth {} found {} nodes", depth, nodes);
         return Result<void, std::string>();
+    } else if (str::contains(message, "infinite")) {
+        return m_Bot->think_timed(0);
     } else {
         int time_remaining_white_ms =
             try_get_labeled_numeric<int>(message, "wtime", GO_LABELS).unwrap_or(0);
@@ -127,9 +134,8 @@ Result<void, std::string> Engine::process_go_cmd(const std::string& message) {
         int increment_black_ms =
             try_get_labeled_numeric<int>(message, "binc", GO_LABELS).unwrap_or(0);
 
-        int suggested = m_Bot->choose_think_time(time_remaining_white_ms, time_remaining_black_ms,
+        think_time_ms = m_Bot->choose_think_time(time_remaining_white_ms, time_remaining_black_ms,
                                                  increment_white_ms, increment_black_ms);
-        think_time_ms = (suggested == 0) ? INT32_MAX : suggested;
     }
 
     return m_Bot->think_timed(think_time_ms);
@@ -165,10 +171,63 @@ Result<void, std::string> Engine::process_opt_cmd(const std::string& message) {
         m_Bot->set_weight(weight);
     }
 
+    // Search options, not necessarily mutually exclusive
+    if (str::contains(message, "hash")) {
+        const auto maybe_new_size = try_get_labeled_numeric<size_t>(message, "hash", OPT_LABELS);
+        if (maybe_new_size.is_some()) {
+            m_Bot->resize_tt(maybe_new_size.unwrap());
+        }
+    }
+
+    if (str::contains(message, "usennue")) {
+        const auto use_nnue = try_get_labeled_bool(message, "usennue", OPT_LABELS).unwrap_or(false);
+        m_Bot->set_nnue(use_nnue);
+    }
+
+    if (str::contains(message, "searchinfo")) {
+        const auto show_search_info =
+            try_get_labeled_bool(message, "searchinfo", OPT_LABELS).unwrap_or(true);
+        m_Bot->set_search_info(show_search_info);
+    }
+
+    if (str::contains(message, "tbfree")) {
+        m_Bot->free_tb_files();
+        const auto maybe_path = try_get_labeled_string(message, "tbfree", OPT_LABELS);
+        if (maybe_path.is_some()) {
+            m_Bot->load_tb_files(maybe_path.unwrap());
+        }
+    } else if (str::contains(message, "tbstatus")) {
+        m_Bot->print_tb_status();
+    } else if (str::contains(message, "tb")) {
+        const auto maybe_path = try_get_labeled_string(message, "tb", OPT_LABELS);
+        if (maybe_path.is_some()) {
+            m_Bot->load_tb_files(maybe_path.unwrap());
+        }
+    }
+
     return Result<void, std::string>();
 }
 
 // ================ PARSE UTILS ================
+
+Option<bool> try_get_labeled_bool(const std::string& text, const std::string& label,
+                                  std::span<const std::string_view> all_labels) {
+    Option<std::string> maybe_string = try_get_labeled_string(text, label, all_labels);
+    if (!maybe_string.is_some()) {
+        return Option<bool>();
+    }
+
+    std::string token = str::split(maybe_string.unwrap())[0];
+    str::to_lower(token);
+
+    if (token == "true" || token == "1" || token == "yes" || token == "on") {
+        return Option<bool>(true);
+    } else if (token == "false" || token == "0" || token == "no" || token == "off") {
+        return Option<bool>(false);
+    } else {
+        return Option<bool>();
+    }
+}
 
 Option<std::string> try_get_labeled_string(const std::string& text, const std::string& label,
                                            std::span<const std::string_view> all_labels) {

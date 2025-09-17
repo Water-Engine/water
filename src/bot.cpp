@@ -7,18 +7,61 @@
 
 #include "polyglot/book.hpp"
 
-void Bot::new_game() {}
+using namespace chess;
+
+void Bot::new_game() {
+    m_Board->setFen(constants::STARTPOS);
+    m_Searcher.reset();
+    m_LastMove = Move::NO_MOVE;
+}
+
+int Bot::evaluate_current() { return Evaluator(m_Board).evaluate(); }
+
+Result<void, std::string> Bot::load_tb_files(const std::string& folder) {
+    bool result = m_Searcher.load_tb_files(folder);
+    if (result) {
+        return Result<void, std::string>();
+    }
+
+    auto response = fmt::interpolate("Failed to allocate tb files from folder '{}'", folder);
+    fmt::println(response);
+    return Result<void, std::string>::Err(response);
+}
 
 Result<void, std::string> Bot::set_position(const std::string& fen) {
+    std::string old_fen = m_Board->getFen();
     if (m_Board->setFen(fen)) {
+        // Ensure the side not to move is not in check
+        m_Board->makeNullMove();
+        bool ntm_in_check = m_Board->inCheck();
+        m_Board->unmakeNullMove();
+
+        // Ensure pawns are not located on the first or 8th rank
+        Bitboard illegal_pawn_mask(0xFF000000000000FF);
+        bool pawn_18 = (m_Board->pieces(PieceType::PAWN) & illegal_pawn_mask) != 0;
+
+        if (ntm_in_check || pawn_18) {
+            m_Board->setFen(old_fen);
+            return Result<void, std::string>::Err(
+                "Illegal FEN: side not to move in check or pawn on rank 1/8");
+        }
+
         return Result<void, std::string>();
     } else {
-        return Result<void, std::string>::Err("Failed to load/parse fen");
+        return Result<void, std::string>::Err(
+            "Failed to load/parse fen as string was malformed or position was illegal");
     }
 }
 
 Result<void, std::string> Bot::make_move(const std::string& move_uci) {
     Move move = uci::uciToMove(*m_Board, move_uci);
+
+    // The move maker assumes full legality, so this needs to be verified
+    if (!is_move_legal(m_Board, move)) {
+        return Result<void, std::string>::Err(
+            fmt::interpolate("Requested move '{}' is not legal in the current position", move_uci));
+    }
+
     m_Board->makeMove(move);
     m_LastMove = move;
     return Result<void, std::string>();
@@ -44,20 +87,18 @@ int Bot::choose_think_time(int time_remaining_white_ms, int time_remaining_black
     return std::ceil(std::max(min_think_time, think_time_ms));
 }
 
-Result<void, std::string> Bot::think_timed([[maybe_unused]] int time_ms) {
+Result<void, std::string> Bot::think_timed(int time_ms) {
     auto bm = Book::instance().try_get_book_move(m_Board, m_BookWeight);
     if (bm.is_some()) {
         fmt::println("bestmove {}", bm.unwrap());
         return Result<void, std::string>();
     }
 
-    m_Searcher.find_bestmove();
-    fmt::println(m_Searcher.retrieve_bestmove());
-
+    m_Searcher.find_bestmove(time_ms);
     return Result<void, std::string>();
 }
 
-std::string Bot::board_str() {
+std::string Bot::board_diagram() {
     std::ostringstream oss;
     int last_move_square = -1;
     bool black_at_top = m_Board->sideToMove() == Color::WHITE;

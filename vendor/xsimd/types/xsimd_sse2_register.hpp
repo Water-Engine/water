@@ -20,40 +20,37 @@
 #include <xmmintrin.h>
 #endif
 
-namespace xsimd
-{
-    /**
-     * @ingroup architectures
-     *
-     * SSE2 instructions
-     */
-    struct sse2 : common
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_SSE2; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr bool requires_alignment() noexcept { return true; }
-        static constexpr std::size_t alignment() noexcept { return 16; }
-        static constexpr char const* name() noexcept { return "sse2"; }
-    };
+namespace xsimd {
+/**
+ * @ingroup architectures
+ *
+ * SSE2 instructions
+ */
+struct sse2 : common {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_SSE2; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr bool requires_alignment() noexcept { return true; }
+    static constexpr std::size_t alignment() noexcept { return 16; }
+    static constexpr char const* name() noexcept { return "sse2"; }
+};
 
 #if XSIMD_WITH_SSE2
-    namespace types
-    {
-        XSIMD_DECLARE_SIMD_REGISTER(signed char, sse2, __m128i);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned char, sse2, __m128i);
-        XSIMD_DECLARE_SIMD_REGISTER(char, sse2, __m128i);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned short, sse2, __m128i);
-        XSIMD_DECLARE_SIMD_REGISTER(short, sse2, __m128i);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned int, sse2, __m128i);
-        XSIMD_DECLARE_SIMD_REGISTER(int, sse2, __m128i);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned long int, sse2, __m128i);
-        XSIMD_DECLARE_SIMD_REGISTER(long int, sse2, __m128i);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned long long int, sse2, __m128i);
-        XSIMD_DECLARE_SIMD_REGISTER(long long int, sse2, __m128i);
-        XSIMD_DECLARE_SIMD_REGISTER(float, sse2, __m128);
-        XSIMD_DECLARE_SIMD_REGISTER(double, sse2, __m128d);
-    }
+namespace types {
+XSIMD_DECLARE_SIMD_REGISTER(signed char, sse2, __m128i);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned char, sse2, __m128i);
+XSIMD_DECLARE_SIMD_REGISTER(char, sse2, __m128i);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned short, sse2, __m128i);
+XSIMD_DECLARE_SIMD_REGISTER(short, sse2, __m128i);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned int, sse2, __m128i);
+XSIMD_DECLARE_SIMD_REGISTER(int, sse2, __m128i);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned long int, sse2, __m128i);
+XSIMD_DECLARE_SIMD_REGISTER(long int, sse2, __m128i);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned long long int, sse2, __m128i);
+XSIMD_DECLARE_SIMD_REGISTER(long long int, sse2, __m128i);
+XSIMD_DECLARE_SIMD_REGISTER(float, sse2, __m128);
+XSIMD_DECLARE_SIMD_REGISTER(double, sse2, __m128d);
+} // namespace types
 #endif
-}
+} // namespace xsimd
 
 #endif

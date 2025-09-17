@@ -14,21 +14,19 @@
 
 #include "xsimd_neon_register.hpp"
 
-namespace xsimd
-{
-    /**
-     * @ingroup architectures
-     *
-     * NEON instructions for arm64
-     */
-    struct neon64 : neon
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_NEON64; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr bool requires_alignment() noexcept { return true; }
-        static constexpr std::size_t alignment() noexcept { return 16; }
-        static constexpr char const* name() noexcept { return "arm64+neon"; }
-    };
+namespace xsimd {
+/**
+ * @ingroup architectures
+ *
+ * NEON instructions for arm64
+ */
+struct neon64 : neon {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_NEON64; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr bool requires_alignment() noexcept { return true; }
+    static constexpr std::size_t alignment() noexcept { return 16; }
+    static constexpr char const* name() noexcept { return "arm64+neon"; }
+};
 
 #if XSIMD_WITH_NEON64
 
@@ -36,20 +34,16 @@ namespace xsimd
 #error "architecture inconsistency: neon64 requires neon"
 #endif
 
-    namespace types
-    {
-        XSIMD_DECLARE_SIMD_REGISTER_ALIAS(neon64, neon);
-        XSIMD_DECLARE_SIMD_REGISTER(double, neon64, float64x2_t);
+namespace types {
+XSIMD_DECLARE_SIMD_REGISTER_ALIAS(neon64, neon);
+XSIMD_DECLARE_SIMD_REGISTER(double, neon64, float64x2_t);
 
-        template <class T>
-        struct get_bool_simd_register<T, neon64>
-            : detail::neon_bool_simd_register<T, neon64>
-        {
-        };
-    }
+template <class T>
+struct get_bool_simd_register<T, neon64> : detail::neon_bool_simd_register<T, neon64> {};
+} // namespace types
 
 #endif
 
-}
+} // namespace xsimd
 
 #endif

@@ -14,22 +14,20 @@
 
 #include "./xsimd_common_arch.hpp"
 
-namespace xsimd
-{
+namespace xsimd {
 
-    /**
-     * @ingroup architectures
-     *
-     * AVX512F instructions
-     */
-    struct avx512f : common
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_AVX512F; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr std::size_t alignment() noexcept { return 64; }
-        static constexpr bool requires_alignment() noexcept { return true; }
-        static constexpr char const* name() noexcept { return "avx512f"; }
-    };
+/**
+ * @ingroup architectures
+ *
+ * AVX512F instructions
+ */
+struct avx512f : common {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_AVX512F; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr std::size_t alignment() noexcept { return 64; }
+    static constexpr bool requires_alignment() noexcept { return true; }
+    static constexpr char const* name() noexcept { return "avx512f"; }
+};
 
 #if XSIMD_WITH_AVX512F
 
@@ -37,41 +35,36 @@ namespace xsimd
 #error "architecture inconsistency: avx512f requires avx2"
 #endif
 
-    namespace types
-    {
-        template <class T>
-        struct simd_avx512_bool_register
-        {
-            using register_type = typename std::conditional<
-                (sizeof(T) < 4), std::conditional<(sizeof(T) == 1), __mmask64, __mmask32>,
-                std::conditional<(sizeof(T) == 4), __mmask16, __mmask8>>::type::type;
-            register_type data;
-            simd_avx512_bool_register() = default;
-            simd_avx512_bool_register(register_type r) { data = r; }
-            operator register_type() const noexcept { return data; }
-        };
-        template <class T>
-        struct get_bool_simd_register<T, avx512f>
-        {
-            using type = simd_avx512_bool_register<T>;
-        };
+namespace types {
+template <class T> struct simd_avx512_bool_register {
+    using register_type = typename std::conditional<
+        (sizeof(T) < 4), std::conditional<(sizeof(T) == 1), __mmask64, __mmask32>,
+        std::conditional<(sizeof(T) == 4), __mmask16, __mmask8>>::type::type;
+    register_type data;
+    simd_avx512_bool_register() = default;
+    simd_avx512_bool_register(register_type r) { data = r; }
+    operator register_type() const noexcept { return data; }
+};
+template <class T> struct get_bool_simd_register<T, avx512f> {
+    using type = simd_avx512_bool_register<T>;
+};
 
-        XSIMD_DECLARE_SIMD_REGISTER(signed char, avx512f, __m512i);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned char, avx512f, __m512i);
-        XSIMD_DECLARE_SIMD_REGISTER(char, avx512f, __m512i);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned short, avx512f, __m512i);
-        XSIMD_DECLARE_SIMD_REGISTER(short, avx512f, __m512i);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned int, avx512f, __m512i);
-        XSIMD_DECLARE_SIMD_REGISTER(int, avx512f, __m512i);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned long int, avx512f, __m512i);
-        XSIMD_DECLARE_SIMD_REGISTER(long int, avx512f, __m512i);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned long long int, avx512f, __m512i);
-        XSIMD_DECLARE_SIMD_REGISTER(long long int, avx512f, __m512i);
-        XSIMD_DECLARE_SIMD_REGISTER(float, avx512f, __m512);
-        XSIMD_DECLARE_SIMD_REGISTER(double, avx512f, __m512d);
+XSIMD_DECLARE_SIMD_REGISTER(signed char, avx512f, __m512i);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned char, avx512f, __m512i);
+XSIMD_DECLARE_SIMD_REGISTER(char, avx512f, __m512i);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned short, avx512f, __m512i);
+XSIMD_DECLARE_SIMD_REGISTER(short, avx512f, __m512i);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned int, avx512f, __m512i);
+XSIMD_DECLARE_SIMD_REGISTER(int, avx512f, __m512i);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned long int, avx512f, __m512i);
+XSIMD_DECLARE_SIMD_REGISTER(long int, avx512f, __m512i);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned long long int, avx512f, __m512i);
+XSIMD_DECLARE_SIMD_REGISTER(long long int, avx512f, __m512i);
+XSIMD_DECLARE_SIMD_REGISTER(float, avx512f, __m512);
+XSIMD_DECLARE_SIMD_REGISTER(double, avx512f, __m512d);
 
-    }
+} // namespace types
 #endif
-}
+} // namespace xsimd
 
 #endif

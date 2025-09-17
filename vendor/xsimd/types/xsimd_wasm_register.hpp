@@ -20,40 +20,37 @@
 #include <wasm_simd128.h>
 #endif
 
-namespace xsimd
-{
-    /**
-     * @ingroup architectures
-     *
-     * WASM instructions
-     */
-    struct wasm : common
-    {
-        static constexpr bool supported() noexcept { return XSIMD_WITH_WASM; }
-        static constexpr bool available() noexcept { return true; }
-        static constexpr bool requires_alignment() noexcept { return true; }
-        static constexpr std::size_t alignment() noexcept { return 16; }
-        static constexpr char const* name() noexcept { return "wasm"; }
-    };
+namespace xsimd {
+/**
+ * @ingroup architectures
+ *
+ * WASM instructions
+ */
+struct wasm : common {
+    static constexpr bool supported() noexcept { return XSIMD_WITH_WASM; }
+    static constexpr bool available() noexcept { return true; }
+    static constexpr bool requires_alignment() noexcept { return true; }
+    static constexpr std::size_t alignment() noexcept { return 16; }
+    static constexpr char const* name() noexcept { return "wasm"; }
+};
 
 #if XSIMD_WITH_WASM
-    namespace types
-    {
-        XSIMD_DECLARE_SIMD_REGISTER(signed char, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned char, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(char, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned short, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(short, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned int, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(int, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned long int, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(long int, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(unsigned long long int, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(long long int, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(float, wasm, v128_t);
-        XSIMD_DECLARE_SIMD_REGISTER(double, wasm, v128_t);
-    }
+namespace types {
+XSIMD_DECLARE_SIMD_REGISTER(signed char, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned char, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(char, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned short, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(short, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned int, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(int, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned long int, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(long int, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(unsigned long long int, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(long long int, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(float, wasm, v128_t);
+XSIMD_DECLARE_SIMD_REGISTER(double, wasm, v128_t);
+} // namespace types
 #endif
-}
+} // namespace xsimd
 
 #endif

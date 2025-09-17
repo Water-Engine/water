@@ -5,8 +5,9 @@
 constexpr std::array<std::string_view, 3> POSITION_LABELS = {"position", "fen", "moves"};
 constexpr std::array<std::string_view, 9> GO_LABELS = {
     "go", "movetime", "wtime", "btime", "winc", "binc", "movestogo", "perft", "parallel"};
-constexpr std::array<std::string_view, 5> OPT_LABELS = {"book", "book-add", "book-reset", "weight",
-                                                        "depth"};
+constexpr std::array<std::string_view, 10> OPT_LABELS = {
+    "book", "book-add", "book-reset", "weight", "depth",
+    "hash", "usennue",  "searchinfo", "tb",     "tbfree"};
 
 enum class ParseResult {
     SUCCESS = 0,
@@ -33,6 +34,9 @@ void launch();
 
 Option<std::string> try_get_labeled_string(const std::string& text, const std::string& label,
                                            std::span<const std::string_view> all_labels);
+
+Option<bool> try_get_labeled_bool(const std::string& text, const std::string& label,
+                                  std::span<const std::string_view> all_labels);
 
 template <typename T>
 Option<T> try_get_labeled_numeric(const std::string& text, const std::string& label,
@@ -62,7 +66,7 @@ Option<T> try_get_labeled_numeric(const std::string& text, const std::string& la
         } else if constexpr (std::is_same_v<T, long double>) {
             return Option<T>(std::stold(first_token));
         } else {
-            static_assert(!sizeof(T*), "Unsupported type for try_get_labeled_numeric");
+            static_assert(always_false<T>, "Unsupported type for try_get_labeled_numeric");
         }
     } catch (...) {
         return Option<T>();

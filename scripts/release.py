@@ -27,9 +27,9 @@ safe_rmdir(compressed_path)
 safe_mkdir(compressed_path)
 
 # === Targets ===
-win = ["x86_64", "aarch64", "x86"]
+win = ["x86_64", "aarch64"]
 mac = ["x86_64", "aarch64"]
-lin = ["x86_64", "arm", "aarch64", "x86", "riscv64", "loongarch64", "s390x"]
+lin = ["x86_64", "aarch64", "riscv64", "loongarch64", "s390x"]
 
 targets = {
     "windows": win,
@@ -106,10 +106,10 @@ for idx, compiled in enumerate(os.listdir(target_path)):
     compiled_name = os.path.basename(compiled_path)
     start_compression = int(time.time() * 1000)
     run_command(
-        f"tar -cvf {os.path.join(compressed_path, compiled_name)}.tar -C {compiled_path} ."
+        f"tar -czvf {os.path.join(compressed_path, compiled_name)}.tar.gz -C {compiled_path} ."
     )
     end_compression = int(time.time() * 1000)
     print(
         f"Compression {idx + 1} took {end_compression - start_compression} ms"
     )
-print("Compression complete!\n")
+print("Compression complete!")

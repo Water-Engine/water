@@ -158,17 +158,18 @@ class PSTManager {
         return s_instance;
     }
 
-    int static get_value_unchecked(const PST& table, Color piece_color, int square,
+    int static get_value_unchecked(const PST& table, chess::Color piece_color, int square,
                                    Phase phase = Phase::Unified);
-    int static get_value(const PST& table, Color piece_color, int square,
+    int static get_value(const PST& table, chess::Color piece_color, int square,
                          Phase phase = Phase::Unified);
 
-    inline int get_value_unchecked(const Piece& piece, int square,
+    inline int get_value_unchecked(const chess::Piece& piece, int square,
                                    Phase phase = Phase::Unified) const {
         return m_Tables[piece].phase(phase)[square];
     }
 
-    inline int get_value(const Piece& piece, int square, Phase phase = Phase::Unified) const {
+    inline int get_value(const chess::Piece& piece, int square,
+                         Phase phase = Phase::Unified) const {
         if (!Coord::valid_square_idx(square)) {
             return 0;
         }
@@ -176,9 +177,11 @@ class PSTManager {
         return get_value_unchecked(piece, square, phase);
     };
 
-    int get_value_tapered_unchecked(const Piece& piece, int square, float endgame_transition) const;
+    int get_value_tapered_unchecked(const chess::Piece& piece, int square,
+                                    float endgame_transition) const;
 
-    inline int get_value_tapered(const Piece& piece, int square, float endgame_transition) const {
+    inline int get_value_tapered(const chess::Piece& piece, int square,
+                                 float endgame_transition) const {
         if (!Coord::valid_square_idx(square)) {
             return 0;
         }
@@ -190,7 +193,7 @@ class PSTManager {
         return table.to_string(phase);
     }
 
-    inline std::string to_string(const Piece& piece, Phase phase = Phase::Unified) const {
+    inline std::string to_string(const chess::Piece& piece, Phase phase = Phase::Unified) const {
         return m_Tables[piece].to_string(phase);
     }
 };

@@ -1,12 +1,17 @@
 # water [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=c%2B%2B&logoColor=white)](https://en.cppreference.com/w/cpp/20.html) [![License](https://img.shields.io/github/license/Water-Engine/water)](LICENSE) [![LOC](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Water-Engine/water/loc/.github/loc_badge.json)](https://github.com/Water-Engine/water/actions/workflows/loc.yml) [![Last commit](https://img.shields.io/github/last-commit/Water-Engine/water)](https://github.com/Water-Engine/water) [![Formatting](https://github.com/Water-Engine/water/actions/workflows/format.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/format.yml) [![CI](https://github.com/Water-Engine/water/actions/workflows/ci.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/ci.yml)
 A chess engine written in C++, powered by Disservin's [chess-library](https://github.com/Disservin/chess-library), utilizing a hybrid approach of classical and neural network evaluation.
 
+> [!WARNING]
+> The `port` branch of this repository is currently the main focus of development, working to rewrite the entire project in Zig. As such, C++ related guidelines, documentation, issues, or PRs will be put on hold indefinitely. Please be patient with us as we tackle this task.
+
 # Goals
 While this project is still a major WIP, the end-goal is a dual-mode engine:
 - An iterative search engine with Alpha-Beta Pruning, Quiescence, etc.
 - A neural network-powered engine using Monte Carlo Tree Search (MCTS)
 
 # Getting Started
+Before building, ensure you have the necessary NNUE files, which can be fetched using `python scripts/stockfish_nnue.py`. Note that this script requires the [requests](https://pypi.org/project/requests/) package to work properly. While not necessary for building, you can also download some helpful syzygy bases to use during runtime by running `python scripts/syzygy.py`
+
 For a quick build of the project, run:
 ```shell
 git clone https://github.com/Water-Engine/water.git
@@ -23,7 +28,8 @@ _The engine communicates through the UCI protocol for terminal interaction._
 - [Catch2](https://github.com/catchorg/Catch2) for tests (included in this repository)
 - [cloc](https://github.com/AlDanial/cloc) for cloc make target (optional)
 - [python](https://www.python.org/downloads/) for script running
-- [Zig](https://ziglang.org/download/) for cross-platform packaging (optional) 
+- [Zig 0.15.1](https://ziglang.org/download/) for cross-platform packaging (optional)
+
 
 # Building water
 The project's build system uses C++20 and GNU Make, and it is recommended that you run make with the flag `-j4` to run batch jobs. Below is a list of targets with their requirements where applicable:
@@ -64,7 +70,7 @@ Water could not be where it is today without the formative work done by experien
     - Maybe in the future I'll roll my own core library, but it was taking too much out of me
     - This library saved a lot of time and frustration for me, so I would like to personally thank the chess-library teams for their hard work
 - [Syzygy](https://www.chessprogramming.org/Syzygy_Bases) tables originally created by Dutch mathematician [Ronald de Man](https://www.chessprogramming.org/Ronald_de_Man)
-- [Fathom](https://github.com/jdart1/Fathom) syzygy tablebase reader - rewritten and catered to the Water engine
+- [Fathom](https://github.com/jdart1/Fathom) syzygy tablebase reader - extracted and placed into the engine
 - Sebastian Lague's [Chess Coding Adventure](https://github.com/SebLague/Chess-Coding-Adventure) engine - used for comparative testing for elo estimates
 - The [Aurora](https://github.com/kjljixx/Aurora-Chess-Engine) chess engine which previously implemented a similar hybrid evaluation approach
 - The legendary [Stockfish](https://github.com/official-stockfish/Stockfish) engine - used for verifying certain tests on the fly

@@ -40,8 +40,8 @@ class Book {
         return s_instance;
     }
 
-    bool is_book_pos(Ref<Board> board);
-    Option<std::string> try_get_book_move(Ref<Board> board, float weight);
+    bool is_book_pos(Ref<chess::Board> board);
+    Option<std::string> try_get_book_move(Ref<chess::Board> board, float weight);
 
     void load_external_book(const std::filesystem::path& book_path, bool preserve_existing = true,
                             int depth = 8);
