@@ -2,6 +2,8 @@
 
 #include "evaluation/eval_bits.hpp"
 
+using namespace chess;
+
 PawnMasks::PawnMasks() {
     for (size_t square = 0; square < 64; ++square) {
         create_shields(square);

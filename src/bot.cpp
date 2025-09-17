@@ -7,6 +7,8 @@
 
 #include "polyglot/book.hpp"
 
+using namespace chess;
+
 void Bot::new_game() {
     m_Board->setFen(constants::STARTPOS);
     m_Searcher.reset();
@@ -14,6 +16,17 @@ void Bot::new_game() {
 }
 
 int Bot::evaluate_current() { return Evaluator(m_Board).evaluate(); }
+
+Result<void, std::string> Bot::load_tb_files(const std::string& folder) {
+    bool result = m_Searcher.load_tb_files(folder);
+    if (result) {
+        return Result<void, std::string>();
+    }
+
+    auto response = fmt::interpolate("Failed to allocate tb files from folder '{}'", folder);
+    fmt::println(response);
+    return Result<void, std::string>::Err(response);
+}
 
 Result<void, std::string> Bot::set_position(const std::string& fen) {
     std::string old_fen = m_Board->getFen();
@@ -29,12 +42,14 @@ Result<void, std::string> Bot::set_position(const std::string& fen) {
 
         if (ntm_in_check || pawn_18) {
             m_Board->setFen(old_fen);
-            return Result<void, std::string>::Err("Illegal FEN: side not to move in check or pawn on rank 1/8");
+            return Result<void, std::string>::Err(
+                "Illegal FEN: side not to move in check or pawn on rank 1/8");
         }
 
         return Result<void, std::string>();
     } else {
-        return Result<void, std::string>::Err("Failed to load/parse fen as string was malformed or position was illegal");
+        return Result<void, std::string>::Err(
+            "Failed to load/parse fen as string was malformed or position was illegal");
     }
 }
 

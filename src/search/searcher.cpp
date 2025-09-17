@@ -1,10 +1,14 @@
 #include <pch.hpp>
 
+#include "fathom/tbprobe.h"
+
 #include "search/searcher.hpp"
 
 #include "evaluation/evaluation.hpp"
 #include "evaluation/ordering.hpp"
 #include "evaluation/pst.hpp"
+
+using namespace chess;
 
 std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, int ply,
                                           std::vector<Move>& pv) {
@@ -82,7 +86,7 @@ std::pair<Move, int> Searcher::alpha_beta(int depth, int alpha, int beta, int pl
                 return {Move::NO_MOVE, adjust_mate_score(score, ply)};
             }
         }
-        
+
         return {Move::NO_MOVE, quiescence(alpha, beta, ply)};
     }
     m_Orderer.order_moves(m_Board, tt_move, moves, false, 0);

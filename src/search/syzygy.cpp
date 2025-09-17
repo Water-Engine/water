@@ -4,6 +4,8 @@
 
 #include "search/syzygy.hpp"
 
+using namespace chess;
+
 uint32_t SyzygyManager::tb_castling_mask() const {
     uint32_t mask = 0;
     using CastlingSide = Board::CastlingRights::Side;

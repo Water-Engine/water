@@ -10,14 +10,14 @@
  */
 class PawnMasks {
   private:
-    std::array<Bitboard, 64> m_WhiteShields;
-    std::array<Bitboard, 64> m_BlackShields;
+    std::array<chess::Bitboard, 64> m_WhiteShields;
+    std::array<chess::Bitboard, 64> m_BlackShields;
 
-    std::array<Bitboard, 64> m_WhitePassedMasks;
-    std::array<Bitboard, 64> m_BlackPassedMasks;
+    std::array<chess::Bitboard, 64> m_WhitePassedMasks;
+    std::array<chess::Bitboard, 64> m_BlackPassedMasks;
 
-    std::array<Bitboard, 64> m_WhiteSupportMasks;
-    std::array<Bitboard, 64> m_BlackSupportMasks;
+    std::array<chess::Bitboard, 64> m_WhiteSupportMasks;
+    std::array<chess::Bitboard, 64> m_BlackSupportMasks;
 
   private:
     PawnMasks();
@@ -38,49 +38,49 @@ class PawnMasks {
         return s_instance;
     }
 
-    inline Bitboard get_shield_unchecked(Color C, int king_square) const {
-        if (C.internal() == Color::WHITE) {
+    inline chess::Bitboard get_shield_unchecked(chess::Color C, int king_square) const {
+        if (C.internal() == chess::Color::WHITE) {
             return m_WhiteShields[king_square];
         } else {
             return m_BlackShields[king_square];
         }
     }
 
-    inline Bitboard get_shield(Color C, int king_square) const {
+    inline chess::Bitboard get_shield(chess::Color C, int king_square) const {
         if (!Coord::valid_square_idx(king_square)) {
-            return Bitboard(0);
+            return chess::Bitboard(0);
         }
 
         return get_shield_unchecked(C, king_square);
     }
 
-    inline Bitboard get_passed_unchecked(Color C, int square) const {
-        if (C.internal() == Color::WHITE) {
+    inline chess::Bitboard get_passed_unchecked(chess::Color C, int square) const {
+        if (C.internal() == chess::Color::WHITE) {
             return m_WhitePassedMasks[square];
         } else {
             return m_BlackPassedMasks[square];
         }
     }
 
-    inline Bitboard get_passed(Color C, int square) const {
+    inline chess::Bitboard get_passed(chess::Color C, int square) const {
         if (!Coord::valid_square_idx(square)) {
-            return Bitboard(0);
+            return chess::Bitboard(0);
         }
 
         return get_passed_unchecked(C, square);
     }
 
-    inline Bitboard get_support_unchecked(Color C, int square) const {
-        if (C.internal() == Color::WHITE) {
+    inline chess::Bitboard get_support_unchecked(chess::Color C, int square) const {
+        if (C.internal() == chess::Color::WHITE) {
             return m_WhiteSupportMasks[square];
         } else {
             return m_BlackSupportMasks[square];
         }
     }
 
-    inline Bitboard get_support(Color C, int square) const {
+    inline chess::Bitboard get_support(chess::Color C, int square) const {
         if (!Coord::valid_square_idx(square)) {
-            return Bitboard(0);
+            return chess::Bitboard(0);
         }
 
         return get_support_unchecked(C, square);
@@ -95,9 +95,9 @@ class PawnMasks {
  */
 class FileMasks {
   private:
-    std::array<Bitboard, 8> m_FileMasks;
-    std::array<Bitboard, 8> m_AdjacentFileMasks;
-    std::array<Bitboard, 8> m_TripleFileMasks;
+    std::array<chess::Bitboard, 8> m_FileMasks;
+    std::array<chess::Bitboard, 8> m_AdjacentFileMasks;
+    std::array<chess::Bitboard, 8> m_TripleFileMasks;
 
   private:
     FileMasks();
@@ -113,29 +113,33 @@ class FileMasks {
         return s_instance;
     }
 
-    inline Bitboard get_file_unchecked(int file) const { return m_FileMasks[file]; }
+    inline chess::Bitboard get_file_unchecked(int file) const { return m_FileMasks[file]; }
 
-    inline Bitboard get_file(int file) const {
+    inline chess::Bitboard get_file(int file) const {
         if (!Coord::valid_square_idx(file))
-            return Bitboard(0);
+            return chess::Bitboard(0);
 
         return get_file_unchecked(file);
     }
 
-    inline Bitboard get_adj_file_unchecked(int file) const { return m_AdjacentFileMasks[file]; }
+    inline chess::Bitboard get_adj_file_unchecked(int file) const {
+        return m_AdjacentFileMasks[file];
+    }
 
-    inline Bitboard get_adj_file(int file) const {
+    inline chess::Bitboard get_adj_file(int file) const {
         if (!Coord::valid_square_idx(file))
-            return Bitboard(0);
+            return chess::Bitboard(0);
 
         return get_adj_file_unchecked(file);
     }
 
-    inline Bitboard get_triple_file_unchecked(int file) const { return m_TripleFileMasks[file]; }
+    inline chess::Bitboard get_triple_file_unchecked(int file) const {
+        return m_TripleFileMasks[file];
+    }
 
-    inline Bitboard get_triple_file(int file) const {
+    inline chess::Bitboard get_triple_file(int file) const {
         if (!Coord::valid_square_idx(file))
-            return Bitboard(0);
+            return chess::Bitboard(0);
 
         return get_triple_file_unchecked(file);
     }

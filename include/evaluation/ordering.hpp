@@ -15,17 +15,17 @@ constexpr std::array<std::pair<int, std::string_view>, 6> BIASES = {
      {HASH_MOVE_BIAS, "Hash Move"}}};
 
 struct KillerMove {
-    Move a;
-    Move b;
+    chess::Move a;
+    chess::Move b;
 
-    inline void add(const Move& move) {
+    inline void add(const chess::Move& move) {
         if (move != a) {
             b = a;
             a = move;
         }
     }
 
-    friend bool operator==(const KillerMove& killer, const Move& move) {
+    friend bool operator==(const KillerMove& killer, const chess::Move& move) {
         return move == killer.a || move == killer.b;
     }
 };
@@ -42,8 +42,8 @@ class MoveOrderer {
     std::array<std::array<std::array<int, 64>, 64>, 2> m_HistoryHeuristic;
 
   private:
-    int king_safety_bonus(Ref<Board> board, const Move& move);
-    int shield_bias(Ref<Board> board, const Move& move);
+    int king_safety_bonus(Ref<chess::Board> board, const chess::Move& move);
+    int shield_bias(Ref<chess::Board> board, const chess::Move& move);
 
   public:
     enum class OrderFlag : uint8_t {
@@ -79,8 +79,8 @@ class MoveOrderer {
         clear_killers();
     }
 
-    void order_moves(Ref<Board> board, const Move& hash_move, Movelist& moves, bool in_quiescence,
-                     size_t ply, OrderFlag flags = FULL_ORDERING);
+    void order_moves(Ref<chess::Board> board, const chess::Move& hash_move, chess::Movelist& moves,
+                     bool in_quiescence, size_t ply, OrderFlag flags = FULL_ORDERING);
 
     friend class Searcher;
 };

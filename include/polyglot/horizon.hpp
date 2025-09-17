@@ -11,9 +11,9 @@ struct PolyEntry {
 };
 #pragma pack(pop)
 
-class PGNVisitor : public pgn::Visitor {
+class PGNVisitor : public chess::pgn::Visitor {
   private:
-    Board m_Board;
+    chess::Board m_Board;
     uint64_t m_MaxOpeningDepth;
     std::vector<PolyEntry> m_Buffer;
     std::unordered_map<uint64_t, std::unordered_map<uint16_t, uint16_t>> m_PositionMap;
@@ -37,7 +37,7 @@ class PGNVisitor : public pgn::Visitor {
 
   public:
     PGNVisitor(uint64_t depth) : m_Board(), m_MaxOpeningDepth(depth), m_NumHalfMovesSoFar(0) {
-        m_Board.setFen(constants::STARTPOS);
+        m_Board.setFen(chess::constants::STARTPOS);
         m_Buffer.reserve(MAX_BUFFER_SIZE);
     }
 

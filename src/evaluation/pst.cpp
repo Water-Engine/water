@@ -2,6 +2,8 @@
 
 #include "evaluation/pst.hpp"
 
+using namespace chess;
+
 PSTManager::PSTManager() {
     m_Tables[static_cast<int>(Piece::underlying::WHITEROOK)] = WhiteRookTable;
     m_Tables[static_cast<int>(Piece::underlying::WHITEKNIGHT)] = WhiteKnightTable;

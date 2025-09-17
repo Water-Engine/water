@@ -2,6 +2,8 @@
 
 #include "polyglot/horizon.hpp"
 
+using namespace chess;
+
 void PGNVisitor::write_entry(std::ostringstream& oss, const PolyEntry& e) {
     auto put16 = [&](uint16_t v) {
         unsigned char buf[2] = {static_cast<unsigned char>(v >> 8),

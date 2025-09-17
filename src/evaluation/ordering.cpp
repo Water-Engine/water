@@ -5,6 +5,8 @@
 #include "evaluation/ordering.hpp"
 #include "evaluation/pst.hpp"
 
+using namespace chess;
+
 int MoveOrderer::king_safety_bonus(Ref<Board> board, const Move& move) {
     Color c = board->sideToMove();
     int king_sq_after = move.to().index();

@@ -73,7 +73,8 @@ class Coord {
     }
 };
 
-inline Option<Piece> probe_capture(const Move& move, Ref<Board> board) {
+inline Option<chess::Piece> probe_capture(const chess::Move& move, Ref<chess::Board> board) {
+    using namespace chess;
     auto target_piece = board->at(move.to().index());
 
     if (target_piece.type() != PieceType::NONE && target_piece.color() != board->sideToMove()) {
@@ -115,7 +116,8 @@ enum Scores : int16_t {
 };
 }
 
-inline int16_t score_of_piece(PieceType type) {
+inline int16_t score_of_piece(chess::PieceType type) {
+    using namespace chess;
     switch (type.internal()) {
     case PieceType::PAWN:
         return PieceScores::Pawn;
@@ -132,7 +134,8 @@ inline int16_t score_of_piece(PieceType type) {
     }
 }
 
-inline Bitboard pawn_attacks(Ref<Board> board, Color color) {
+inline chess::Bitboard pawn_attacks(Ref<chess::Board> board, chess::Color color) {
+    using namespace chess;
     auto to_ray_cast = board->us(color) & board->pieces(PieceType::PAWN);
     Bitboard attacks(0);
 
@@ -143,7 +146,8 @@ inline Bitboard pawn_attacks(Ref<Board> board, Color color) {
     return attacks;
 }
 
-inline Bitboard non_pawn_attacks(Ref<Board> board, Color color) {
+inline chess::Bitboard non_pawn_attacks(Ref<chess::Board> board, chess::Color color) {
+    using namespace chess;
     auto occupied = board->us(color) | board->us(~color);
     auto make_attacks = [&](PieceType type) -> Bitboard {
         auto to_ray_cast = board->us(color) & board->pieces(type);
@@ -184,8 +188,8 @@ inline Bitboard non_pawn_attacks(Ref<Board> board, Color color) {
 }
 
 namespace std {
-template <> struct hash<Move> {
-    std::size_t operator()(const Move& m) const {
+template <> struct hash<chess::Move> {
+    std::size_t operator()(const chess::Move& m) const {
         return std::hash<int>()(m.from().index()) ^ (std::hash<int>()(m.to().index()) << 1);
     }
 };
@@ -193,7 +197,8 @@ template <> struct hash<Move> {
 
 /// Generates a movelist containing captures, promotions, and checks. Checks are opt-in as it is
 /// very expensive
-inline Movelist tactical_moves(Ref<Board> board, bool generate_checks = false) {
+inline chess::Movelist tactical_moves(Ref<chess::Board> board, bool generate_checks = false) {
+    using namespace chess;
     // TODO: More efficient generation
     PROFILE_FUNCTION();
     // Generate all captures
@@ -242,7 +247,8 @@ inline Movelist tactical_moves(Ref<Board> board, bool generate_checks = false) {
     return tactical;
 }
 
-inline bool is_move_legal(Ref<Board> board, const Move& move) {
+inline bool is_move_legal(Ref<chess::Board> board, const chess::Move& move) {
+    using namespace chess;
     Movelist legals;
     movegen::legalmoves(legals, *board);
 

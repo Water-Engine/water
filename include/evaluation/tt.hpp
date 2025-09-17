@@ -4,13 +4,14 @@ enum class NodeType { Void, Exact, UpperBound, LowerBound };
 
 struct Node {
     uint64_t ZobristKey;
-    Move BestMove;
+    chess::Move BestMove;
     int Depth;
     int EvaluationScore;
     NodeType Type{NodeType::Void};
 
     Node() = default;
-    Node(uint64_t key, const Move& best_move_so_far, int ply_searched, int eval, NodeType type);
+    Node(uint64_t key, const chess::Move& best_move_so_far, int ply_searched, int eval,
+         NodeType type);
 };
 
 constexpr size_t NodeSize = sizeof(Node);
@@ -19,7 +20,7 @@ constexpr size_t NodeSize = sizeof(Node);
 /// Replace' strategy currently
 class TranspositionTable {
   private:
-    Ref<Board> m_Board;
+    Ref<chess::Board> m_Board;
     std::vector<Node> m_Entries;
     size_t m_Count;
 
@@ -27,7 +28,7 @@ class TranspositionTable {
     void reset_nodes();
 
   public:
-    TranspositionTable(Ref<Board> board, size_t table_size_mb);
+    TranspositionTable(Ref<chess::Board> board, size_t table_size_mb);
 
     inline void clear() { reset_nodes(); }
     void resize(size_t new_table_size_mb);
@@ -35,8 +36,10 @@ class TranspositionTable {
     inline uint64_t current_idx() const { return m_Board->hash() % m_Count; }
     inline uint64_t current_idx(uint64_t key) const { return key % m_Count; }
 
-    inline Option<Move> try_get_best_move() const { return try_get_best_move(m_Board->hash()); }
-    Option<Move> try_get_best_move(uint64_t key) const;
+    inline Option<chess::Move> try_get_best_move() const {
+        return try_get_best_move(m_Board->hash());
+    }
+    Option<chess::Move> try_get_best_move(uint64_t key) const;
 
     inline Option<Node> probe() const { return probe(m_Board->hash()); };
     Option<Node> probe(uint64_t key) const;

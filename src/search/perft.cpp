@@ -2,6 +2,8 @@
 
 #include "bot.hpp"
 
+using namespace chess;
+
 uint64_t Bot::perft_recursive(Board& board, int depth) {
     if (depth == 0) {
         return 1;

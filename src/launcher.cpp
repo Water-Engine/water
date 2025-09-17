@@ -9,6 +9,8 @@
 #include "evaluation/eval_bits.hpp"
 #include "evaluation/pst.hpp"
 
+using namespace chess;
+
 void launch() {
     std::string line;
     Engine e;
@@ -186,6 +188,19 @@ Result<void, std::string> Engine::process_opt_cmd(const std::string& message) {
         const auto show_search_info =
             try_get_labeled_bool(message, "searchinfo", OPT_LABELS).unwrap_or(true);
         m_Bot->set_search_info(show_search_info);
+    }
+
+    if (str::contains(message, "tbfree")) {
+        m_Bot->free_tb_files();
+        const auto maybe_path = try_get_labeled_string(message, "tbfree", OPT_LABELS);
+        if (maybe_path.is_some()) {
+            m_Bot->load_tb_files(maybe_path.unwrap());
+        }
+    } else if (str::contains(message, "tb")) {
+        const auto maybe_path = try_get_labeled_string(message, "tb", OPT_LABELS);
+        if (maybe_path.is_some()) {
+            m_Bot->load_tb_files(maybe_path.unwrap());
+        }
     }
 
     return Result<void, std::string>();

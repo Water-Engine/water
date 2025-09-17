@@ -4,6 +4,8 @@
 #include "evaluation/evaluation.hpp"
 #include "evaluation/pst.hpp"
 
+using namespace chess;
+
 int Evaluator::individual_pst_score(const Piece& piece, Bitboard piece_bb,
                                     float endgame_transition) {
     auto& psts = PSTManager::instance();

@@ -19,13 +19,13 @@ constexpr int MATE_SCORE = 32'000'000;
 constexpr int MATE_THRESHOLD = 30'000'000;
 
 struct BestMove {
-    Move BestMove;
+    chess::Move BestMove;
     int BestMoveEval;
 };
 
 class Searcher {
   private:
-    Ref<Board> m_Board;
+    Ref<chess::Board> m_Board;
     Evaluator m_Evaluator;
     mutable std::mutex m_BestMoveMutex;
     Option<BestMove> m_BestMoveSoFar{};
@@ -46,7 +46,8 @@ class Searcher {
     bool m_IsInfiniteSearch{true};
 
   private:
-    std::pair<Move, int> alpha_beta(int depth, int alpha, int beta, int ply, std::vector<Move>& pv);
+    std::pair<chess::Move, int> alpha_beta(int depth, int alpha, int beta, int ply,
+                                           std::vector<chess::Move>& pv);
     int quiescence(int alpha, int beta, int ply);
 
     void run_iterative_deepening();
@@ -78,7 +79,7 @@ class Searcher {
     }
 
   public:
-    Searcher(Ref<Board> board, size_t tt_size_mb = DEFAULT_TT_MB)
+    Searcher(Ref<chess::Board> board, size_t tt_size_mb = DEFAULT_TT_MB)
         : m_Board(board), m_Evaluator(board), m_TT(board, tt_size_mb), m_Syzygy(board) {}
 
     ~Searcher() { halt(); }
@@ -86,6 +87,8 @@ class Searcher {
     inline void resize_tt(size_t new_tt_size_mb) { m_TT.resize(new_tt_size_mb); }
     inline void set_nnue_opt(bool nnue) { m_Evaluator.m_UseNNUE = nnue; }
     inline void set_search_info(bool show) { m_SearchInfo = show; }
+    inline bool load_tb_files(const std::string& folder) { return m_Syzygy.init(folder); }
+    inline void free_tb_files() { m_Syzygy.clear(); }
 
     inline void reset() {
         halt();
@@ -96,7 +99,7 @@ class Searcher {
     void find_bestmove(int time_limit_ms);
     void stop_search() { m_StopFlag = true; }
 
-    inline void set_bestmove(const Move& best_move, int best_evaluation) {
+    inline void set_bestmove(const chess::Move& best_move, int best_evaluation) {
         std::lock_guard<std::mutex> lock(m_BestMoveMutex);
         m_BestMoveSoFar = Option<BestMove>({best_move, best_evaluation});
     };
@@ -104,7 +107,7 @@ class Searcher {
     inline std::string retrieve_bestmove() const {
         std::lock_guard<std::mutex> lock(m_BestMoveMutex);
         auto bm = m_BestMoveSoFar.unwrap_or(BestMove{});
-        return fmt::interpolate("bestmove {}", uci::moveToUci(bm.BestMove));
+        return fmt::interpolate("bestmove {}", chess::uci::moveToUci(bm.BestMove));
     }
 
     inline void print_bestmove() const { fmt::println(retrieve_bestmove()); }

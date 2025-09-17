@@ -13,7 +13,7 @@ class Evaluator {
     static constexpr std::array<int, 9> ISO_PAWN{0, -10, -25, -50, -75, -75, -75, -75, -75};
     static constexpr std::array<int, 6> KING_SHIELD{4, 7, 4, 3, 6, 3};
 
-    Ref<Board> m_Board;
+    Ref<chess::Board> m_Board;
 
     // TODO: Set to true when NNUE suite is functional
     bool m_UseNNUE{false};
@@ -30,16 +30,16 @@ class Evaluator {
         int sum() { return MaterialScore + MopUpScore + PSTScore + PawnScore + PawnShieldScore; }
     };
 
-    static int individual_pst_score(const Piece& piece, Bitboard piece_bb,
+    static int individual_pst_score(const chess::Piece& piece, chess::Bitboard piece_bb,
                                     float endgame_transition);
-    int combined_pst_score(const Bitboard& friendly_bb, Color friendly_color,
+    int combined_pst_score(const chess::Bitboard& friendly_bb, chess::Color friendly_color,
                            float endgame_transition);
 
-    int pawn_score(Color color);
-    int king_score(Color color, Material opponent_material, int opponent_pst_score);
+    int pawn_score(chess::Color color);
+    int king_score(chess::Color color, Material opponent_material, int opponent_pst_score);
 
     /// Awards evaluation for distances like center manhattan and chebyshev
-    int mop_score(Color color, Material friendly_material, Material opponent_material);
+    int mop_score(chess::Color color, Material friendly_material, Material opponent_material);
 
     int simple_eval();
 
@@ -47,17 +47,17 @@ class Evaluator {
     int nnue_eval();
 
   public:
-    Evaluator(Ref<Board> board) : m_Board(board) {}
+    Evaluator(Ref<chess::Board> board) : m_Board(board) {}
 
-    Material get_material(Color color) const;
+    Material get_material(chess::Color color) const;
     Material get_friendly_material() const { return get_material(m_Board->sideToMove()); }
     Material get_opponent_material() const { return get_material(~m_Board->sideToMove()); }
 
     int evaluate();
 
-    int see(const Move& move);
-    std::pair<VictimValue, AttackerValue> mvv_lva(const Move& move);
-    std::pair<Piece, Square> least_valuable_attacker(Bitboard attackers);
+    int see(const chess::Move& move);
+    std::pair<VictimValue, AttackerValue> mvv_lva(const chess::Move& move);
+    std::pair<chess::Piece, chess::Square> least_valuable_attacker(chess::Bitboard attackers);
 
     friend class Searcher;
 };

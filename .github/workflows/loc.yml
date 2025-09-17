@@ -27,7 +27,7 @@ jobs:
 
       - name: Extract LOC
         run: |
-          cloc Makefile src include tests scripts --not-match-f="(catch_amalgamated.hpp|catch_amalgamated.cpp|chess.hpp)" --json > cloc.json
+          cloc Makefile src include tests scripts --not-match-f="(catch_amalgamated.hpp|catch_amalgamated.cpp|chess.hpp|tbprobe.c|stdendian.h|tbchess.h|tbconfig.h|tbprobe.h)" --json > cloc.json
           total_lines=$(jq '.SUM.code' cloc.json)
           echo "{\"label\":\"LOC\",\"message\":\"$total_lines\",\"color\":\"blue\"}" > .github/loc_badge.json
           cat .github/loc_badge.json

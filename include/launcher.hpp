@@ -5,8 +5,9 @@
 constexpr std::array<std::string_view, 3> POSITION_LABELS = {"position", "fen", "moves"};
 constexpr std::array<std::string_view, 9> GO_LABELS = {
     "go", "movetime", "wtime", "btime", "winc", "binc", "movestogo", "perft", "parallel"};
-constexpr std::array<std::string_view, 8> OPT_LABELS = {
-    "book", "book-add", "book-reset", "weight", "depth", "hash", "usennue", "searchinfo"};
+constexpr std::array<std::string_view, 10> OPT_LABELS = {
+    "book", "book-add", "book-reset", "weight", "depth",
+    "hash", "usennue",  "searchinfo", "tb",     "tbfree"};
 
 enum class ParseResult {
     SUCCESS = 0,

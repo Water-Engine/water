@@ -2,6 +2,8 @@
 
 #include "evaluation/tt.hpp"
 
+using namespace chess;
+
 Node::Node(uint64_t key, const Move& best_move_so_far, int ply_searched, int eval, NodeType type)
     : ZobristKey(key), BestMove(best_move_so_far), Depth(ply_searched), EvaluationScore(eval),
       Type(type) {}

@@ -50,7 +50,6 @@
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #define CHESS_NO_EXCEPTIONS
 #include "game/chess.hpp"
-using namespace chess;
 #pragma GCC diagnostic pop
 
 // Other
