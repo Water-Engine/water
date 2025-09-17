@@ -10,15 +10,12 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.addIncludePath(.{ .cwd_relative = "include" });
-    exe.addIncludePath(.{ .cwd_relative = "vendor" });
-
     const src_sources = getCCppSources(b.allocator, "src") catch unreachable;
     const include_sources = getCCppSources(b.allocator, "include") catch unreachable;
-    const vendor_sources = getCCppSources(b.allocator, "vendor") catch unreachable;
     const all_sources = std.mem.concat(
         b.allocator,
         []const u8,
-        &[_][]const []const u8{ src_sources, include_sources, vendor_sources },
+        &[_][]const []const u8{ src_sources, include_sources },
     ) catch unreachable;
 
     exe.addCSourceFiles(.{

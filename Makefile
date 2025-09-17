@@ -1,7 +1,6 @@
 TARGET := water
 SRC_DIR := src
 INC_DIR := include
-VENDOR_DIR := vendor
 TEST_DIR := tests
 BUILD_DIR := build
 BIN_ROOT := bin
@@ -10,15 +9,14 @@ CC ?= gcc
 CXX ?= g++
 
 DEPFLAGS = -MMD -MP
-INCLUDES := -I$(INC_DIR) -I$(VENDOR_DIR)
+INCLUDES := -I$(INC_DIR)
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
 SRCS_CPP := $(call rwildcard, $(SRC_DIR)/, *.cpp)
 SRCS_C := $(call rwildcard, $(SRC_DIR)/, *.c)
 SRCS := $(SRCS_CPP) $(SRCS_C)
-HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp) \
-           $(wildcard $(VENDOR_DIR)/*.h) $(wildcard $(VENDOR_DIR)/*.hpp)
+HEADERS := $(wildcard $(INC_DIR)/*.h) $(wildcard $(INC_DIR)/*.hpp)
 
 TEST_SRCS := $(filter-out $(TEST_DIR)/perft.cpp, $(wildcard $(TEST_DIR)/*.cpp))
 TEST_OBJS := $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/tests/%.o,$(TEST_SRCS))
