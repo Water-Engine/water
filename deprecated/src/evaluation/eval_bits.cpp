@@ -83,9 +83,9 @@ void PawnMasks::create_supports(int square) {
 }
 
 FileMasks::FileMasks() {
-    uint64_t file_a = static_cast<uint64_t>(File::FILE_A);
+    auto file_a = attacks::MASK_FILE[0];
     for (int i = 0; i < 8; ++i) {
-        m_FileMasks[i] = file_a << i;
+        m_FileMasks[i] = file_a << (i + 1);
 
         Bitboard left(i > 0 ? file_a << (i - 1) : 0);
         Bitboard right(i < 7 ? file_a << (i + 1) : 0);

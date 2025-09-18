@@ -233,7 +233,8 @@ int Evaluator::see(const Move& move) {
     while (true) {
         auto lva = least_valuable_attacker(our_attacks);
         Piece attacker_piece = lva.first;
-        int attacker_index = lva.second.index();
+        bool attacker_present = lva.second.is_valid();
+        int attacker_index = attacker_present ? lva.second.index() : 0;
 
         if (attacker_piece.type() == PieceType::NONE) {
             break;
@@ -269,7 +270,7 @@ std::pair<Evaluator::VictimValue, Evaluator::AttackerValue> Evaluator::mvv_lva(c
 }
 
 std::pair<Piece, Square> Evaluator::least_valuable_attacker(Bitboard attackers) {
-    Square best_sq = -1;
+    Square best_sq = Square::NO_SQ;
     if (attackers == 0) {
         return {Piece::NONE, best_sq};
     }
@@ -286,7 +287,7 @@ std::pair<Piece, Square> Evaluator::least_valuable_attacker(Bitboard attackers) 
         }
     }
 
-    if (best_sq == -1) {
+    if (best_sq == Square::NO_SQ) {
         return {Piece::NONE, best_sq};
     } else {
         return {m_Board->at(best_sq), best_sq};

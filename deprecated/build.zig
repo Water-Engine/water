@@ -2,16 +2,19 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
         .name = "water",
         .root_module = b.createModule(.{
             .target = target,
-            .optimize = .ReleaseFast,
+            .optimize = optimize,
         }),
     });
 
     exe.addIncludePath(.{ .cwd_relative = "include" });
+    exe.addIncludePath(.{ .cwd_relative = "vendor" });
+
     const cpp_src_sources = getSources(b.allocator, "src", ".cpp") catch unreachable;
     const cpp_include_sources = getSources(b.allocator, "include", ".cpp") catch unreachable;
     const c_src_sources = getSources(b.allocator, "src", ".c") catch unreachable;

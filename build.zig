@@ -28,6 +28,7 @@ pub fn build(b: *std.Build) void {
     addRunStep(b, exe);
     addFmtStep(b);
     addLintStep(b);
+    addClocStep(b);
 
     const test_step = b.step("test", "Run tests");
     addToTestStep(b, exe.root_module, test_step);
@@ -86,4 +87,18 @@ fn addFmtStep(b: *std.Build) void {
     );
     fmt_step.dependOn(&fmt_build.step);
     fmt_step.dependOn(&fmt_src.step);
+}
+
+fn addClocStep(b: *std.Build) void {
+    const cloc_src = b.addSystemCommand(&[_][]const u8{
+        "cloc",
+        "build.zig",
+        "src",
+    });
+
+    const cloc_step = b.step(
+        "cloc",
+        "Use cloc to count lines of code",
+    );
+    cloc_step.dependOn(&cloc_src.step);
 }
