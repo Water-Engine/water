@@ -3,7 +3,6 @@ const water = @import("water");
 
 pub fn main() !void {
     std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-    try water.bufferedPrint();
 }
 
 test "simple test" {
