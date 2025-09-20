@@ -123,6 +123,20 @@ pub const File = enum(u8) {
     // ================ INT UTILS ================
 
     pub fn fromInt(comptime T: type, num: T) File {
+        if (T == u3) {
+            return switch (num) {
+                0 => .fa,
+                    1 => .fb,
+                    2 => .fc,
+                    3 => .fd,
+                    4 => .fe,
+                    5 => .ff,
+                    6 => .fg,
+                    7 => .fh,
+                    else => .none,
+            };
+        }
+
         switch (@typeInfo(T)) {
             .int, .comptime_int => {
                 return switch (num) {
@@ -285,6 +299,20 @@ pub const Rank = enum(u8) {
     // ================ INT UTILS ================
 
     pub fn fromInt(comptime T: type, num: T) Rank {
+        if (T == u3) {
+            return switch (num) {
+                0 => .r1,
+                1 => .r2,
+                2 => .r3,
+                3 => .r4,
+                4 => .r5,
+                5 => .r6,
+                6 => .r7,
+                7 => .r8,
+                else => .none,
+            };
+        }
+
         switch (@typeInfo(T)) {
             .int, .comptime_int => {
                 return switch (num) {
@@ -483,6 +511,21 @@ pub const Square = enum(u8) {
     // ================ INT UTILS ================
 
     pub fn fromInt(comptime T: type, num: T) Square {
+        if (T == u6) {
+            return switch (num) {
+                // zig fmt: off
+                    0 =>  .a1,  1 => .b1,  2 => .c1,  3 => .d1,  4 => .e1,  5 => .f1,  6 => .g1,  7 => .h1,
+                    8 =>  .a2,  9 => .b2, 10 => .c2, 11 => .d2, 12 => .e2, 13 => .f2, 14 => .g2, 15 => .h2,
+                    16 => .a3, 17 => .b3, 18 => .c3, 19 => .d3, 20 => .e3, 21 => .f3, 22 => .g3, 23 => .h3,
+                    24 => .a4, 25 => .b4, 26 => .c4, 27 => .d4, 28 => .e4, 29 => .f4, 30 => .g4, 31 => .h4,
+                    32 => .a5, 33 => .b5, 34 => .c5, 35 => .d5, 36 => .e5, 37 => .f5, 38 => .g5, 39 => .h5,
+                    40 => .a6, 41 => .b6, 42 => .c6, 43 => .d6, 44 => .e6, 45 => .f6, 46 => .g6, 47 => .h6,
+                    48 => .a7, 49 => .b7, 50 => .c7, 51 => .d7, 52 => .e7, 53 => .f7, 54 => .g7, 55 => .h7,
+                    56 => .a8, 57 => .b8, 58 => .c8, 59 => .d8, 60 => .e8, 61 => .f8, 62 => .g8, 63 => .h8,
+                    // zig fmt: on
+            };
+        }
+
         switch (@typeInfo(T)) {
             .int, .comptime_int => {
                 return switch (num) {
@@ -671,32 +714,34 @@ pub const Square = enum(u8) {
 
 // ================ TESTING ================
 const testing = std.testing;
+const expect = testing.expect;
+const expectEqual = testing.expectEqual;
 
 test "Color" {
     const white = Color.white;
     const black = Color.black;
     const none = Color.none;
 
-    try testing.expectEqual(none, Color.init());
+    try expectEqual(none, Color.init());
 
     // ================ INT UTILS ================
 
-    try testing.expectEqual(white, Color.fromInt(i32, 0));
-    try testing.expectEqual(black, Color.fromInt(i32, 1));
-    try testing.expectEqual(none, Color.fromInt(i32, -1));
-    try testing.expectEqual(none, Color.fromInt(i32, 4));
+    try expectEqual(white, Color.fromInt(i32, 0));
+    try expectEqual(black, Color.fromInt(i32, 1));
+    try expectEqual(none, Color.fromInt(i32, -1));
+    try expectEqual(none, Color.fromInt(i32, 4));
 
-    try testing.expectEqual(0, white.asInt(i32));
-    try testing.expectEqual(1, black.asInt(i32));
-    try testing.expectEqual(2, none.asInt(i32));
+    try expectEqual(0, white.asInt(i32));
+    try expectEqual(1, black.asInt(i32));
+    try expectEqual(2, none.asInt(i32));
 
     // ================ SLICE UTILS ================
 
-    try testing.expectEqual(white, Color.fromStr("White"));
-    try testing.expectEqual(white, Color.fromStr("w"));
-    try testing.expectEqual(black, Color.fromStr("Black"));
-    try testing.expectEqual(black, Color.fromStr("b"));
-    try testing.expectEqual(none, Color.fromStr("None"));
+    try expectEqual(white, Color.fromStr("White"));
+    try expectEqual(white, Color.fromStr("w"));
+    try expectEqual(black, Color.fromStr("Black"));
+    try expectEqual(black, Color.fromStr("b"));
+    try expectEqual(none, Color.fromStr("None"));
 
     try testing.expectEqualSlices(u8, "white", white.asStr());
     try testing.expectEqualSlices(u8, "black", black.asStr());
@@ -704,22 +749,22 @@ test "Color" {
 
     // ================ CHAR UTILS ================
 
-    try testing.expectEqual(white, Color.fromChar('w'));
-    try testing.expectEqual(black, Color.fromChar('b'));
-    try testing.expectEqual(none, Color.fromChar('n'));
+    try expectEqual(white, Color.fromChar('w'));
+    try expectEqual(black, Color.fromChar('b'));
+    try expectEqual(none, Color.fromChar('n'));
 
-    try testing.expectEqual('w', white.asChar());
-    try testing.expectEqual('b', black.asChar());
-    try testing.expectEqual('-', none.asChar());
+    try expectEqual('w', white.asChar());
+    try expectEqual('b', black.asChar());
+    try expectEqual('-', none.asChar());
 
     // ================ COMPARISON ================
 
-    try testing.expect(white.eq(.white));
-    try testing.expect(black.eq(.black));
-    try testing.expect(white.neq(black));
+    try expect(white.eq(.white));
+    try expect(black.eq(.black));
+    try expect(white.neq(black));
 
-    try testing.expectEqual(black, white.opposite());
-    try testing.expectEqual(none, none.opposite());
+    try expectEqual(black, white.opposite());
+    try expectEqual(none, none.opposite());
 }
 
 test "File" {
@@ -728,30 +773,30 @@ test "File" {
     const fh = File.fh;
     const none = File.none;
 
-    try testing.expectEqual(none, File.init());
+    try expectEqual(none, File.init());
 
     // ================ INT UTILS ================
 
-    try testing.expectEqual(fa, File.fromInt(i32, 0));
-    try testing.expectEqual(fb, File.fromInt(i32, 1));
-    try testing.expectEqual(fh, File.fromInt(i32, 7));
-    try testing.expectEqual(none, File.fromInt(i32, 8));
-    try testing.expectEqual(none, File.fromInt(i32, -1));
-    try testing.expectEqual(none, File.fromInt(i32, 99));
+    try expectEqual(fa, File.fromInt(i32, 0));
+    try expectEqual(fb, File.fromInt(i32, 1));
+    try expectEqual(fh, File.fromInt(i32, 7));
+    try expectEqual(none, File.fromInt(i32, 8));
+    try expectEqual(none, File.fromInt(i32, -1));
+    try expectEqual(none, File.fromInt(i32, 99));
 
-    try testing.expectEqual(0, fa.asInt(i32));
-    try testing.expectEqual(1, fb.asInt(i32));
-    try testing.expectEqual(7, fh.asInt(i32));
-    try testing.expectEqual(8, none.asInt(i32));
+    try expectEqual(0, fa.asInt(i32));
+    try expectEqual(1, fb.asInt(i32));
+    try expectEqual(7, fh.asInt(i32));
+    try expectEqual(8, none.asInt(i32));
 
     // ================ SLICE UTILS ================
 
-    try testing.expectEqual(fa, File.fromStr("a"));
-    try testing.expectEqual(fa, File.fromStr("A"));
-    try testing.expectEqual(fh, File.fromStr("h"));
-    try testing.expectEqual(fh, File.fromStr("H"));
-    try testing.expectEqual(none, File.fromStr(""));
-    try testing.expectEqual(none, File.fromStr("z"));
+    try expectEqual(fa, File.fromStr("a"));
+    try expectEqual(fa, File.fromStr("A"));
+    try expectEqual(fh, File.fromStr("h"));
+    try expectEqual(fh, File.fromStr("H"));
+    try expectEqual(none, File.fromStr(""));
+    try expectEqual(none, File.fromStr("z"));
 
     try testing.expectEqualSlices(u8, "fa", fa.asStr());
     try testing.expectEqualSlices(u8, "fb", fb.asStr());
@@ -760,40 +805,40 @@ test "File" {
 
     // ================ CHAR UTILS ================
 
-    try testing.expectEqual(fa, File.fromChar('a'));
-    try testing.expectEqual(fa, File.fromChar('A'));
-    try testing.expectEqual(fh, File.fromChar('h'));
-    try testing.expectEqual(fh, File.fromChar('H'));
-    try testing.expectEqual(none, File.fromChar('z'));
+    try expectEqual(fa, File.fromChar('a'));
+    try expectEqual(fa, File.fromChar('A'));
+    try expectEqual(fh, File.fromChar('h'));
+    try expectEqual(fh, File.fromChar('H'));
+    try expectEqual(none, File.fromChar('z'));
 
-    try testing.expectEqual('a', fa.asChar());
-    try testing.expectEqual('b', fb.asChar());
-    try testing.expectEqual('h', fh.asChar());
-    try testing.expectEqual('-', none.asChar());
+    try expectEqual('a', fa.asChar());
+    try expectEqual('b', fb.asChar());
+    try expectEqual('h', fh.asChar());
+    try expectEqual('-', none.asChar());
 
     // ================ COMPARISON ================
 
-    try testing.expect(fa.eq(.fa));
-    try testing.expect(fa.neq(fb));
-    try testing.expect(fa.lt(fb));
-    try testing.expect(fb.gt(fa));
-    try testing.expect(fa.lteq(fb));
-    try testing.expect(fb.gteq(fa));
+    try expect(fa.eq(.fa));
+    try expect(fa.neq(fb));
+    try expect(fa.lt(fb));
+    try expect(fb.gt(fa));
+    try expect(fa.lteq(fb));
+    try expect(fb.gteq(fa));
 
-    try testing.expectEqual(fb, fa.next());
-    try testing.expectEqual(.none, fh.next());
-    try testing.expectEqual(.fa, none.next());
+    try expectEqual(fb, fa.next());
+    try expectEqual(.none, fh.next());
+    try expectEqual(.fa, none.next());
 
     var cur = fa;
-    try testing.expectEqual(fb, cur.inc());
-    try testing.expectEqual(fb, cur);
+    try expectEqual(fb, cur.inc());
+    try expectEqual(fb, cur);
 
     // ================ MASK ================
 
-    try testing.expectEqual(@as(u64, 0x101010101010101), fa.mask());
-    try testing.expectEqual(@as(u64, 0x202020202020202), fb.mask());
-    try testing.expectEqual(@as(u64, 0x8080808080808080), fh.mask());
-    try testing.expectEqual(@as(u64, 0), none.mask());
+    try expectEqual(@as(u64, 0x101010101010101), fa.mask());
+    try expectEqual(@as(u64, 0x202020202020202), fb.mask());
+    try expectEqual(@as(u64, 0x8080808080808080), fh.mask());
+    try expectEqual(@as(u64, 0), none.mask());
 }
 
 test "Rank" {
@@ -806,29 +851,29 @@ test "Rank" {
     const white = Color.white;
     const black = Color.black;
 
-    try testing.expectEqual(none, Rank.init());
+    try expectEqual(none, Rank.init());
 
     // ================ INT UTILS ================
 
-    try testing.expectEqual(r1, Rank.fromInt(i32, 0));
-    try testing.expectEqual(r2, Rank.fromInt(i32, 1));
-    try testing.expectEqual(r8, Rank.fromInt(i32, 7));
-    try testing.expectEqual(none, Rank.fromInt(i32, 8));
-    try testing.expectEqual(none, Rank.fromInt(i32, -1));
-    try testing.expectEqual(none, Rank.fromInt(i32, 42));
+    try expectEqual(r1, Rank.fromInt(i32, 0));
+    try expectEqual(r2, Rank.fromInt(i32, 1));
+    try expectEqual(r8, Rank.fromInt(i32, 7));
+    try expectEqual(none, Rank.fromInt(i32, 8));
+    try expectEqual(none, Rank.fromInt(i32, -1));
+    try expectEqual(none, Rank.fromInt(i32, 42));
 
-    try testing.expectEqual(0, r1.asInt(i32));
-    try testing.expectEqual(1, r2.asInt(i32));
-    try testing.expectEqual(7, r8.asInt(i32));
-    try testing.expectEqual(8, none.asInt(i32));
+    try expectEqual(0, r1.asInt(i32));
+    try expectEqual(1, r2.asInt(i32));
+    try expectEqual(7, r8.asInt(i32));
+    try expectEqual(8, none.asInt(i32));
 
     // ================ SLICE UTILS ================
 
-    try testing.expectEqual(r1, Rank.fromStr("0"));
-    try testing.expectEqual(r2, Rank.fromStr("1"));
-    try testing.expectEqual(r8, Rank.fromStr("7"));
-    try testing.expectEqual(none, Rank.fromStr(""));
-    try testing.expectEqual(none, Rank.fromStr("z"));
+    try expectEqual(r1, Rank.fromStr("0"));
+    try expectEqual(r2, Rank.fromStr("1"));
+    try expectEqual(r8, Rank.fromStr("7"));
+    try expectEqual(none, Rank.fromStr(""));
+    try expectEqual(none, Rank.fromStr("z"));
 
     try testing.expectEqualSlices(u8, "r1", r1.asStr());
     try testing.expectEqualSlices(u8, "r2", r2.asStr());
@@ -837,56 +882,56 @@ test "Rank" {
 
     // ================ CHAR UTILS ================
 
-    try testing.expectEqual(r1, Rank.fromChar('0'));
-    try testing.expectEqual(r2, Rank.fromChar('1'));
-    try testing.expectEqual(r8, Rank.fromChar('7'));
-    try testing.expectEqual(none, Rank.fromChar('z'));
+    try expectEqual(r1, Rank.fromChar('0'));
+    try expectEqual(r2, Rank.fromChar('1'));
+    try expectEqual(r8, Rank.fromChar('7'));
+    try expectEqual(none, Rank.fromChar('z'));
 
-    try testing.expectEqual('0', r1.asChar());
-    try testing.expectEqual('1', r2.asChar());
-    try testing.expectEqual('7', r8.asChar());
-    try testing.expectEqual('-', none.asChar());
+    try expectEqual('0', r1.asChar());
+    try expectEqual('1', r2.asChar());
+    try expectEqual('7', r8.asChar());
+    try expectEqual('-', none.asChar());
 
     // ================ COMPARISON ================
 
-    try testing.expect(r1.eq(.r1));
-    try testing.expect(r1.neq(r2));
-    try testing.expect(r1.lt(r2));
-    try testing.expect(r2.gt(r1));
-    try testing.expect(r1.lteq(r2));
-    try testing.expect(r2.gteq(r1));
+    try expect(r1.eq(.r1));
+    try expect(r1.neq(r2));
+    try expect(r1.lt(r2));
+    try expect(r2.gt(r1));
+    try expect(r1.lteq(r2));
+    try expect(r2.gteq(r1));
 
-    try testing.expectEqual(r2, r1.next());
-    try testing.expectEqual(.none, r8.next());
-    try testing.expectEqual(.r1, none.next());
+    try expectEqual(r2, r1.next());
+    try expectEqual(.none, r8.next());
+    try expectEqual(.r1, none.next());
 
     var cur = r1;
-    try testing.expectEqual(r2, cur.inc());
-    try testing.expectEqual(r2, cur);
+    try expectEqual(r2, cur.inc());
+    try expectEqual(r2, cur);
 
     // ================ MASK ================
 
-    try testing.expectEqual(@as(u64, 0x00000000000000ff), r1.mask());
-    try testing.expectEqual(@as(u64, 0x000000000000ff00), r2.mask());
-    try testing.expectEqual(@as(u64, 0x00000000ff000000), r4.mask());
-    try testing.expectEqual(@as(u64, 0xff00000000000000), r8.mask());
-    try testing.expectEqual(@as(u64, 0), none.mask());
+    try expectEqual(@as(u64, 0x00000000000000ff), r1.mask());
+    try expectEqual(@as(u64, 0x000000000000ff00), r2.mask());
+    try expectEqual(@as(u64, 0x00000000ff000000), r4.mask());
+    try expectEqual(@as(u64, 0xff00000000000000), r8.mask());
+    try expectEqual(@as(u64, 0), none.mask());
 
     // ================ BACK RANK ================
 
-    try testing.expect(r1.backRank(white));
-    try testing.expect(!r8.backRank(white));
-    try testing.expect(r8.backRank(black));
-    try testing.expect(!r1.backRank(black));
+    try expect(r1.backRank(white));
+    try expect(!r8.backRank(white));
+    try expect(r8.backRank(black));
+    try expect(!r1.backRank(black));
 
     // ================ ORIENT ================
 
-    try testing.expectEqual(Rank.r1, r1.orient(white));
-    try testing.expectEqual(Rank.r8, r8.orient(white));
-    try testing.expectEqual(Rank.r8, r1.orient(black));
-    try testing.expectEqual(Rank.r1, r8.orient(black));
-    try testing.expectEqual(Rank.r4, r4.orient(white));
-    try testing.expectEqual(Rank.r5, r4.orient(black));
+    try expectEqual(Rank.r1, r1.orient(white));
+    try expectEqual(Rank.r8, r8.orient(white));
+    try expectEqual(Rank.r8, r1.orient(black));
+    try expectEqual(Rank.r1, r8.orient(black));
+    try expectEqual(Rank.r4, r4.orient(white));
+    try expectEqual(Rank.r5, r4.orient(black));
 }
 
 test "Square" {
@@ -900,92 +945,92 @@ test "Square" {
     const white = Color.white;
     const black = Color.black;
 
-    try testing.expectEqual(none, Square.init());
+    try expectEqual(none, Square.init());
 
     // ================ INT UTILS ================
 
-    try testing.expectEqual(a1, Square.fromInt(i32, 0));
-    try testing.expectEqual(h8, Square.fromInt(i32, 63));
-    try testing.expectEqual(none, Square.fromInt(i32, 64));
-    try testing.expectEqual(0, a1.asInt(i32));
-    try testing.expectEqual(63, h8.asInt(i32));
-    try testing.expectEqual(64, none.asInt(i32));
-    try testing.expectEqual(a1, Square.fromInt(usize, a1.index()));
-    try testing.expectEqual(none, Square.fromInt(usize, 100));
+    try expectEqual(a1, Square.fromInt(i32, 0));
+    try expectEqual(h8, Square.fromInt(i32, 63));
+    try expectEqual(none, Square.fromInt(i32, 64));
+    try expectEqual(0, a1.asInt(i32));
+    try expectEqual(63, h8.asInt(i32));
+    try expectEqual(64, none.asInt(i32));
+    try expectEqual(a1, Square.fromInt(usize, a1.index()));
+    try expectEqual(none, Square.fromInt(usize, 100));
 
     // ================ SLICE UTILS ================
 
-    try testing.expectEqual(a1, Square.fromStr("a1"));
-    try testing.expectEqual(e4, Square.fromStr("e4"));
-    try testing.expectEqual(none, Square.fromStr("z9"));
+    try expectEqual(a1, Square.fromStr("a1"));
+    try expectEqual(e4, Square.fromStr("e4"));
+    try expectEqual(none, Square.fromStr("z9"));
     try testing.expectEqualSlices(u8, "a1", a1.asStr());
     try testing.expectEqualSlices(u8, "none", none.asStr());
 
     // ================ FILE & RANK UTILS ================
 
-    try testing.expectEqual(File.fa, a1.file());
-    try testing.expectEqual(File.fh, h8.file());
-    try testing.expectEqual(Rank.r1, a1.rank());
-    try testing.expectEqual(Rank.r8, h8.rank());
+    try expectEqual(File.fa, a1.file());
+    try expectEqual(File.fh, h8.file());
+    try expectEqual(Rank.r1, a1.rank());
+    try expectEqual(Rank.r8, h8.rank());
 
-    try testing.expectEqual(e4, Square.make(Rank.r4, File.fe));
-    try testing.expectEqual(none, Square.make(Rank.none, File.fa));
-    try testing.expectEqual(none, Square.make(Rank.r1, File.none));
+    try expectEqual(e4, Square.make(Rank.r4, File.fe));
+    try expectEqual(none, Square.make(Rank.none, File.fa));
+    try expectEqual(none, Square.make(Rank.r1, File.none));
 
     // ================ COMPARISON ================
 
-    try testing.expect(a1.eq(.a1));
-    try testing.expect(a1.neq(h8));
-    try testing.expect(a1.lt(h8));
-    try testing.expect(h8.gt(a1));
-    try testing.expect(a1.lteq(a1));
-    try testing.expect(h8.gteq(a1));
+    try expect(a1.eq(.a1));
+    try expect(a1.neq(h8));
+    try expect(a1.lt(h8));
+    try expect(h8.gt(a1));
+    try expect(a1.lteq(a1));
+    try expect(h8.gteq(a1));
 
     // ================ INCREMENTING & DECREMENTING ================
 
-    try testing.expectEqual(Square.b1, a1.next());
-    try testing.expectEqual(Square.a1, none.next());
+    try expectEqual(Square.b1, a1.next());
+    try expectEqual(Square.a1, none.next());
 
     var cur = a1;
-    try testing.expectEqual(Square.b1, cur.inc());
-    try testing.expectEqual(Square.b1, cur);
+    try expectEqual(Square.b1, cur.inc());
+    try expectEqual(Square.b1, cur);
 
-    try testing.expectEqual(Square.g8, h8.prev());
-    try testing.expectEqual(Square.h8, none.prev());
+    try expectEqual(Square.g8, h8.prev());
+    try expectEqual(Square.h8, none.prev());
 
     // ================ ARITHMETIC ================
 
-    try testing.expectEqual(Square.b1, a1.add(Square.b1));
-    try testing.expectEqual(a1, Square.b1.sub(Square.b1));
-    try testing.expectEqual(Square.b2, a1.xor(Square.b2));
+    try expectEqual(Square.b1, a1.add(Square.b1));
+    try expectEqual(a1, Square.b1.sub(Square.b1));
+    try expectEqual(Square.b2, a1.xor(Square.b2));
 
     // ================ OTHER UTILITIES ================
 
-    try testing.expectEqual(a4, a3.ep());
-    try testing.expectEqual(a3, a4.ep());
-    try testing.expectEqual(none, a1.ep());
+    try expectEqual(a4, a3.ep());
+    try expectEqual(a3, a4.ep());
+    try expectEqual(none, a1.ep());
 
-    try testing.expectEqual(Square.a8, a1.flip());
-    try testing.expectEqual(Square.h1, h8.flip());
+    try expectEqual(Square.a8, a1.flip());
+    try expectEqual(Square.h1, h8.flip());
 
-    try testing.expectEqual(Square.a1, a1.flipRelative(white));
-    try testing.expectEqual(Square.h1, h8.flipRelative(black));
+    try expectEqual(Square.a1, a1.flipRelative(white));
+    try expectEqual(Square.h1, h8.flipRelative(black));
 
-    try testing.expect(a4.light());
-    try testing.expect(!a4.dark());
-    try testing.expect(h8.dark());
+    try expect(a4.light());
+    try expect(!a4.dark());
+    try expect(h8.dark());
 
-    try testing.expect(Square.a1.sameColor(Square.c1));
-    try testing.expect(!Square.a1.sameColor(Square.b1));
+    try expect(Square.a1.sameColor(Square.c1));
+    try expect(!Square.a1.sameColor(Square.b1));
 
-    try testing.expectEqual(Square.g1, Square.castlingKingTo(true, white));
-    try testing.expectEqual(Square.c1, Square.castlingKingTo(false, white));
-    try testing.expectEqual(Square.f1, Square.castlingQueenTo(true, white));
-    try testing.expectEqual(Square.d1, Square.castlingQueenTo(false, white));
-    try testing.expectEqual(Square.g8, Square.castlingKingTo(true, black));
-    try testing.expectEqual(Square.c8, Square.castlingKingTo(false, black));
-    try testing.expectEqual(Square.f8, Square.castlingQueenTo(true, black));
-    try testing.expectEqual(Square.d8, Square.castlingQueenTo(false, black));
+    try expectEqual(Square.g1, Square.castlingKingTo(true, white));
+    try expectEqual(Square.c1, Square.castlingKingTo(false, white));
+    try expectEqual(Square.f1, Square.castlingQueenTo(true, white));
+    try expectEqual(Square.d1, Square.castlingQueenTo(false, white));
+    try expectEqual(Square.g8, Square.castlingKingTo(true, black));
+    try expectEqual(Square.c8, Square.castlingKingTo(false, black));
+    try expectEqual(Square.f8, Square.castlingQueenTo(true, black));
+    try expectEqual(Square.d8, Square.castlingQueenTo(false, black));
 }
 
 test "Direction" {
@@ -1001,23 +1046,23 @@ test "Direction" {
     const north = Square.Direction.north;
     const south_east = Square.Direction.south_east;
 
-    try testing.expectEqual(8, north.asInt(i32));
-    try testing.expectEqual(-7, south_east.asInt(i32));
+    try expectEqual(8, north.asInt(i32));
+    try expectEqual(-7, south_east.asInt(i32));
 
-    try testing.expectEqual(north, Square.Direction.north.make(white));
-    try testing.expectEqual(Square.Direction.south, Square.Direction.north.make(black));
-    try testing.expectEqual(south_east, south_east.make(white));
-    try testing.expectEqual(Square.Direction.north_west, south_east.make(black));
+    try expectEqual(north, Square.Direction.north.make(white));
+    try expectEqual(Square.Direction.south, Square.Direction.north.make(black));
+    try expectEqual(south_east, south_east.make(white));
+    try expectEqual(Square.Direction.north_west, south_east.make(black));
 
-    try testing.expectEqual(Square.fromInt(usize, a1.index() + 8), north.addToSquare(a1));
-    try testing.expectEqual(Square.fromInt(usize, h8.index() - 7), south_east.addToSquare(h8));
+    try expectEqual(Square.fromInt(usize, a1.index() + 8), north.addToSquare(a1));
+    try expectEqual(Square.fromInt(usize, h8.index() - 7), south_east.addToSquare(h8));
 
     // ================ SQUARE + DIRECTION ================
 
-    try testing.expectEqual(Square.fromInt(i32, a1.asInt(i32) + north.asInt(i32)), a1.addToDirection(north));
-    try testing.expectEqual(Square.fromInt(i32, h8.asInt(i32) + south_east.asInt(i32)), h8.addToDirection(south_east));
+    try expectEqual(Square.fromInt(i32, a1.asInt(i32) + north.asInt(i32)), a1.addToDirection(north));
+    try expectEqual(Square.fromInt(i32, h8.asInt(i32) + south_east.asInt(i32)), h8.addToDirection(south_east));
 
     // ================ EDGE CASES ================
 
-    try testing.expectEqual(Square.fromInt(i32, none.asInt(i32) + north.asInt(i32)), none.addToDirection(north));
+    try expectEqual(Square.fromInt(i32, none.asInt(i32) + north.asInt(i32)), none.addToDirection(north));
 }
