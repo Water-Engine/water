@@ -13,10 +13,15 @@ pub const CenterManhattanDist = distance.CenterManhattan;
 pub const ChebyshevDist = distance.ChebyshevDist;
 pub const ValueDist = distance.ValueDist;
 
+const piece = @import("chess/game/piece.zig");
+pub const PieceType = piece.PieceType;
+pub const Piece = piece.Piece;
+
 // ================ TESTING ================
 
 test {
     _ = @import("chess/core/types.zig");
     _ = @import("chess/core/bitboard.zig");
     _ = @import("chess/core/distance.zig");
+    _ = @import("chess/game/piece.zig");
 }

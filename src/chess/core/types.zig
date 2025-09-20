@@ -133,7 +133,6 @@ pub const File = enum(u8) {
                     5 => .ff,
                     6 => .fg,
                     7 => .fh,
-                    else => .none,
             };
         }
 
@@ -309,7 +308,6 @@ pub const Rank = enum(u8) {
                 5 => .r6,
                 6 => .r7,
                 7 => .r8,
-                else => .none,
             };
         }
 
