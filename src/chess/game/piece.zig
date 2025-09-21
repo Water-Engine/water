@@ -95,6 +95,22 @@ pub const PieceType = enum(u8) {
     pub fn neq(self: *const PieceType, other: PieceType) bool {
         return !self.eq(other);
     }
+
+    pub fn lt(self: *const PieceType, other: PieceType) bool {
+        return self.asInt(i32) < other.asInt(i32);
+    }
+
+    pub fn gt(self: *const PieceType, other: PieceType) bool {
+        return self.asInt(i32) > other.asInt(i32);
+    }
+
+    pub fn lteq(self: *const PieceType, other: PieceType) bool {
+        return self.asInt(i32) <= other.asInt(i32);
+    }
+
+    pub fn gteq(self: *const PieceType, other: PieceType) bool {
+        return self.asInt(i32) >= other.asInt(i32);
+    }
 };
 
 pub const Piece = enum(u8) {

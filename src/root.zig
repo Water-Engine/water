@@ -23,13 +23,20 @@ pub const Attacks = attacks.Attacks;
 const board = @import("chess/game/board.zig");
 pub const Board = board.Board;
 
+const move = @import("chess/game/move.zig");
+pub const Move = move.Move;
+pub const MoveType = move.MoveType;
+
 // ================ TESTING ================
 
 test {
     _ = @import("chess/core/types.zig");
     _ = @import("chess/core/bitboard.zig");
     _ = @import("chess/core/distance.zig");
-    _ = @import("chess/game/piece.zig");
+
     _ = @import("chess/game/board.zig");
+    _ = @import("chess/game/piece.zig");
+    _ = @import("chess/game/move.zig");
+
     _ = @import("chess/movegen/attacks.zig");
 }
