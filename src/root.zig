@@ -17,6 +17,12 @@ const piece = @import("chess/game/piece.zig");
 pub const PieceType = piece.PieceType;
 pub const Piece = piece.Piece;
 
+const attacks = @import("chess/movegen/attacks.zig");
+pub const Attacks = attacks.Attacks;
+
+const board = @import("chess/game/board.zig");
+pub const Board = board.Board;
+
 // ================ TESTING ================
 
 test {
@@ -24,4 +30,6 @@ test {
     _ = @import("chess/core/bitboard.zig");
     _ = @import("chess/core/distance.zig");
     _ = @import("chess/game/piece.zig");
+    _ = @import("chess/game/board.zig");
+    _ = @import("chess/movegen/attacks.zig");
 }

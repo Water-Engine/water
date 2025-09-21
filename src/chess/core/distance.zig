@@ -93,6 +93,7 @@ fn genValueDistance() [64][64]u8 {
 
 // ================ TESTING ================
 const testing = std.testing;
+const expectEqual = testing.expectEqual;
 
 /// Manual manhattan distance from https://www.chessprogramming.org/Manhattan-Distance
 fn manManDistance(sq1: i32, sq2: i32) u8 {
@@ -108,7 +109,7 @@ fn manManDistance(sq1: i32, sq2: i32) u8 {
 test "Manhattan Distance" {
     for (0..64) |a| {
         for (0..64) |b| {
-            try testing.expectEqual(
+            try expectEqual(
                 manManDistance(@intCast(a), @intCast(b)),
                 ManhattanDist[b][a],
             );
@@ -129,7 +130,7 @@ test "Center Manhattan Distance" {
         6, 5, 4, 3, 3, 4, 5, 6,
     };
     for (expecteds, 0..) |expected, i| {
-        try testing.expectEqual(expected, CenterManhattanDist[i]);
+        try expectEqual(expected, CenterManhattanDist[i]);
     }
 }
 
@@ -147,7 +148,7 @@ fn manChevDistance(sq1: i32, sq2: i32) u8 {
 test "Chebyshev Distance" {
     for (0..64) |a| {
         for (0..64) |b| {
-            try testing.expectEqual(
+            try expectEqual(
                 manChevDistance(@intCast(a), @intCast(b)),
                 ChebyshevDist[b][a],
             );
@@ -158,7 +159,7 @@ test "Chebyshev Distance" {
 test "Absolute Value Distance" {
     for (0..64) |a| {
         for (0..64) |b| {
-            try testing.expectEqual(if (a > b) a - b else b - a, ValueDist[a][b]);
+            try expectEqual(if (a > b) a - b else b - a, ValueDist[a][b]);
         }
     }
 }

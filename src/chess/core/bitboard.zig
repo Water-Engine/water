@@ -68,7 +68,7 @@ pub const Bitboard = struct {
         return self.*;
     }
 
-    pub fn contains(self: *Bitboard, index: usize) bool {
+    pub fn contains(self: *const Bitboard, index: usize) bool {
         if (index > 63) return false;
         return (self.bits & (@as(u64, 1) << @truncate(index))) != 0;
     }
@@ -81,8 +81,16 @@ pub const Bitboard = struct {
         return .{ .bits = self.bits << @truncate(rhs) };
     }
 
+    pub fn shlInPlace(self: *Bitboard, rhs: u64) void {
+        self.bits = self.bits << @truncate(rhs);
+    }
+
     pub fn shr(self: *const Bitboard, rhs: u64) Bitboard {
         return .{ .bits = self.bits >> @truncate(rhs) };
+    }
+
+    pub fn shrInPlace(self: *Bitboard, rhs: u64) void {
+        self.bits = self.bits >> @truncate(rhs);
     }
 
     // ================= OPS WITH U64 =================
@@ -184,6 +192,20 @@ pub const Bitboard = struct {
 
     pub fn nonzero(self: *const Bitboard) bool {
         return !self.empty();
+    }
+
+    // ================= WRAPPING ARITHMETIC =================
+
+    pub fn addU64Wrapped(self: *const Bitboard, rhs: u64) Bitboard {
+        return .{ .bits = self.bits +% rhs };
+    }
+
+    pub fn subU64Wrapped(self: *const Bitboard, rhs: u64) Bitboard {
+        return .{ .bits = self.bits -% rhs };
+    }
+
+    pub fn mulU64Wrapped(self: *const Bitboard, rhs: u64) Bitboard {
+        return .{ .bits = self.bits *% rhs };
     }
 };
 
@@ -375,4 +397,22 @@ test "Bitboard Operators" {
     // ================= BOOLEAN OPS =================
     try expect(a.nonzero() and b.nonzero());
     try expect(a.nonzero() or Bitboard.init().nonzero());
+}
+
+test "BB Arithmetic Wrapping" {
+    var bb = Bitboard{ .bits = std.math.maxInt(u64) };
+
+    // ====== ADD ======
+    const added = bb.addU64Wrapped(1);
+    try expectEqual(@as(u64, 0), added.bits);
+
+    // ====== SUB ======
+    bb = Bitboard{ .bits = 0 };
+    const subbed = bb.subU64Wrapped(1);
+    try expectEqual(std.math.maxInt(u64), subbed.bits);
+
+    // ====== MUL ======
+    bb = Bitboard{ .bits = 2 };
+    const muld = bb.mulU64Wrapped(std.math.maxInt(u64));
+    try expectEqual(@as(u64, std.math.maxInt(u64) - 1), muld.bits);
 }
