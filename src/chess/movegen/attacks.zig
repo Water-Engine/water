@@ -12,7 +12,7 @@ const Bitboard = bitboard.Bitboard;
 const piece = @import("../game/piece.zig");
 const PieceType = piece.PieceType;
 
-const magics = @import("magics.zig");
+const slider_bbs = @import("slider_bbs.zig");
 
 /// Converts the type of u64 arrays (or nested) to Bitboard arrays of the same dimensions.
 ///
@@ -132,73 +132,73 @@ const KnightAttacks: [64]Bitboard = toBitboardArray(@TypeOf(KnightAttacksU64), K
 const KingAttacks: [64]Bitboard = toBitboardArray(@TypeOf(KingAttacksU64), KingAttacksU64);
 
 const RookAttacks: [64][]const Bitboard = .{
-    &toBitboardArray(@TypeOf(magics.RookAttacks00), magics.RookAttacks00), &toBitboardArray(@TypeOf(magics.RookAttacks01), magics.RookAttacks01),
-    &toBitboardArray(@TypeOf(magics.RookAttacks02), magics.RookAttacks02), &toBitboardArray(@TypeOf(magics.RookAttacks03), magics.RookAttacks03),
-    &toBitboardArray(@TypeOf(magics.RookAttacks04), magics.RookAttacks04), &toBitboardArray(@TypeOf(magics.RookAttacks05), magics.RookAttacks05),
-    &toBitboardArray(@TypeOf(magics.RookAttacks06), magics.RookAttacks06), &toBitboardArray(@TypeOf(magics.RookAttacks07), magics.RookAttacks07),
-    &toBitboardArray(@TypeOf(magics.RookAttacks08), magics.RookAttacks08), &toBitboardArray(@TypeOf(magics.RookAttacks09), magics.RookAttacks09),
-    &toBitboardArray(@TypeOf(magics.RookAttacks10), magics.RookAttacks10), &toBitboardArray(@TypeOf(magics.RookAttacks11), magics.RookAttacks11),
-    &toBitboardArray(@TypeOf(magics.RookAttacks12), magics.RookAttacks12), &toBitboardArray(@TypeOf(magics.RookAttacks13), magics.RookAttacks13),
-    &toBitboardArray(@TypeOf(magics.RookAttacks14), magics.RookAttacks14), &toBitboardArray(@TypeOf(magics.RookAttacks15), magics.RookAttacks15),
-    &toBitboardArray(@TypeOf(magics.RookAttacks16), magics.RookAttacks16), &toBitboardArray(@TypeOf(magics.RookAttacks17), magics.RookAttacks17),
-    &toBitboardArray(@TypeOf(magics.RookAttacks18), magics.RookAttacks18), &toBitboardArray(@TypeOf(magics.RookAttacks19), magics.RookAttacks19),
-    &toBitboardArray(@TypeOf(magics.RookAttacks20), magics.RookAttacks20), &toBitboardArray(@TypeOf(magics.RookAttacks21), magics.RookAttacks21),
-    &toBitboardArray(@TypeOf(magics.RookAttacks22), magics.RookAttacks22), &toBitboardArray(@TypeOf(magics.RookAttacks23), magics.RookAttacks23),
-    &toBitboardArray(@TypeOf(magics.RookAttacks24), magics.RookAttacks24), &toBitboardArray(@TypeOf(magics.RookAttacks25), magics.RookAttacks25),
-    &toBitboardArray(@TypeOf(magics.RookAttacks26), magics.RookAttacks26), &toBitboardArray(@TypeOf(magics.RookAttacks27), magics.RookAttacks27),
-    &toBitboardArray(@TypeOf(magics.RookAttacks28), magics.RookAttacks28), &toBitboardArray(@TypeOf(magics.RookAttacks29), magics.RookAttacks29),
-    &toBitboardArray(@TypeOf(magics.RookAttacks30), magics.RookAttacks30), &toBitboardArray(@TypeOf(magics.RookAttacks31), magics.RookAttacks31),
-    &toBitboardArray(@TypeOf(magics.RookAttacks32), magics.RookAttacks32), &toBitboardArray(@TypeOf(magics.RookAttacks33), magics.RookAttacks33),
-    &toBitboardArray(@TypeOf(magics.RookAttacks34), magics.RookAttacks34), &toBitboardArray(@TypeOf(magics.RookAttacks35), magics.RookAttacks35),
-    &toBitboardArray(@TypeOf(magics.RookAttacks36), magics.RookAttacks36), &toBitboardArray(@TypeOf(magics.RookAttacks37), magics.RookAttacks37),
-    &toBitboardArray(@TypeOf(magics.RookAttacks38), magics.RookAttacks38), &toBitboardArray(@TypeOf(magics.RookAttacks39), magics.RookAttacks39),
-    &toBitboardArray(@TypeOf(magics.RookAttacks40), magics.RookAttacks40), &toBitboardArray(@TypeOf(magics.RookAttacks41), magics.RookAttacks41),
-    &toBitboardArray(@TypeOf(magics.RookAttacks42), magics.RookAttacks42), &toBitboardArray(@TypeOf(magics.RookAttacks43), magics.RookAttacks43),
-    &toBitboardArray(@TypeOf(magics.RookAttacks44), magics.RookAttacks44), &toBitboardArray(@TypeOf(magics.RookAttacks45), magics.RookAttacks45),
-    &toBitboardArray(@TypeOf(magics.RookAttacks46), magics.RookAttacks46), &toBitboardArray(@TypeOf(magics.RookAttacks47), magics.RookAttacks47),
-    &toBitboardArray(@TypeOf(magics.RookAttacks48), magics.RookAttacks48), &toBitboardArray(@TypeOf(magics.RookAttacks49), magics.RookAttacks49),
-    &toBitboardArray(@TypeOf(magics.RookAttacks50), magics.RookAttacks50), &toBitboardArray(@TypeOf(magics.RookAttacks51), magics.RookAttacks51),
-    &toBitboardArray(@TypeOf(magics.RookAttacks52), magics.RookAttacks52), &toBitboardArray(@TypeOf(magics.RookAttacks53), magics.RookAttacks53),
-    &toBitboardArray(@TypeOf(magics.RookAttacks54), magics.RookAttacks54), &toBitboardArray(@TypeOf(magics.RookAttacks55), magics.RookAttacks55),
-    &toBitboardArray(@TypeOf(magics.RookAttacks56), magics.RookAttacks56), &toBitboardArray(@TypeOf(magics.RookAttacks57), magics.RookAttacks57),
-    &toBitboardArray(@TypeOf(magics.RookAttacks58), magics.RookAttacks58), &toBitboardArray(@TypeOf(magics.RookAttacks59), magics.RookAttacks59),
-    &toBitboardArray(@TypeOf(magics.RookAttacks60), magics.RookAttacks60), &toBitboardArray(@TypeOf(magics.RookAttacks61), magics.RookAttacks61),
-    &toBitboardArray(@TypeOf(magics.RookAttacks62), magics.RookAttacks62), &toBitboardArray(@TypeOf(magics.RookAttacks63), magics.RookAttacks63),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks00), slider_bbs.RookAttacks00), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks01), slider_bbs.RookAttacks01),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks02), slider_bbs.RookAttacks02), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks03), slider_bbs.RookAttacks03),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks04), slider_bbs.RookAttacks04), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks05), slider_bbs.RookAttacks05),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks06), slider_bbs.RookAttacks06), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks07), slider_bbs.RookAttacks07),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks08), slider_bbs.RookAttacks08), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks09), slider_bbs.RookAttacks09),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks10), slider_bbs.RookAttacks10), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks11), slider_bbs.RookAttacks11),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks12), slider_bbs.RookAttacks12), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks13), slider_bbs.RookAttacks13),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks14), slider_bbs.RookAttacks14), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks15), slider_bbs.RookAttacks15),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks16), slider_bbs.RookAttacks16), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks17), slider_bbs.RookAttacks17),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks18), slider_bbs.RookAttacks18), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks19), slider_bbs.RookAttacks19),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks20), slider_bbs.RookAttacks20), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks21), slider_bbs.RookAttacks21),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks22), slider_bbs.RookAttacks22), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks23), slider_bbs.RookAttacks23),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks24), slider_bbs.RookAttacks24), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks25), slider_bbs.RookAttacks25),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks26), slider_bbs.RookAttacks26), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks27), slider_bbs.RookAttacks27),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks28), slider_bbs.RookAttacks28), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks29), slider_bbs.RookAttacks29),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks30), slider_bbs.RookAttacks30), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks31), slider_bbs.RookAttacks31),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks32), slider_bbs.RookAttacks32), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks33), slider_bbs.RookAttacks33),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks34), slider_bbs.RookAttacks34), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks35), slider_bbs.RookAttacks35),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks36), slider_bbs.RookAttacks36), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks37), slider_bbs.RookAttacks37),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks38), slider_bbs.RookAttacks38), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks39), slider_bbs.RookAttacks39),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks40), slider_bbs.RookAttacks40), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks41), slider_bbs.RookAttacks41),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks42), slider_bbs.RookAttacks42), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks43), slider_bbs.RookAttacks43),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks44), slider_bbs.RookAttacks44), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks45), slider_bbs.RookAttacks45),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks46), slider_bbs.RookAttacks46), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks47), slider_bbs.RookAttacks47),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks48), slider_bbs.RookAttacks48), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks49), slider_bbs.RookAttacks49),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks50), slider_bbs.RookAttacks50), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks51), slider_bbs.RookAttacks51),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks52), slider_bbs.RookAttacks52), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks53), slider_bbs.RookAttacks53),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks54), slider_bbs.RookAttacks54), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks55), slider_bbs.RookAttacks55),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks56), slider_bbs.RookAttacks56), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks57), slider_bbs.RookAttacks57),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks58), slider_bbs.RookAttacks58), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks59), slider_bbs.RookAttacks59),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks60), slider_bbs.RookAttacks60), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks61), slider_bbs.RookAttacks61),
+    &toBitboardArray(@TypeOf(slider_bbs.RookAttacks62), slider_bbs.RookAttacks62), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks63), slider_bbs.RookAttacks63),
 };
 
 const BishopAttacks: [64][]const Bitboard = .{
-    &toBitboardArray(@TypeOf(magics.BishopAttacks00), magics.BishopAttacks00), &toBitboardArray(@TypeOf(magics.BishopAttacks01), magics.BishopAttacks01),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks02), magics.BishopAttacks02), &toBitboardArray(@TypeOf(magics.BishopAttacks03), magics.BishopAttacks03),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks04), magics.BishopAttacks04), &toBitboardArray(@TypeOf(magics.BishopAttacks05), magics.BishopAttacks05),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks06), magics.BishopAttacks06), &toBitboardArray(@TypeOf(magics.BishopAttacks07), magics.BishopAttacks07),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks08), magics.BishopAttacks08), &toBitboardArray(@TypeOf(magics.BishopAttacks09), magics.BishopAttacks09),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks10), magics.BishopAttacks10), &toBitboardArray(@TypeOf(magics.BishopAttacks11), magics.BishopAttacks11),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks12), magics.BishopAttacks12), &toBitboardArray(@TypeOf(magics.BishopAttacks13), magics.BishopAttacks13),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks14), magics.BishopAttacks14), &toBitboardArray(@TypeOf(magics.BishopAttacks15), magics.BishopAttacks15),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks16), magics.BishopAttacks16), &toBitboardArray(@TypeOf(magics.BishopAttacks17), magics.BishopAttacks17),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks18), magics.BishopAttacks18), &toBitboardArray(@TypeOf(magics.BishopAttacks19), magics.BishopAttacks19),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks20), magics.BishopAttacks20), &toBitboardArray(@TypeOf(magics.BishopAttacks21), magics.BishopAttacks21),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks22), magics.BishopAttacks22), &toBitboardArray(@TypeOf(magics.BishopAttacks23), magics.BishopAttacks23),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks24), magics.BishopAttacks24), &toBitboardArray(@TypeOf(magics.BishopAttacks25), magics.BishopAttacks25),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks26), magics.BishopAttacks26), &toBitboardArray(@TypeOf(magics.BishopAttacks27), magics.BishopAttacks27),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks28), magics.BishopAttacks28), &toBitboardArray(@TypeOf(magics.BishopAttacks29), magics.BishopAttacks29),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks30), magics.BishopAttacks30), &toBitboardArray(@TypeOf(magics.BishopAttacks31), magics.BishopAttacks31),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks32), magics.BishopAttacks32), &toBitboardArray(@TypeOf(magics.BishopAttacks33), magics.BishopAttacks33),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks34), magics.BishopAttacks34), &toBitboardArray(@TypeOf(magics.BishopAttacks35), magics.BishopAttacks35),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks36), magics.BishopAttacks36), &toBitboardArray(@TypeOf(magics.BishopAttacks37), magics.BishopAttacks37),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks38), magics.BishopAttacks38), &toBitboardArray(@TypeOf(magics.BishopAttacks39), magics.BishopAttacks39),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks40), magics.BishopAttacks40), &toBitboardArray(@TypeOf(magics.BishopAttacks41), magics.BishopAttacks41),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks42), magics.BishopAttacks42), &toBitboardArray(@TypeOf(magics.BishopAttacks43), magics.BishopAttacks43),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks44), magics.BishopAttacks44), &toBitboardArray(@TypeOf(magics.BishopAttacks45), magics.BishopAttacks45),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks46), magics.BishopAttacks46), &toBitboardArray(@TypeOf(magics.BishopAttacks47), magics.BishopAttacks47),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks48), magics.BishopAttacks48), &toBitboardArray(@TypeOf(magics.BishopAttacks49), magics.BishopAttacks49),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks50), magics.BishopAttacks50), &toBitboardArray(@TypeOf(magics.BishopAttacks51), magics.BishopAttacks51),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks52), magics.BishopAttacks52), &toBitboardArray(@TypeOf(magics.BishopAttacks53), magics.BishopAttacks53),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks54), magics.BishopAttacks54), &toBitboardArray(@TypeOf(magics.BishopAttacks55), magics.BishopAttacks55),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks56), magics.BishopAttacks56), &toBitboardArray(@TypeOf(magics.BishopAttacks57), magics.BishopAttacks57),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks58), magics.BishopAttacks58), &toBitboardArray(@TypeOf(magics.BishopAttacks59), magics.BishopAttacks59),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks60), magics.BishopAttacks60), &toBitboardArray(@TypeOf(magics.BishopAttacks61), magics.BishopAttacks61),
-    &toBitboardArray(@TypeOf(magics.BishopAttacks62), magics.BishopAttacks62), &toBitboardArray(@TypeOf(magics.BishopAttacks63), magics.BishopAttacks63),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks00), slider_bbs.BishopAttacks00), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks01), slider_bbs.BishopAttacks01),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks02), slider_bbs.BishopAttacks02), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks03), slider_bbs.BishopAttacks03),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks04), slider_bbs.BishopAttacks04), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks05), slider_bbs.BishopAttacks05),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks06), slider_bbs.BishopAttacks06), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks07), slider_bbs.BishopAttacks07),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks08), slider_bbs.BishopAttacks08), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks09), slider_bbs.BishopAttacks09),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks10), slider_bbs.BishopAttacks10), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks11), slider_bbs.BishopAttacks11),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks12), slider_bbs.BishopAttacks12), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks13), slider_bbs.BishopAttacks13),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks14), slider_bbs.BishopAttacks14), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks15), slider_bbs.BishopAttacks15),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks16), slider_bbs.BishopAttacks16), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks17), slider_bbs.BishopAttacks17),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks18), slider_bbs.BishopAttacks18), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks19), slider_bbs.BishopAttacks19),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks20), slider_bbs.BishopAttacks20), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks21), slider_bbs.BishopAttacks21),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks22), slider_bbs.BishopAttacks22), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks23), slider_bbs.BishopAttacks23),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks24), slider_bbs.BishopAttacks24), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks25), slider_bbs.BishopAttacks25),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks26), slider_bbs.BishopAttacks26), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks27), slider_bbs.BishopAttacks27),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks28), slider_bbs.BishopAttacks28), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks29), slider_bbs.BishopAttacks29),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks30), slider_bbs.BishopAttacks30), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks31), slider_bbs.BishopAttacks31),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks32), slider_bbs.BishopAttacks32), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks33), slider_bbs.BishopAttacks33),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks34), slider_bbs.BishopAttacks34), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks35), slider_bbs.BishopAttacks35),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks36), slider_bbs.BishopAttacks36), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks37), slider_bbs.BishopAttacks37),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks38), slider_bbs.BishopAttacks38), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks39), slider_bbs.BishopAttacks39),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks40), slider_bbs.BishopAttacks40), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks41), slider_bbs.BishopAttacks41),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks42), slider_bbs.BishopAttacks42), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks43), slider_bbs.BishopAttacks43),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks44), slider_bbs.BishopAttacks44), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks45), slider_bbs.BishopAttacks45),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks46), slider_bbs.BishopAttacks46), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks47), slider_bbs.BishopAttacks47),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks48), slider_bbs.BishopAttacks48), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks49), slider_bbs.BishopAttacks49),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks50), slider_bbs.BishopAttacks50), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks51), slider_bbs.BishopAttacks51),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks52), slider_bbs.BishopAttacks52), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks53), slider_bbs.BishopAttacks53),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks54), slider_bbs.BishopAttacks54), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks55), slider_bbs.BishopAttacks55),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks56), slider_bbs.BishopAttacks56), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks57), slider_bbs.BishopAttacks57),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks58), slider_bbs.BishopAttacks58), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks59), slider_bbs.BishopAttacks59),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks60), slider_bbs.BishopAttacks60), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks61), slider_bbs.BishopAttacks61),
+    &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks62), slider_bbs.BishopAttacks62), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks63), slider_bbs.BishopAttacks63),
 };
 
 pub const Attacks = struct {
@@ -232,15 +232,15 @@ pub const Attacks = struct {
 
     pub fn rook(square: Square, occupied: Bitboard) Bitboard {
         const index = square.index();
-        const masked_occ = occupied.andBB(magics.RookMasks[index]);
-        const key = (masked_occ.mulU64Wrapped(magics.RookMagics[index])).shr(magics.RookShifts[index]);
+        const masked_occ = occupied.andBB(slider_bbs.RookMasks[index]);
+        const key = (masked_occ.mulU64Wrapped(slider_bbs.RookMagics[index])).shr(slider_bbs.RookShifts[index]);
         return RookAttacks[index][key.bits];
     }
 
     pub fn bishop(square: Square, occupied: Bitboard) Bitboard {
         const index = square.index();
-        const masked_occ = occupied.andBB(magics.BishopMasks[index]);
-        const key = (masked_occ.mulU64Wrapped(magics.BishopMagics[index])).shr(magics.BishopShifts[index]);
+        const masked_occ = occupied.andBB(slider_bbs.BishopMasks[index]);
+        const key = (masked_occ.mulU64Wrapped(slider_bbs.BishopMagics[index])).shr(slider_bbs.BishopShifts[index]);
         return BishopAttacks[index][key.bits];
     }
 
@@ -254,6 +254,19 @@ pub const Attacks = struct {
             .bishop => bishop(square, occupied),
             .queen => queen(square, occupied),
             else => @compileError("PieceType must be a slider!"),
+        };
+    }
+
+    pub fn shift(comptime D: Square.Direction, bb: Bitboard) Bitboard {
+        return switch (D) {
+            .north => |d| return bb.shl(@abs(d.asInt(i32))),
+            .south => |d| return bb.shr(@abs(d.asInt(i32))),
+            .east => |d| return bb.andU64(~File.MASKS[7]).shl(@abs(d.asInt(i32))),
+            .west => |d| return bb.andU64(~File.MASKS[0]).shr(@abs(d.asInt(i32))),
+            .north_east => |d| return bb.andU64(~File.MASKS[7]).shl(@abs(d.asInt(i32))),
+            .north_west => |d| return bb.andU64(~File.MASKS[0]).shl(@abs(d.asInt(i32))),
+            .south_east => |d| return bb.andU64(~File.MASKS[7]).shr(@abs(d.asInt(i32))),
+            .south_west => |d| return bb.andU64(~File.MASKS[0]).shr(@abs(d.asInt(i32))),
         };
     }
 };
@@ -339,4 +352,56 @@ test "Attacks" {
     try expect(Attacks.slider(.rook, e1, occ).bits == rook_bb.bits);
     try expect(Attacks.slider(.bishop, e1, occ).bits == bishop_bb.bits);
     try expect(Attacks.slider(.queen, e1, occ).bits == queen_bb.bits);
+}
+
+test "Direction Shifts" {
+    const d4_bb = Bitboard.fromSquare(.d4);
+
+    // One-step north from d4 should be d5
+    try expectEqual(
+        Attacks.shift(.north, d4_bb).bits,
+        Bitboard.fromSquare(.d5).bits,
+    );
+
+    // One-step south from d4 should be d3
+    try expectEqual(
+        Attacks.shift(.south, d4_bb).bits,
+        Bitboard.fromSquare(.d3).bits,
+    );
+
+    // One-step east from d4 should be e4
+    try expectEqual(
+        Attacks.shift(.east, d4_bb).bits,
+        Bitboard.fromSquare(.e4).bits,
+    );
+
+    // One-step west from d4 should be c4
+    try expectEqual(
+        Attacks.shift(.west, d4_bb).bits,
+        Bitboard.fromSquare(.c4).bits,
+    );
+
+    // One-step north-east from d4 should be e5
+    try expectEqual(
+        Attacks.shift(.north_east, d4_bb).bits,
+        Bitboard.fromSquare(.e5).bits,
+    );
+
+    // One-step north-west from d4 should be c5
+    try expectEqual(
+        Attacks.shift(.north_west, d4_bb).bits,
+        Bitboard.fromSquare(.c5).bits,
+    );
+
+    // One-step south-east from d4 should be e3
+    try expectEqual(
+        Attacks.shift(.south_east, d4_bb).bits,
+        Bitboard.fromSquare(.e3).bits,
+    );
+
+    // One-step south-west from d4 should be c3
+    try expectEqual(
+        Attacks.shift(.south_west, d4_bb).bits,
+        Bitboard.fromSquare(.c3).bits,
+    );
 }
