@@ -9,7 +9,7 @@ const Color = types.Color;
 const bitboard = @import("../core/bitboard.zig");
 const Bitboard = bitboard.Bitboard;
 
-const piece = @import("../game/piece.zig");
+const piece = @import("../core/piece.zig");
 const PieceType = piece.PieceType;
 
 const slider_bbs = @import("slider_bbs.zig");

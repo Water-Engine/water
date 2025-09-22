@@ -13,19 +13,26 @@ pub const CenterManhattanDist = distance.CenterManhattan;
 pub const ChebyshevDist = distance.ChebyshevDist;
 pub const ValueDist = distance.ValueDist;
 
-const piece = @import("chess/game/piece.zig");
+const piece = @import("chess/core/piece.zig");
 pub const PieceType = piece.PieceType;
 pub const Piece = piece.Piece;
 
 const attacks = @import("chess/movegen/attacks.zig");
 pub const Attacks = attacks.Attacks;
 
-const board = @import("chess/game/board.zig");
-pub const Board = board.Board;
-
-const move = @import("chess/game/move.zig");
+const move = @import("chess/core/move.zig");
 pub const Move = move.Move;
 pub const MoveType = move.MoveType;
+
+const board = @import("chess/board/board.zig");
+pub const Board = board.Board;
+
+const castling = @import("chess/board/castling.zig");
+pub const CastlingRights = castling.CastlingRights;
+
+const state = @import("chess/board/state.zig");
+pub const State = state.State;
+pub const Zobrist = state.Zobrist;
 
 // ================ TESTING ================
 
@@ -33,10 +40,12 @@ test {
     _ = @import("chess/core/types.zig");
     _ = @import("chess/core/bitboard.zig");
     _ = @import("chess/core/distance.zig");
+    _ = @import("chess/core/piece.zig");
+    _ = @import("chess/core/move.zig");
 
-    _ = @import("chess/game/board.zig");
-    _ = @import("chess/game/piece.zig");
-    _ = @import("chess/game/move.zig");
+    _ = @import("chess/board/board.zig");
+    _ = @import("chess/board/castling.zig");
+    _ = @import("chess/board/state.zig");
 
     _ = @import("chess/movegen/attacks.zig");
 }
