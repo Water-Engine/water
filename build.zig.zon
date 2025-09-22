@@ -1,0 +1,16 @@
+.{
+    .name = .water,
+
+    .version = "0.0.0",
+    .fingerprint = 0xfb3314daceaf482d,
+    .minimum_zig_version = "0.15.1",
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "AUTHORS.md",
+        "LICENSE",
+        "README.md",
+    },
+}

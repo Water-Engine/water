@@ -2,80 +2,104 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{
+        .preferred_optimize_mode = .ReleaseFast,
+    });
+
+    const mod = b.addModule("water", .{
+        .root_source_file = b.path("src/root.zig"),
+        .target = target,
+    });
 
     const exe = b.addExecutable(.{
         .name = "water",
         .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
             .target = target,
-            .optimize = .ReleaseFast,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "water", .module = mod },
+            },
         }),
     });
 
-    exe.addIncludePath(.{ .cwd_relative = "include" });
-    const cpp_src_sources = getSources(b.allocator, "src", ".cpp") catch unreachable;
-    const cpp_include_sources = getSources(b.allocator, "include", ".cpp") catch unreachable;
-    const c_src_sources = getSources(b.allocator, "src", ".c") catch unreachable;
-    const c_include_sources = getSources(b.allocator, "include", ".c") catch unreachable;
-
-    const all_cpp_sources = std.mem.concat(
-        b.allocator,
-        []const u8,
-        &[_][]const []const u8{ cpp_src_sources, cpp_include_sources },
-    ) catch unreachable;
-
-    const all_c_sources = std.mem.concat(
-        b.allocator,
-        []const u8,
-        &[_][]const []const u8{ c_src_sources, c_include_sources },
-    ) catch unreachable;
-
-    exe.root_module.addCSourceFiles(.{
-        .files = all_cpp_sources,
-        .flags = &[_][]const u8{
-            "-std=c++20",
-            "-Wall",
-            "-Wextra",
-            "-DDIST",
-            "-include",
-            "include/pch.hpp",
-        },
-        .language = .cpp,
-    });
-
-    exe.root_module.addCSourceFiles(.{
-        .files = all_c_sources,
-        .flags = &[_][]const u8{
-            "-std=c11",
-            "-Wall",
-            "-Wextra",
-            "-DDIST",
-        },
-        .language = .c,
-    });
-
-    exe.linkLibC();
-    exe.linkLibCpp();
-
     b.installArtifact(exe);
+
+    addRunStep(b, exe);
+    addFmtStep(b);
+    addLintStep(b);
+    addClocStep(b);
+
+    const test_step = b.step("test", "Run tests");
+    addToTestStep(b, exe.root_module, test_step);
+    addToTestStep(b, mod, test_step);
 }
 
-fn getSources(allocator: std.mem.Allocator, directory: []const u8, extension: []const u8) ![]const []const u8 {
-    const cwd = std.fs.cwd();
-    var dir = try cwd.openDir(directory, .{ .iterate = true });
-    defer dir.close();
+fn addRunStep(b: *std.Build, exe: *std.Build.Step.Compile) void {
+    const run_cmd = b.addRunArtifact(exe);
+    run_cmd.step.dependOn(b.getInstallStep());
 
-    var walker = try dir.walk(allocator);
-    defer walker.deinit();
-
-    var paths = try std.ArrayList([]const u8).initCapacity(allocator, 10);
-
-    while (try walker.next()) |entry| {
-        if (entry.kind != .file) continue;
-        if (!std.mem.endsWith(u8, entry.basename, extension)) continue;
-
-        const full_path = try std.fs.path.join(allocator, &.{ directory, entry.path });
-        try paths.append(allocator, full_path);
+    if (b.args) |args| {
+        run_cmd.addArgs(args);
     }
 
-    return paths.items;
+    const run_step = b.step("run", "Run the app");
+    run_step.dependOn(&run_cmd.step);
+}
+
+fn addToTestStep(b: *std.Build, module: *std.Build.Module, step: *std.Build.Step) void {
+    const tests = b.addTest(.{
+        .root_module = module,
+    });
+    const run_tests = b.addRunArtifact(tests);
+    step.dependOn(&run_tests.step);
+}
+
+fn addLintStep(b: *std.Build) void {
+    const lint_files = b.addSystemCommand(&[_][]const u8{
+        "zig",
+        "fmt",
+        "--check",
+        "build.zig",
+        "src",
+        "build.zig.zon",
+    });
+
+    const lint_step = b.step(
+        "lint",
+        "Check formatting in all Zig source files",
+    );
+    lint_step.dependOn(&lint_files.step);
+}
+
+fn addFmtStep(b: *std.Build) void {
+    const fmt_files = b.addSystemCommand(&[_][]const u8{
+        "zig",
+        "fmt",
+        "build.zig",
+        "src",
+        "build.zig.zon",
+    });
+
+    const fmt_step = b.step(
+        "fmt",
+        "Format all Zig source files",
+    );
+    fmt_step.dependOn(&fmt_files.step);
+}
+
+fn addClocStep(b: *std.Build) void {
+    const cloc_src = b.addSystemCommand(&[_][]const u8{
+        "cloc",
+        "build.zig",
+        "src",
+        "scripts",
+        "--not-match-f=(slider_bbs.zig)",
+    });
+
+    const cloc_step = b.step(
+        "cloc",
+        "Use cloc to count lines of code",
+    );
+    cloc_step.dependOn(&cloc_src.step);
 }

@@ -219,7 +219,7 @@ int Searcher::quiescence(int alpha, int beta, int ply) {
         m_Board->makeMove(move);
         if (m_Board->isRepetition(1)) {
             continue;
-        } else if (m_Board->givesCheck(move) != CheckType::NO_CHECK) {
+        } else if (!m_Board->inCheck()) {
             continue;
         }
 
