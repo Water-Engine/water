@@ -7,29 +7,29 @@ on:
       - 'feature/**'
     paths:
       - '.github/workflows/format.yml'
-      - 'Makefile'
       - 'src/**'
-      - 'include/**'
-      - 'tests/**'
+      - 'build.zig'
+      - 'build.zig.zon'
   pull_request:
     branches:
       - main
+      - 'feature/**'
     paths:
       - '.github/workflows/format.yml'
-      - 'Makefile'
       - 'src/**'
-      - 'include/**'
-      - 'tests/**'
+      - 'build.zig'
+      - 'build.zig.zon'
 
 jobs:
-  fmt-check:
-    runs-on: windows-latest
+  fmt:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Install Toolchain
-        run: choco install mingw make -y
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.1
 
       - name: Check formatting
-        run: make fmt-check
+        run: zig build lint

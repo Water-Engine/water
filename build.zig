@@ -56,37 +56,36 @@ fn addToTestStep(b: *std.Build, module: *std.Build.Module, step: *std.Build.Step
 }
 
 fn addLintStep(b: *std.Build) void {
-    const lint_build = b.addSystemCommand(&[_][]const u8{
-        "zig", "fmt", "--check", "build.zig",
-    });
-
-    const lint_src = b.addSystemCommand(&[_][]const u8{
-        "zig", "fmt", "--check", "src",
+    const lint_files = b.addSystemCommand(&[_][]const u8{
+        "zig",
+        "fmt",
+        "--check",
+        "build.zig",
+        "src",
+        "build.zig.zon",
     });
 
     const lint_step = b.step(
         "lint",
         "Check formatting in all Zig source files",
     );
-    lint_step.dependOn(&lint_build.step);
-    lint_step.dependOn(&lint_src.step);
+    lint_step.dependOn(&lint_files.step);
 }
 
 fn addFmtStep(b: *std.Build) void {
-    const fmt_build = b.addSystemCommand(&[_][]const u8{
-        "zig", "fmt", "build.zig",
-    });
-
-    const fmt_src = b.addSystemCommand(&[_][]const u8{
-        "zig", "fmt", "src",
+    const fmt_files = b.addSystemCommand(&[_][]const u8{
+        "zig",
+        "fmt",
+        "build.zig",
+        "src",
+        "build.zig.zon",
     });
 
     const fmt_step = b.step(
         "fmt",
         "Format all Zig source files",
     );
-    fmt_step.dependOn(&fmt_build.step);
-    fmt_step.dependOn(&fmt_src.step);
+    fmt_step.dependOn(&fmt_files.step);
 }
 
 fn addClocStep(b: *std.Build) void {
@@ -94,6 +93,7 @@ fn addClocStep(b: *std.Build) void {
         "cloc",
         "build.zig",
         "src",
+        "scripts",
         "--not-match-f=(slider_bbs.zig)",
     });
 
