@@ -12,6 +12,9 @@ const Bitboard = bitboard.Bitboard;
 const piece = @import("../core/piece.zig");
 const PieceType = piece.PieceType;
 
+const board_ = @import("../board/board.zig");
+const Board = board_.Board;
+
 const slider_bbs = @import("slider_bbs.zig");
 
 /// Converts the type of u64 arrays (or nested) to Bitboard arrays of the same dimensions.
@@ -268,6 +271,13 @@ pub const Attacks = struct {
             .south_east => |d| return bb.andU64(~File.MASKS[7]).shr(@abs(d.asInt(i32))),
             .south_west => |d| return bb.andU64(~File.MASKS[0]).shr(@abs(d.asInt(i32))),
         };
+    }
+
+    pub fn attackers(board: *const Board, color: Color, square: Square) Bitboard {
+        _ = board;
+        _ = color;
+        _ = square;
+        @compileError("Todo: not implemented!");
     }
 };
 

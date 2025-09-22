@@ -592,7 +592,7 @@ pub const Square = enum(u8) {
         const file_val = file_char - 'a';
         const rank_val = rank_char - '1';
 
-        return @enumFromInt(rank_val * 8 + file_val);
+        return Square.fromInt(u8, rank_val * 8 + file_val);
     }
 
     pub fn asStr(self: *const Square) []const u8 {
