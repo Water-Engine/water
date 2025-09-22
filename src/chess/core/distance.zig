@@ -97,13 +97,13 @@ const expectEqual = testing.expectEqual;
 
 /// Manual manhattan distance from https://www.chessprogramming.org/Manhattan-Distance
 fn manManDistance(sq1: i32, sq2: i32) u8 {
-   const file1 = sq1  & 7;
-   const file2 = sq2  & 7;
-   const rank1 = sq1 >> 3;
-   const rank2 = sq2 >> 3;
-   const rankDistance = @abs(rank2 - rank1);
-   const fileDistance = @abs(file2 - file1);
-   return @intCast(rankDistance + fileDistance);
+    const file1 = sq1 & 7;
+    const file2 = sq2 & 7;
+    const rank1 = sq1 >> 3;
+    const rank2 = sq2 >> 3;
+    const rankDistance = @abs(rank2 - rank1);
+    const fileDistance = @abs(file2 - file1);
+    return @intCast(rankDistance + fileDistance);
 }
 
 test "Manhattan Distance" {

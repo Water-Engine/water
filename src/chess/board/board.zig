@@ -176,7 +176,7 @@ test "Fen splitter" {
         null,
     };
     const split_larger = split_fen_string(8, StartingFen, ' ');
-    
+
     try expect(expected_larger.len == split_larger.len);
     for (expected_larger, split_larger) |el, sl| {
         if (el) |el_unwrap| {

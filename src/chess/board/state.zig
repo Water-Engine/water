@@ -265,13 +265,7 @@ pub const Zobrist = struct {
     }
 };
 
-pub const State = struct {
-    hash: u64,
-    castling: CastlingRights,
-    enpassant: Square,
-    half_moves: u8,
-    captured_piece: Piece
-};
+pub const State = struct { hash: u64, castling: CastlingRights, enpassant: Square, half_moves: u8, captured_piece: Piece };
 
 // ================ TESTING ================
 const testing = std.testing;
