@@ -3,15 +3,17 @@ const std = @import("std");
 const bitboard = @import("../core/bitboard.zig");
 const Bitboard = bitboard.Bitboard;
 
+const distance = @import("../core/distance.zig");
+
 const types = @import("../core/types.zig");
 const Color = types.Color;
 const Square = types.Square;
 const File = types.File;
 const Rank = types.Rank;
 
-const piece = @import("../core/piece.zig");
-const Piece = piece.Piece;
-const PieceType = piece.PieceType;
+const piece_ = @import("../core/piece.zig");
+const Piece = piece_.Piece;
+const PieceType = piece_.PieceType;
 
 const move = @import("../core/move.zig");
 const MoveType = move.MoveType;
@@ -68,6 +70,7 @@ pub const Board = struct {
             .original_fen = fen,
             .previous_states = try std.ArrayList(State).initCapacity(allocator, 256),
         };
+        _ = b.setFen(fen);
         return b;
     }
 
@@ -96,6 +99,7 @@ pub const Board = struct {
         const trimmed = std.mem.trim(u8, fen, " ");
         if (trimmed.len == 0) return false;
 
+        // Fully parse and deconstruct input
         const split_fen: [6]?[]const u8 = split_fen_string(6, trimmed, ' ');
         const pos: []const u8 = if (split_fen[0]) |first| first else "";
         const stm: []const u8 = if (split_fen[1]) |first| first else "w";
@@ -108,7 +112,7 @@ pub const Board = struct {
         if (!std.mem.eql(u8, stm, "w") and !std.mem.eql(u8, stm, "b")) return false;
 
         self.halfmove_clock = std.fmt.parseInt(u8, hmc, 10) catch 0;
-        self.plies = std.fmt.parseInt(u8, fmc, 10) catch 1;
+        self.plies = std.fmt.parseInt(u16, fmc, 10) catch 1;
         self.plies = self.plies * 2 - 2;
 
         if (!std.mem.eql(u8, ep, "-")) {
@@ -125,8 +129,176 @@ pub const Board = struct {
             self.key ^= Zobrist.sideToMove();
         }
 
-        // Todo, parse position and castling
-        _ = castle;
+        // Set all piece positions
+        var square_idx: usize = 56;
+        for (pos) |char| {
+            if (std.ascii.isDigit(char)) {
+                square_idx += (char - '0');
+            } else if (char == '/') {
+                square_idx -= 16;
+            } else {
+                const piece = Piece.fromChar(char);
+                const square = Square.fromInt(usize, square_idx);
+                if (!piece.valid() or !square.valid() or self.at(Piece, square) != .none) {
+                    return false;
+                }
+
+                self.placePiece(piece, square);
+                self.key ^= Zobrist.piece(piece, square);
+                square_idx += 1;
+            }
+        }
+
+        // Set all castling rights
+        for (castle) |char| {
+            if (char == '-') break;
+
+            switch (char) {
+                'K' => self.castling_rights.set(.white, .king, .fh),
+                'Q' => self.castling_rights.set(.white, .queen, .fa),
+                'k' => self.castling_rights.set(.black, .king, .fh),
+                'q' => self.castling_rights.set(.black, .queen, .fa),
+                else => return false,
+            }
+        }
+
+        self.key ^= Zobrist.castling(self.castling_rights.hash());
+
+        // Verify the en passant square
+        const white_ep = self.side_to_move.isWhite() and self.ep_square.rank() == .r6;
+        const black_ep = self.side_to_move.isBlack() and self.ep_square.rank() == .r3;
+        if (self.ep_square.valid() and !(white_ep or black_ep)) {
+            self.ep_square = .none;
+        }
+
+        if (self.ep_square.valid()) {
+            // TODO: Ensure ep square is valid with the context of the given position
+            const valid = true;
+
+            if (!valid) self.ep_square = .none else self.key ^= Zobrist.enPassant(self.ep_square.file());
+        }
+
+        std.debug.assert(self.key == Zobrist.fromBoard(self));
+
+        // Set castling path
+        for ([_]Color{ .white, .black }) |color| {
+            const king_from = self.kingSq(color);
+
+            for ([_]CastlingRights.Side{ .king, .queen }) |side| {
+                if (!self.castling_rights.hasSide(color, side)) continue;
+
+                const rook_from = Square.make(
+                    king_from.rank(),
+                    self.castling_rights.rookFile(color, side),
+                );
+
+                const king_to = Square.castlingKingTo(side, color);
+                const rook_to = Square.castlingRookTo(side, color);
+
+                const rook_distance_bb = distance.SquaresBetween[rook_from.index()][rook_to.index()];
+                const king_distance_bb = distance.SquaresBetween[king_from.index()][king_to.index()];
+                const distance_between_bbs = rook_distance_bb.orBB(king_distance_bb);
+
+                const king_from_bb = Bitboard.fromSquare(king_from);
+                const rook_from_bb = Bitboard.fromSquare(rook_from);
+                const from_bbs = king_from_bb.orBB(rook_from_bb).not();
+
+                self.castling_path[color.index()][side.index()] = distance_between_bbs.andBB(from_bbs);
+            }
+        }
+
+        return true;
+    }
+
+    /// Returns the specified piece bitboard, use Color.none for side agnostic bitboard
+    pub fn pieces(self: *const Board, color: Color, piece_type: PieceType) Bitboard {
+        std.debug.assert(piece_type.valid());
+        return if (color == .none) blk: {
+            break :blk self.pieces_bbs[piece_type.index()];
+        } else blk: {
+            break :blk self.pieces_bbs[piece_type.index()].andBB(self.occ_bbs[color.index()]);
+        };
+    }
+
+    /// Returns the Piece or PieceType at the given square
+    pub fn at(self: *const Board, comptime T: type, square: Square) T {
+        if (T != Piece and T != PieceType) @compileError("T must be of type Piece or PieceType");
+        std.debug.assert(square.valid());
+
+        const piece_at = self.mailbox[square.index()];
+        return if (T == PieceType) piece_at.asType() else piece_at;
+    }
+
+    /// Raw piece set without respect for rules
+    fn placePiece(self: *Board, piece: Piece, square: Square) void {
+        std.debug.assert(square.valid() and self.mailbox[square.index()] == .none);
+
+        const pt = piece.asType();
+        const color = piece.color();
+        const index = square.index();
+
+        std.debug.assert(pt != .none);
+        std.debug.assert(color != .none);
+
+        _ = self.pieces_bbs[pt.index()].set(index);
+        _ = self.occ_bbs[color.index()].set(index);
+        self.mailbox[index] = piece;
+    }
+
+    /// Raw piece removal without respect for rules
+    fn removePiece(self: *Board, piece: Piece, square: Square) void {
+        std.debug.assert(piece != .none);
+        std.debug.assert(square.valid() and self.mailbox[square.index()] == piece);
+
+        const pt = piece.asType();
+        const color = piece.color();
+        const index = square.index();
+
+        std.debug.assert(pt != .none);
+        std.debug.assert(color != .none);
+
+        _ = self.pieces_bbs[pt.index()].remove(index);
+        _ = self.occ_bbs[color.index()].remove(index);
+        self.mailbox[index] = .none;
+    }
+
+    pub fn kingSq(self: *const Board, color: Color) Square {
+        std.debug.assert(color.valid() and self.pieces(color, .king).bits != 0);
+        return self.pieces(color, .king).lsb();
+    }
+
+    /// Get the occupancy bitboard for the color
+    pub fn us(self: *const Board, color: Color) Bitboard {
+        std.debug.assert(color.valid());
+        return self.occ_bbs[color.index()];
+    }
+
+    /// Get the occupancy bitboard for the opposite color
+    pub fn them(self: *const Board, color: Color) Bitboard {
+        return self.us(color.opposite());
+    }
+
+    /// Get the occupancy bitboard for both colors.
+    ///
+    /// Faster than calling all() or us(Color::WHITE) | us(Color::BLACK). Less indirection.
+    pub fn occ(self: *const Board) Bitboard {
+        return self.occ_bbs[0].orBB(self.occ_bbs[1]);
+    }
+
+    /// Returns the number of halfmoves as the given integer type
+    pub fn halfmoves(self: *const Board, comptime T: type) T {
+        return switch (@typeInfo(T)) {
+            .int, .comptime_int => @as(T, self.halfmove_clock),
+            else => @compileError("T must be an integer type"),
+        };
+    }
+
+    /// Returns the number of fullmoves as the given integer type
+    pub fn fullmoves(self: *const Board, comptime T: type) T {
+        return switch (@typeInfo(T)) {
+            .int, .comptime_int => 1 + @divFloor(@as(T, @intCast(self.plies)), 2),
+            else => @compileError("T must be an integer type"),
+        };
     }
 };
 
@@ -191,7 +363,7 @@ test "Fen splitter" {
     }
 }
 
-test "Board initialization" {
+test "Board initialization from starting fen" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, StartingFen);
     defer {
@@ -199,39 +371,117 @@ test "Board initialization" {
         allocator.destroy(board);
     }
 
-    // Verify that all fields are default initialized
-
     try expectEqualSlices(u8, StartingFen, board.original_fen);
     try expect(board.previous_states.items.len == 0);
 
-    for (board.pieces_bbs) |bb| {
-        try expectEqual(0, bb.bits);
+    // Verify agnostic piece bitboard setting
+    const expected_pieces_bbs = [_]u64{
+        71776119061282560,   4755801206503243842, 2594073385365405732,
+        9295429630892703873, 576460752303423496,  1152921504606846992,
+    };
+    for (expected_pieces_bbs, board.pieces_bbs, 0..) |expected, bb, idx| {
+        try expectEqual(expected, bb.bits);
+
+        const current = Piece.fromInt(usize, idx);
+        try expectEqual(
+            expected,
+            board.pieces(.none, current.asType()).bits,
+        );
     }
 
-    for (board.occ_bbs) |bb| {
-        try expectEqual(0, bb.bits);
+    // Verify colored piece bitboard retrieval
+    const expected_color_bbs = [2][6]u64{
+        .{ 65280, 66, 36, 129, 8, 16 },
+        .{
+            71776119061217280,
+            4755801206503243776,
+            2594073385365405696,
+            9295429630892703744,
+            576460752303423488,
+            1152921504606846976,
+        },
+    };
+    for (expected_color_bbs, 0..) |expected, color_idx| {
+        for (0..6) |piece_idx| {
+            const color = Color.fromInt(usize, color_idx);
+            const piece = Piece.fromInt(usize, piece_idx);
+
+            try expectEqual(
+                expected[piece_idx],
+                board.pieces(color, piece.asType()).bits,
+            );
+        }
     }
 
-    for (board.mailbox) |p| {
-        try expectEqual(Piece.none, p);
+    // Verify occupancy bitboards
+    const expected_occs = [_]u64{ 65535, 18446462598732840960 };
+    for (expected_occs, board.occ_bbs) |expected, bb| {
+        try expectEqual(expected, bb.bits);
     }
 
-    try expectEqual(0, board.key);
+    try expectEqual(expected_occs[0], board.us(.white).bits);
+    try expectEqual(expected_occs[0], board.them(.black).bits);
+    try expectEqual(expected_occs[1], board.us(.black).bits);
+    try expectEqual(expected_occs[1], board.them(.white).bits);
+
+    try expectEqual(expected_occs[0] | expected_occs[1], board.occ().bits);
+
+    // Verify mailbox representation and placed piece correctness
+    const expected_pieces = [_]Piece{
+        .white_rook, .white_knight, .white_bishop, .white_queen, .white_king, .white_bishop, .white_knight, .white_rook,
+        .white_pawn, .white_pawn,   .white_pawn,   .white_pawn,  .white_pawn, .white_pawn,   .white_pawn,   .white_pawn,
+        .none,       .none,         .none,         .none,        .none,       .none,         .none,         .none,
+        .none,       .none,         .none,         .none,        .none,       .none,         .none,         .none,
+        .none,       .none,         .none,         .none,        .none,       .none,         .none,         .none,
+        .none,       .none,         .none,         .none,        .none,       .none,         .none,         .none,
+        .black_pawn, .black_pawn,   .black_pawn,   .black_pawn,  .black_pawn, .black_pawn,   .black_pawn,   .black_pawn,
+        .black_rook, .black_knight, .black_bishop, .black_queen, .black_king, .black_bishop, .black_knight, .black_rook,
+    };
+    for (expected_pieces, board.mailbox, 0..) |expected, p, i| {
+        try expectEqual(expected, p);
+        try expectEqual(expected, board.at(Piece, Square.fromInt(usize, i)));
+    }
+
+    const expected_piece_types = [_]PieceType{
+        .rook, .knight, .bishop, .queen, .king, .bishop, .knight, .rook,
+        .pawn, .pawn,   .pawn,   .pawn,  .pawn, .pawn,   .pawn,   .pawn,
+        .none, .none,   .none,   .none,  .none, .none,   .none,   .none,
+        .none, .none,   .none,   .none,  .none, .none,   .none,   .none,
+        .none, .none,   .none,   .none,  .none, .none,   .none,   .none,
+        .none, .none,   .none,   .none,  .none, .none,   .none,   .none,
+        .pawn, .pawn,   .pawn,   .pawn,  .pawn, .pawn,   .pawn,   .pawn,
+        .rook, .knight, .bishop, .queen, .king, .bishop, .knight, .rook,
+    };
+    for (expected_piece_types, board.mailbox, 0..) |expected, p, i| {
+        try expectEqual(expected, p.asType());
+        try expectEqual(expected, board.at(PieceType, Square.fromInt(usize, i)));
+    }
+
+    try expectEqual(Square.e1, board.kingSq(.white));
+    try expectEqual(Square.e8, board.kingSq(.black));
+
+    // Verify state information
+    try expectEqual(5060803636482931868, board.key);
 
     for (board.castling_rights.rooks) |rf| {
-        try expectEqual(File.none, rf[0]);
-        try expectEqual(File.none, rf[1]);
+        try expectEqual(File.fa, rf[0]);
+        try expectEqual(File.fh, rf[1]);
     }
 
+    try expectEqual(0, board.halfmove_clock);
+    try expectEqual(0, board.halfmoves(u8));
     try expectEqual(0, board.plies);
+    try expectEqual(1, board.fullmoves(u8));
+
     try expectEqual(Color.white, board.side_to_move);
     try expectEqual(Square.none, board.ep_square);
-    try expectEqual(0, board.halfmove_clock);
 
-    try expectEqual(CastlingRights{}, board.castling_rights);
-
-    for (board.castling_path) |c| {
-        try expectEqual(0, c[0].bits);
-        try expectEqual(0, c[1].bits);
+    const expected_path = [_][2]u64{
+        .{ 14, 96 },
+        .{ 1008806316530991104, 6917529027641081856 },
+    };
+    for (expected_path, board.castling_path) |expected, c| {
+        try expectEqual(expected[0], c[0].bits);
+        try expectEqual(expected[1], c[1].bits);
     }
 }

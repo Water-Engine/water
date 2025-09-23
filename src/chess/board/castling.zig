@@ -8,8 +8,8 @@ pub const CastlingRights = struct {
     rooks: [2][2]File = @splat(@splat(File.init())),
 
     pub const Side = enum(u1) {
-        king,
-        queen,
+        queen = 0,
+        king = 1,
 
         pub fn asInt(self: *const Side, comptime T: type) T {
             return switch (@typeInfo(T)) {
@@ -32,7 +32,7 @@ pub const CastlingRights = struct {
     }
 
     pub fn pop(self: *CastlingRights, comptime T: type, color: Color, side: Side) T {
-        self.rooks[color.index()][side.index()] = File.none;
+        self.rooks[color.index()][side.index()] = .none;
         return color.asInt(T) * 2 + side.asInt(T);
     }
 
@@ -70,7 +70,7 @@ pub const CastlingRights = struct {
         pred: T,
         comparator: *const fn (T, T) bool,
     ) Side {
-        return if (comparator(square, pred)) Side.king else Side.queen;
+        return if (comparator(square, pred)) .king else .queen;
     }
 };
 
@@ -112,11 +112,11 @@ test "CastlingRights" {
 
     // Pop castling rights
     const white_king_pop = cr.pop(u8, .white, .king);
-    try expectEqual(@as(u8, 0), white_king_pop);
+    try expectEqual(@as(u8, 1), white_king_pop);
     try expect(!cr.hasSide(.white, .king));
 
     const black_queen_pop = cr.pop(u8, .black, .queen);
-    try expectEqual(@as(u8, 3), black_queen_pop);
+    try expectEqual(@as(u8, 2), black_queen_pop);
     try expect(!cr.hasSide(.black, .queen));
 
     // Clearing all rights
@@ -136,8 +136,8 @@ test "CastlingRights" {
     try expectEqual(CastlingRights.Side.queen, s2);
 
     // Side.index / asInt
-    try expectEqual(@as(usize, 0), CastlingRights.Side.king.index());
-    try expectEqual(@as(usize, 1), CastlingRights.Side.queen.index());
-    try expectEqual(@as(u8, 0), CastlingRights.Side.king.asInt(u8));
-    try expectEqual(@as(u8, 1), CastlingRights.Side.queen.asInt(u8));
+    try expectEqual(@as(usize, 1), CastlingRights.Side.king.index());
+    try expectEqual(@as(usize, 0), CastlingRights.Side.queen.index());
+    try expectEqual(@as(u8, 1), CastlingRights.Side.king.asInt(u8));
+    try expectEqual(@as(u8, 0), CastlingRights.Side.queen.asInt(u8));
 }

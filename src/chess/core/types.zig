@@ -1,5 +1,8 @@
 const std = @import("std");
 
+const castling = @import("../board/castling.zig");
+const CastlingRights = castling.CastlingRights;
+
 // ================ ERRORS ================
 
 const ChessError = error{};
@@ -724,12 +727,12 @@ pub const Square = enum(u8) {
         };
     }
 
-    pub fn castlingKingTo(king_side: bool, color: Color) Square {
-        return if (king_side) Square.g1.flipRelative(color) else Square.c1.flipRelative(color);
+    pub fn castlingKingTo(side: CastlingRights.Side, color: Color) Square {
+        return if (side == .king) Square.g1.flipRelative(color) else Square.c1.flipRelative(color);
     }
 
-    pub fn castlingQueenTo(king_side: bool, color: Color) Square {
-        return if (king_side) Square.f1.flipRelative(color) else Square.d1.flipRelative(color);
+    pub fn castlingRookTo(side: CastlingRights.Side, color: Color) Square {
+        return if (side == .king) Square.f1.flipRelative(color) else Square.d1.flipRelative(color);
     }
 };
 
@@ -1044,14 +1047,14 @@ test "Square" {
     try expect(Square.a1.sameColor(Square.c1));
     try expect(!Square.a1.sameColor(Square.b1));
 
-    try expectEqual(Square.g1, Square.castlingKingTo(true, white));
-    try expectEqual(Square.c1, Square.castlingKingTo(false, white));
-    try expectEqual(Square.f1, Square.castlingQueenTo(true, white));
-    try expectEqual(Square.d1, Square.castlingQueenTo(false, white));
-    try expectEqual(Square.g8, Square.castlingKingTo(true, black));
-    try expectEqual(Square.c8, Square.castlingKingTo(false, black));
-    try expectEqual(Square.f8, Square.castlingQueenTo(true, black));
-    try expectEqual(Square.d8, Square.castlingQueenTo(false, black));
+    try expectEqual(Square.g1, Square.castlingKingTo(.king, white));
+    try expectEqual(Square.c1, Square.castlingKingTo(.queen, white));
+    try expectEqual(Square.f1, Square.castlingRookTo(.king, white));
+    try expectEqual(Square.d1, Square.castlingRookTo(.queen, white));
+    try expectEqual(Square.g8, Square.castlingKingTo(.king, black));
+    try expectEqual(Square.c8, Square.castlingKingTo(.queen, black));
+    try expectEqual(Square.f8, Square.castlingRookTo(.king, black));
+    try expectEqual(Square.d8, Square.castlingRookTo(.queen, black));
 }
 
 test "Direction" {
