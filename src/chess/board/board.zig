@@ -296,7 +296,7 @@ pub const Board = struct {
 
     /// Constructs a fen based on the board's current state.
     /// The board's original fen can be accessed directly.
-    /// 
+    ///
     /// The caller is responsible for freeing the string.
     pub fn getFen(self: *const Board, move_counters: bool) ![]const u8 {
         var fen_buffer = try std.ArrayList(u8).initCapacity(self.allocator, 100);

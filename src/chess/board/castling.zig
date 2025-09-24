@@ -73,7 +73,7 @@ pub const CastlingRights = struct {
     }
 
     /// Returns the fen castle string based on the hash representation.
-    /// 
+    ///
     /// Zero allocation, extremely efficient.
     pub fn asStr(self: *const CastlingRights) []const u8 {
         return switch (self.hash()) {
@@ -141,7 +141,7 @@ test "CastlingRights" {
     try expect(cr.hasSide(.black, .king));
     try expect(cr.hasSide(.black, .queen));
     try expectEqualSlices(u8, "KQkq", cr.asStr());
-    
+
     try expectEqual(File.fh, cr.rookFile(.white, .king));
     try expectEqual(File.fa, cr.rookFile(.black, .queen));
 

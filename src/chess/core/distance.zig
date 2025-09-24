@@ -21,7 +21,7 @@ pub const ManhattanDist = genManhattan();
 pub const CenterManhattanDist = genCenterManhattan();
 
 /// The 'king' distance between two squares.
-/// 
+///
 /// The number of moves it would take a king to travel between indices.
 pub const ChebyshevDist = genChebyshev();
 
@@ -29,7 +29,7 @@ pub const ChebyshevDist = genChebyshev();
 pub const ValueDist = genValueDistance();
 
 /// The 'ray' distance between two squares.
-/// 
+///
 /// Nonzero if, and only if, the squares are aligned along a file, rank, or diagonal.
 pub const SquaresBetween = genSquaresBetween();
 
