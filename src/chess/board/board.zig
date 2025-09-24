@@ -31,7 +31,10 @@ pub const Attacks = attacks.Attacks;
 
 pub const StartingFen: []const u8 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-fn split_fen_string(comptime N: usize, fen: []const u8, delimiter: u8) [N]?[]const u8 {
+/// Splits a string at the given delimiter, with the output array size `N`.
+///
+/// The result is guaranteed to be of size N, and is packed with null if the parts are too short.
+fn splitString(comptime N: usize, fen: []const u8, delimiter: u8) [N]?[]const u8 {
     var out: [N]?[]const u8 = @splat(null);
     var filled: usize = 0;
 
@@ -42,6 +45,25 @@ fn split_fen_string(comptime N: usize, fen: []const u8, delimiter: u8) [N]?[]con
     }
 
     return out;
+}
+
+/// Returns the slice immediately after the given entry in the iterator.
+///
+/// Mutates the iterator internally, resetting it before returning.
+fn entryAfter(
+    comptime delimiter_type: std.mem.DelimiterType,
+    spliterator: *std.mem.SplitIterator(u8, delimiter_type),
+    entry: []const u8,
+) ?[]const u8 {
+    defer spliterator.reset();
+
+    while (spliterator.next()) |slice| {
+        if (std.mem.eql(u8, entry, slice)) {
+            return spliterator.next();
+        }
+    }
+
+    return null;
 }
 
 /// A chess board representation, valid for standard chess only.
@@ -61,10 +83,10 @@ pub const Board = struct {
 
     key: u64 = 0,
     castling_rights: CastlingRights = .{},
-    plies: u16 = 0,
+    plies: usize = 0,
     side_to_move: Color = .white,
     ep_square: Square = .none,
-    halfmove_clock: u8 = 0,
+    halfmove_clock: usize = 0,
 
     castling_path: [2][2]Bitboard = @splat(@splat(Bitboard.init())),
 
@@ -150,7 +172,7 @@ pub const Board = struct {
         if (trimmed.len == 0) success = false;
 
         // Fully parse and deconstruct input
-        const split_fen: [6]?[]const u8 = split_fen_string(6, trimmed, ' ');
+        const split_fen: [6]?[]const u8 = splitString(6, trimmed, ' ');
         const pos: []const u8 = if (split_fen[0]) |first| first else "";
         const stm: []const u8 = if (split_fen[1]) |first| first else "w";
         const castle: []const u8 = if (split_fen[2]) |first| first else "-";
@@ -294,7 +316,7 @@ pub const Board = struct {
         return success;
     }
 
-    /// Constructs a fen based on the board's current state.
+    /// Constructs a fen string based on the board's current state.
     /// The board's original fen can be accessed directly.
     ///
     /// The caller is responsible for freeing the string.
@@ -363,6 +385,63 @@ pub const Board = struct {
         }
 
         return try fen_buffer.toOwnedSlice(self.allocator);
+    }
+
+    /// Attempts to set the board's position from an epd string.
+    ///
+    /// Returns `true` if the fen was set successfully. Unsuccessful setting does not mutate the Board.
+    pub fn setEpd(self: *Board, epd: []const u8) !bool {
+        var parts = std.mem.splitScalar(u8, epd, ' ');
+
+        var size: usize = 0;
+        while (parts.next()) |_| : (size += 1) {}
+        if (size < 4) return false;
+        parts.reset();
+
+        // Parse the clocks with reasonable defaults, ignoring a trailing semicolon if present
+        var half_moves: usize = 0;
+        var full_moves: usize = 1;
+
+        const hmvc = entryAfter(.scalar, &parts, "hmvc");
+        if (hmvc) |num| {
+            half_moves = std.fmt.parseInt(
+                usize,
+                if (num[num.len - 1] == ';') num[0 .. num.len - 1] else num,
+                10,
+            ) catch 0;
+        }
+
+        const fmvn = entryAfter(.scalar, &parts, "fmvn");
+        if (fmvn) |num| {
+            full_moves = std.fmt.parseInt(
+                usize,
+                if (num[num.len - 1] == ';') num[0 .. num.len - 1] else num,
+                10,
+            ) catch 1;
+        }
+
+        const fen = try std.fmt.allocPrint(
+            self.allocator,
+            "{s} {s} {s} {s} {d} {d}",
+            .{ parts.next().?, parts.next().?, parts.next().?, parts.next().?, half_moves, full_moves },
+        );
+        defer self.allocator.free(fen);
+
+        return try self.setFen(fen, true);
+    }
+
+    /// Constructs an epd string based on the board's current state.
+    ///
+    /// The caller is responsible for freeing the string.
+    pub fn getEpd(self: *Board) ![]const u8 {
+        const fen = try self.getFen(false);
+        defer self.allocator.free(fen);
+
+        return try std.fmt.allocPrint(
+            self.allocator,
+            "{s} hmvc {d}; fmvn {d};",
+            .{ fen, self.halfmoves(usize), self.fullmoves(usize) },
+        );
     }
 
     /// Returns the specified piece bitboard, use Color.none for side agnostic bitboard.
@@ -477,7 +556,7 @@ pub const Board = struct {
     /// Returns the number of halfmoves as the given integer type.
     pub fn halfmoves(self: *const Board, comptime T: type) T {
         return switch (@typeInfo(T)) {
-            .int, .comptime_int => @as(T, self.halfmove_clock),
+            .int, .comptime_int => @as(T, @intCast(self.halfmove_clock)),
             else => @compileError("T must be an integer type"),
         };
     }
@@ -497,14 +576,14 @@ const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 const expectEqualSlices = testing.expectEqualSlices;
 
-test "Fen splitter" {
+test "String splitter" {
     const expected_smaller: [4][]const u8 = .{
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",
         "w",
         "KQkq",
         "-",
     };
-    const split_smaller = split_fen_string(4, StartingFen, ' ');
+    const split_smaller = splitString(4, StartingFen, ' ');
 
     try expect(expected_smaller.len == split_smaller.len);
     for (expected_smaller, split_smaller) |es, ss| {
@@ -519,7 +598,7 @@ test "Fen splitter" {
         "0",
         "1",
     };
-    const split_exact = split_fen_string(6, StartingFen, ' ');
+    const split_exact = splitString(6, StartingFen, ' ');
 
     try expect(expected_exact.len == split_exact.len);
     for (expected_exact, split_exact) |ee, se| {
@@ -536,7 +615,7 @@ test "Fen splitter" {
         null,
         null,
     };
-    const split_larger = split_fen_string(8, StartingFen, ' ');
+    const split_larger = splitString(8, StartingFen, ' ');
 
     try expect(expected_larger.len == split_larger.len);
     for (expected_larger, split_larger) |el, sl| {
@@ -550,6 +629,22 @@ test "Fen splitter" {
             try expect(el == null and sl == null);
         }
     }
+}
+
+test "entryAfter helper" {
+    const greeks = "alpha,beta,gamma,delta";
+    var it = std.mem.splitScalar(u8, greeks, ',');
+    const after = entryAfter(.scalar, &it, "beta");
+    try expect(after != null);
+    try std.testing.expectEqualStrings("gamma", after.?);
+
+    const fruits = "apple orange banana";
+    it = std.mem.splitScalar(u8, fruits, ' ');
+    try std.testing.expect(entryAfter(.scalar, &it, "grape") == null);
+
+    const numms = "one two three";
+    it = std.mem.splitScalar(u8, numms, ' ');
+    try std.testing.expect(entryAfter(.scalar, &it, "three") == null);
 }
 
 test "Board initialization & copy from starting fen" {
@@ -709,6 +804,48 @@ test "Fen reconstruction" {
     defer board.allocator.free(fen_moveless);
 
     try expectEqualSlices(u8, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -", fen_moveless);
+}
+
+test "EPD handling" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, StartingFen);
+    const epd = try board.getEpd();
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+        allocator.free(epd);
+    }
+
+    const starting_epd = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - hmvc 0; fmvn 1;";
+    try expectEqualSlices(u8, starting_epd, epd);
+
+    try expect(try board.setEpd("r1bqk2r/p1pp1ppp/2p2n2/8/1b2P3/2N5/PPP2PPP/R1BQKB1R w KQkq - bm Bd3;"));
+    const fen_default_moves = try board.getFen(true);
+    defer allocator.free(fen_default_moves);
+    try expectEqualSlices(
+        u8,
+        "r1bqk2r/p1pp1ppp/2p2n2/8/1b2P3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 1",
+        fen_default_moves,
+    );
+
+    try expect(try board.setEpd("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - bm Re2+; id arasan21.16; hmvc 20; fmvn 80;"));
+    const fen_with_set_moves = try board.getFen(true);
+    defer allocator.free(fen_with_set_moves);
+    try expectEqualSlices(
+        u8,
+        "8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80",
+        fen_with_set_moves,
+    );
+
+    try expect(try board.setEpd("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - bm Re2+; id arasan21.16; hmvc 20 fmvn 80"));
+    const fen_with_set_moves_no_semi = try board.getFen(true);
+    defer allocator.free(fen_with_set_moves_no_semi);
+    try expectEqualSlices(
+        u8,
+        "8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80",
+        fen_with_set_moves_no_semi,
+    );
 }
 
 test "Illegal fen handling" {
