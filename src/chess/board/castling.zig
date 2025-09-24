@@ -63,7 +63,9 @@ pub const CastlingRights = struct {
             8 * self.hasSideKey(.black, .queen);
     }
 
-    /// The `comparator` param should return true if lhs > rhs
+    /// Returns `.king` if square > pred.
+    ///
+    /// The `comparator` param should return true if square > pred.
     pub fn closestSide(
         comptime T: type,
         square: T,

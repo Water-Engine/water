@@ -44,6 +44,11 @@ fn split_fen_string(comptime N: usize, fen: []const u8, delimiter: u8) [N]?[]con
     return out;
 }
 
+/// A chess board representation, valid for standard chess only.
+///
+/// The internal 'original_fen' and 'previous_states' are heap allocated.
+/// They are assumed to be owned by the instance and are freed with deinit.
+/// Directly assigning values to these fields is unsafe.
 pub const Board = struct {
     allocator: std.mem.Allocator,
 
@@ -52,7 +57,7 @@ pub const Board = struct {
 
     pieces_bbs: [6]Bitboard = @splat(Bitboard.init()),
     occ_bbs: [2]Bitboard = @splat(Bitboard.init()),
-    mailbox: [64]Piece = @splat(Piece.none),
+    mailbox: [64]Piece = @splat(Piece.init()),
 
     key: u64 = 0,
     castling_rights: CastlingRights = .{},
@@ -67,37 +72,73 @@ pub const Board = struct {
         const b = try allocator.create(Board);
         b.* = .{
             .allocator = allocator,
-            .original_fen = fen,
+            .original_fen = try allocator.dupe(u8, fen),
             .previous_states = try std.ArrayList(State).initCapacity(allocator, 256),
         };
-        _ = b.setFen(fen);
+        _ = try b.setFen(fen, false);
         return b;
     }
 
     pub fn deinit(self: *Board) void {
         self.previous_states.deinit(self.allocator);
+        self.allocator.free(self.original_fen);
+    }
+
+    /// Performs a deep copy of the board.
+    ///
+    /// Allocations are handled by the provided allocator only.
+    pub fn clone(self: *const Board, allocator: std.mem.Allocator) !*Board {
+        const b = try allocator.create(Board);
+        b.* = .{
+            .allocator = allocator,
+
+            .original_fen = try allocator.dupe(u8, self.original_fen),
+            .previous_states = try self.previous_states.clone(allocator),
+
+            .pieces_bbs = self.pieces_bbs,
+            .occ_bbs = self.occ_bbs,
+            .mailbox = self.mailbox,
+
+            .key = self.key,
+            .castling_rights = self.castling_rights,
+            .plies = self.plies,
+            .side_to_move = self.side_to_move,
+            .ep_square = self.ep_square,
+            .halfmove_clock = self.halfmove_clock,
+
+            .castling_path = self.castling_path,
+        };
+        return b;
     }
 
     pub fn reset(self: *Board) void {
+        self.previous_states.clearRetainingCapacity();
+
         self.pieces_bbs = @splat(Bitboard.init());
         self.occ_bbs = @splat(Bitboard.init());
         self.mailbox = @splat(Piece.none);
 
+        self.key = 0;
+        self.castling_rights.clear();
+        self.plies = 1;
         self.side_to_move = .white;
         self.ep_square = .none;
         self.halfmove_clock = 0;
-        self.plies = 1;
-        self.key = 0;
-        self.castling_rights.clear();
-        self.previous_states.clearRetainingCapacity();
     }
 
-    pub fn setFen(self: *Board, fen: []const u8) bool {
-        self.original_fen = fen;
+    /// Attempts to set the board fen position, reallocating the board original fen representation if requested.
+    ///
+    /// Returns `true` if the fen was set successfully
+    pub fn setFen(self: *Board, fen: []const u8, reallocate_fen: bool) !bool {
         self.reset();
+        if (reallocate_fen) {
+            self.allocator.free(self.original_fen);
+            self.original_fen = try self.allocator.dupe(u8, fen);
+        }
 
+        var success: bool = true;
         const trimmed = std.mem.trim(u8, fen, " ");
-        if (trimmed.len == 0) return false;
+        if (trimmed.len == 0) success = false;
 
         // Fully parse and deconstruct input
         const split_fen: [6]?[]const u8 = split_fen_string(6, trimmed, ' ');
@@ -108,8 +149,8 @@ pub const Board = struct {
         const hmc: []const u8 = if (split_fen[4]) |first| first else "0";
         const fmc: []const u8 = if (split_fen[5]) |first| first else "1";
 
-        if (pos.len == 0) return false;
-        if (!std.mem.eql(u8, stm, "w") and !std.mem.eql(u8, stm, "b")) return false;
+        if (pos.len == 0) success = false;
+        if (!std.mem.eql(u8, stm, "w") and !std.mem.eql(u8, stm, "b")) success = false;
 
         self.halfmove_clock = std.fmt.parseInt(u8, hmc, 10) catch 0;
         self.plies = std.fmt.parseInt(u16, fmc, 10) catch 1;
@@ -117,7 +158,7 @@ pub const Board = struct {
 
         if (!std.mem.eql(u8, ep, "-")) {
             const sq = Square.fromStr(ep);
-            if (!sq.valid()) return false;
+            if (!sq.valid()) success = false;
 
             self.ep_square = sq;
         }
@@ -140,7 +181,7 @@ pub const Board = struct {
                 const piece = Piece.fromChar(char);
                 const square = Square.fromInt(usize, square_idx);
                 if (!piece.valid() or !square.valid() or self.at(Piece, square) != .none) {
-                    return false;
+                    success = false;
                 }
 
                 self.placePiece(piece, square);
@@ -158,7 +199,7 @@ pub const Board = struct {
                 'Q' => self.castling_rights.set(.white, .queen, .fa),
                 'k' => self.castling_rights.set(.black, .king, .fh),
                 'q' => self.castling_rights.set(.black, .queen, .fa),
-                else => return false,
+                else => success = false,
             }
         }
 
@@ -207,10 +248,10 @@ pub const Board = struct {
             }
         }
 
-        return true;
+        return success;
     }
 
-    /// Returns the specified piece bitboard, use Color.none for side agnostic bitboard
+    /// Returns the specified piece bitboard, use Color.none for side agnostic bitboard.
     pub fn pieces(self: *const Board, color: Color, piece_type: PieceType) Bitboard {
         std.debug.assert(piece_type.valid());
         return if (color == .none) blk: {
@@ -220,7 +261,7 @@ pub const Board = struct {
         };
     }
 
-    /// Returns the Piece or PieceType at the given square
+    /// Returns the Piece or PieceType at the given square.
     pub fn at(self: *const Board, comptime T: type, square: Square) T {
         if (T != Piece and T != PieceType) @compileError("T must be of type Piece or PieceType");
         std.debug.assert(square.valid());
@@ -229,7 +270,7 @@ pub const Board = struct {
         return if (T == PieceType) piece_at.asType() else piece_at;
     }
 
-    /// Raw piece set without respect for rules
+    /// Raw piece set without respect for rules.
     fn placePiece(self: *Board, piece: Piece, square: Square) void {
         std.debug.assert(square.valid() and self.mailbox[square.index()] == .none);
 
@@ -245,7 +286,7 @@ pub const Board = struct {
         self.mailbox[index] = piece;
     }
 
-    /// Raw piece removal without respect for rules
+    /// Raw piece removal without respect for rules.
     fn removePiece(self: *Board, piece: Piece, square: Square) void {
         std.debug.assert(piece != .none);
         std.debug.assert(square.valid() and self.mailbox[square.index()] == piece);
@@ -267,13 +308,13 @@ pub const Board = struct {
         return self.pieces(color, .king).lsb();
     }
 
-    /// Get the occupancy bitboard for the color
+    /// Get the occupancy bitboard for the color.
     pub fn us(self: *const Board, color: Color) Bitboard {
         std.debug.assert(color.valid());
         return self.occ_bbs[color.index()];
     }
 
-    /// Get the occupancy bitboard for the opposite color
+    /// Get the occupancy bitboard for the opposite color.
     pub fn them(self: *const Board, color: Color) Bitboard {
         return self.us(color.opposite());
     }
@@ -285,7 +326,7 @@ pub const Board = struct {
         return self.occ_bbs[0].orBB(self.occ_bbs[1]);
     }
 
-    /// Returns the number of halfmoves as the given integer type
+    /// Returns the number of halfmoves as the given integer type.
     pub fn halfmoves(self: *const Board, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @as(T, self.halfmove_clock),
@@ -293,7 +334,7 @@ pub const Board = struct {
         };
     }
 
-    /// Returns the number of fullmoves as the given integer type
+    /// Returns the number of fullmoves as the given integer type.
     pub fn fullmoves(self: *const Board, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => 1 + @divFloor(@as(T, @intCast(self.plies)), 2),
@@ -363,9 +404,25 @@ test "Fen splitter" {
     }
 }
 
-test "Board initialization from starting fen" {
+test "Board initialization & copy from starting fen" {
     const allocator = testing.allocator;
-    var board = try Board.init(allocator, StartingFen);
+    var parent = try Board.init(allocator, StartingFen);
+    try expectEqualSlices(u8, StartingFen, parent.original_fen);
+    var board = try parent.clone(allocator);
+
+    parent.previous_states.appendAssumeCapacity(.{
+        .hash = 0,
+        .captured_piece = .none,
+        .castling = .{},
+        .enpassant = .none,
+        .half_moves = 0,
+    });
+    try expect(parent.previous_states.items.len == 1);
+    try expect(board.previous_states.items.len == 0);
+
+    // Uninitialize test objects before proceeding
+    parent.deinit();
+    allocator.destroy(parent);
     defer {
         board.deinit();
         allocator.destroy(board);

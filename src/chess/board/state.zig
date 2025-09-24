@@ -339,12 +339,12 @@ test "Board hashing" {
     }
 
     // Expected Values from https://github.com/Disservin/chess-library
-    _ = board.setFen(board_.StartingFen);
+    _ = try board.setFen(board_.StartingFen, true);
     try expectEqual(5060803636482931868, Zobrist.fromBoard(board));
 
-    _ = board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
+    _ = try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -", true);
     try expectEqual(14109232545397825053, Zobrist.fromBoard(board));
 
-    _ = board.setFen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
+    _ = try board.setFen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", true);
     try expectEqual(5730634958646359440, Zobrist.fromBoard(board));
 }
