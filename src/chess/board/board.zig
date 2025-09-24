@@ -68,6 +68,9 @@ pub const Board = struct {
 
     castling_path: [2][2]Bitboard = @splat(@splat(Bitboard.init())),
 
+    /// Create a board initialized with the given fen.
+    ///
+    /// Copies the provided fen and manages the dupe.
     pub fn init(allocator: std.mem.Allocator, fen: []const u8) !*Board {
         const b = try allocator.create(Board);
         b.* = .{
@@ -79,6 +82,9 @@ pub const Board = struct {
         return b;
     }
 
+    /// Deinitializes the state history and frees the fen string.
+    ///
+    /// THe Board pointer itself must be freed separately.
     pub fn deinit(self: *Board) void {
         self.previous_states.deinit(self.allocator);
         self.allocator.free(self.original_fen);
@@ -111,6 +117,7 @@ pub const Board = struct {
         return b;
     }
 
+    /// Resets the Board's fields without explicitly freeing memory.
     pub fn reset(self: *Board) void {
         self.previous_states.clearRetainingCapacity();
 
@@ -128,8 +135,9 @@ pub const Board = struct {
 
     /// Attempts to set the board fen position, reallocating the board original fen representation if requested.
     ///
-    /// Returns `true` if the fen was set successfully
+    /// Returns `true` if the fen was set successfully. Unsuccessful setting does not mutate the Board.
     pub fn setFen(self: *Board, fen: []const u8, reallocate_fen: bool) !bool {
+        var backup = try self.clone(self.allocator);
         self.reset();
         if (reallocate_fen) {
             self.allocator.free(self.original_fen);
@@ -184,7 +192,11 @@ pub const Board = struct {
                     success = false;
                 }
 
-                self.placePiece(piece, square);
+                self.placePieceNAssert(piece, square) catch {
+                    success = false;
+                    break;
+                };
+
                 self.key ^= Zobrist.piece(piece, square);
                 square_idx += 1;
             }
@@ -223,7 +235,10 @@ pub const Board = struct {
 
         // Set castling path
         for ([_]Color{ .white, .black }) |color| {
-            const king_from = self.kingSq(color);
+            const king_from = self.kingSqNAssert(color) catch {
+                success = false;
+                break;
+            };
 
             for ([_]CastlingRights.Side{ .king, .queen }) |side| {
                 if (!self.castling_rights.hasSide(color, side)) continue;
@@ -248,7 +263,47 @@ pub const Board = struct {
             }
         }
 
+        // TODO: Verify position as per https://chess.stackexchange.com/questions/1482/how-do-you-know-when-a-fen-position-is-legal
+
+        if (!success) {
+            self.deinit();
+            self.* = .{
+                .allocator = backup.allocator,
+
+                .original_fen = try backup.allocator.dupe(u8, backup.original_fen),
+                .previous_states = try backup.previous_states.clone(backup.allocator),
+
+                .pieces_bbs = backup.pieces_bbs,
+                .occ_bbs = backup.occ_bbs,
+                .mailbox = backup.mailbox,
+
+                .key = backup.key,
+                .castling_rights = backup.castling_rights,
+                .plies = backup.plies,
+                .side_to_move = backup.side_to_move,
+                .ep_square = backup.ep_square,
+                .halfmove_clock = backup.halfmove_clock,
+
+                .castling_path = backup.castling_path,
+            };
+        }
+        backup.deinit();
+        self.allocator.destroy(backup);
+
         return success;
+    }
+
+    /// Constructs a fen based on the board's current state.
+    ///
+    /// The board's original fen can be accessed directly.
+    pub fn getFen(self: *const Board, includes_move_counts: bool) ![]const u8 {
+        const buffer = try std.ArrayList(u8).initCapacity(self.allocator, 100);
+        var fen_writer = std.Io.Writer.fixed(buffer);
+
+        try fen_writer.print("{s}", .{"Hello, World!"});
+        _ = includes_move_counts;
+
+        return fen_writer.buffered();
     }
 
     /// Returns the specified piece bitboard, use Color.none for side agnostic bitboard.
@@ -286,7 +341,28 @@ pub const Board = struct {
         self.mailbox[index] = piece;
     }
 
+    /// For internal use only, opts for errors instead of assertions for explicit handling.
+    fn placePieceNAssert(self: *Board, piece: Piece, square: Square) !void {
+        var success = true;
+        if (!(square.valid() and self.mailbox[square.index()] == .none)) success = false;
+
+        const pt = piece.asType();
+        const color = piece.color();
+        const index = square.index();
+
+        if (pt == .none) success = false;
+        if (color == .none) success = false;
+
+        if (!success) return types.ChessError.IllegalFenState;
+
+        _ = self.pieces_bbs[pt.index()].set(index);
+        _ = self.occ_bbs[color.index()].set(index);
+        self.mailbox[index] = piece;
+    }
+
     /// Raw piece removal without respect for rules.
+    ///
+    /// Asserts that the requested piece and square are valid (presence checked as well).
     fn removePiece(self: *Board, piece: Piece, square: Square) void {
         std.debug.assert(piece != .none);
         std.debug.assert(square.valid() and self.mailbox[square.index()] == piece);
@@ -303,12 +379,25 @@ pub const Board = struct {
         self.mailbox[index] = .none;
     }
 
+    /// Returns the square of the king of the current color.
+    ///
+    /// Asserts that there is a king for the given color.
     pub fn kingSq(self: *const Board, color: Color) Square {
         std.debug.assert(color.valid() and self.pieces(color, .king).bits != 0);
         return self.pieces(color, .king).lsb();
     }
 
+    /// For internal use only, opts for errors instead of assertions for explicit handling.
+    fn kingSqNAssert(self: *const Board, color: Color) !Square {
+        if (!(color.valid() and self.pieces(color, .king).bits != 0)) {
+            return types.ChessError.IllegalFenState;
+        }
+        return self.pieces(color, .king).lsb();
+    }
+
     /// Get the occupancy bitboard for the color.
+    ///
+    /// Asserts that the color is a valid color
     pub fn us(self: *const Board, color: Color) Bitboard {
         std.debug.assert(color.valid());
         return self.occ_bbs[color.index()];
@@ -541,4 +630,34 @@ test "Board initialization & copy from starting fen" {
         try expectEqual(expected[0], c[0].bits);
         try expectEqual(expected[1], c[1].bits);
     }
+}
+
+test "Fen reconstruction" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, StartingFen);
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    const str = try board.getFen(false);
+    std.debug.print("{s}", .{str});
+    board.allocator.free(str);
+}
+
+test "Illegal fen handling" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, StartingFen);
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    const ok = try board.setFen("fen: []const u8", true);
+    try expect(!ok);
+    try expectEqualSlices(u8, StartingFen, board.original_fen);
+
+    // TODO: Test for illegal board positions such as non-stm king in check and illegal pawns
 }

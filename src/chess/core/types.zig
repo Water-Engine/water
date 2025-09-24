@@ -5,7 +5,9 @@ const CastlingRights = castling.CastlingRights;
 
 // ================ ERRORS ================
 
-const ChessError = error{};
+pub const ChessError = error{
+    IllegalFenState,
+};
 
 // ================ COLOR ================
 
