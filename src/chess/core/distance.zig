@@ -14,10 +14,23 @@ const Attacks = attacks.Attacks;
 
 const square_fields = @typeInfo(Square).@"enum".fields;
 
+/// The 'rook' distance between two squares.
 pub const ManhattanDist = genManhattan();
+
+/// The distance from a square to the 2x2 'center' of the board.
 pub const CenterManhattanDist = genCenterManhattan();
+
+/// The 'king' distance between two squares.
+/// 
+/// The number of moves it would take a king to travel between indices.
 pub const ChebyshevDist = genChebyshev();
+
+/// The absolute difference between two squares indices
 pub const ValueDist = genValueDistance();
+
+/// The 'ray' distance between two squares.
+/// 
+/// Nonzero if, and only if, the squares are aligned along a file, rank, or diagonal.
 pub const SquaresBetween = genSquaresBetween();
 
 fn genManhattan() [64][64]u8 {

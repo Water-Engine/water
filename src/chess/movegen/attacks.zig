@@ -251,6 +251,7 @@ pub const Attacks = struct {
         return rook(square, occupied).orBB(bishop(square, occupied));
     }
 
+    /// Returns all slider attacks for the PieceType on the given square.
     pub fn slider(comptime PT: PieceType, square: Square, occupied: Bitboard) Bitboard {
         return switch (PT) {
             .rook => rook(square, occupied),
@@ -260,6 +261,7 @@ pub const Attacks = struct {
         };
     }
 
+    /// Shifts the given bitboard in the given direction
     pub fn shift(comptime D: Square.Direction, bb: Bitboard) Bitboard {
         return switch (D) {
             .north => |d| return bb.shl(@abs(d.asInt(i32))),
@@ -273,11 +275,25 @@ pub const Attacks = struct {
         };
     }
 
+    /// Returns the origin squares of pieces of a given color attacking a target square.
     pub fn attackers(board: *const Board, color: Color, square: Square) Bitboard {
-        _ = board;
-        _ = color;
-        _ = square;
-        @compileError("Todo: not implemented!");
+        const queens = board.pieces(color, .queen);
+        const occupied = board.occ();
+
+        // Principle: if we can attack PieceType from square, they can attack us back
+        var atks = Attacks.pawn(color.opposite(), square).andBB(
+            board.pieces(color, .pawn),
+        );
+        _ = atks.orAssign(Attacks.knight(square).andBB(board.pieces(color, .knight)));
+        _ = atks.orAssign(Attacks.bishop(square, occupied).andBB(
+            board.pieces(color, .bishop).orBB(queens),
+        ));
+        _ = atks.orAssign(Attacks.rook(square, occupied).andBB(
+            board.pieces(color, .rook).orBB(queens),
+        ));
+        _ = atks.orAssign(Attacks.king(square).andBB(board.pieces(color, .king)));
+
+        return atks.andBB(occupied);
     }
 };
 
@@ -414,4 +430,74 @@ test "Direction Shifts" {
         Attacks.shift(.south_west, d4_bb).bits,
         Bitboard.fromSquare(.c3).bits,
     );
+}
+
+test "Attackers in position" {
+    const allocator = testing.allocator;
+    var board = try Board.init(
+        allocator,
+        "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+    );
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // Attackers from fen verified with https://github.com/Disservin/chess-library
+    const white_attackers: [64]u64 = .{
+        0x0000000000000008, 0x0000000000000009, 0x0000000000000009, 0x0000000001000021,
+        0x0000000000200028, 0x0000000000000048, 0x0000000000200020, 0x0000000000000040,
+        0x0000000000000001, 0x0000000000000000, 0x0000000001000008, 0x0000000002200008,
+        0x0000000000000008, 0x0000000000000060, 0x0000000000000040, 0x0000000000200040,
+        0x0000000002000000, 0x0000000001000108, 0x0000000002000800, 0x0000000000000000,
+        0x0000000000000800, 0x0000000000004028, 0x0000000000008000, 0x0000000000004000,
+        0x0000000000000008, 0x0000000000000000, 0x0000000000000000, 0x0000000000200000,
+        0x0000000000000000, 0x0000000000000000, 0x0000800000000000, 0x0000000000200000,
+        0x0000000002000000, 0x0000000005000000, 0x0000000002000000, 0x0000000014000000,
+        0x0000000000200000, 0x0000800010000000, 0x0000000000200000, 0x0000000000000000,
+        0x0000000200000000, 0x0000000000000000, 0x0000000200000000, 0x0000000002000000,
+        0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000002000000, 0x0000800000000000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000000000, 0x0001000000000000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000000000, 0x0000000002000000, 0x0000800000000000, 0x0000000000000000,
+    };
+
+    for (0..64) |i| {
+        const atks = Attacks.attackers(
+            board,
+            .white,
+            Square.fromInt(usize, i),
+        );
+        try expectEqual(white_attackers[i], atks.bits);
+    }
+
+    const black_attackers: [64]u64 = .{
+        0x0000000000000200, 0x0000000000000000, 0x0000000000000200, 0x0000000000000000,
+        0x0000000000000000, 0x0000000000000000, 0x0000020000000000, 0x0000000000000000,
+        0x0000000000010000, 0x0000000000010000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000000000, 0x0000020000000000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000000000, 0x0000000100010000, 0x0000000000010000, 0x0000000000010000,
+        0x0000020000010000, 0x0000000000010000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000010000, 0x0000000000010000, 0x0000000100000000, 0x0000020000000000,
+        0x0000600000000000, 0x0000000000000000, 0x0000200000000000, 0x0000000000000000,
+        0x0000020000000000, 0x0000000000000000, 0x0000020000000000, 0x0000200000000000,
+        0x0000000000000000, 0x0000400000000000, 0x0000000000000000, 0x0000600000000000,
+        0x0002000000000000, 0x0004000000000000, 0x000A000100000000, 0x0004000000000000,
+        0x0028000000000000, 0x0040000000000000, 0x00A0000000000000, 0x0040000000000000,
+        0x0100020000000000, 0x0000000100000000, 0x0000020000000000, 0x1000200000000000,
+        0x1000000000000000, 0x1000400000000000, 0x0000000000000000, 0x8000600000000000,
+        0x0000000000000000, 0x0100000000000000, 0x0100000000000000, 0x1100000000000000,
+        0x8100200000000000, 0x9000000000000000, 0x8000200000000000, 0x0000000000000000,
+    };
+
+    for (0..64) |i| {
+        const atks = Attacks.attackers(
+            board,
+            .black,
+            Square.fromInt(usize, i),
+        );
+        try expectEqual(black_attackers[i], atks.bits);
+    }
 }

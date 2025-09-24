@@ -68,7 +68,8 @@ pub const Board = struct {
 
     castling_path: [2][2]Bitboard = @splat(@splat(Bitboard.init())),
 
-    /// Create a board initialized with the given fen.
+    /// Create a board initialized with the given fen. Initialization is unchecked.
+    /// Init calls should not be directly used with user input.
     ///
     /// Copies the provided fen and manages the dupe.
     pub fn init(allocator: std.mem.Allocator, fen: []const u8) !*Board {
@@ -294,16 +295,74 @@ pub const Board = struct {
     }
 
     /// Constructs a fen based on the board's current state.
-    ///
     /// The board's original fen can be accessed directly.
-    pub fn getFen(self: *const Board, includes_move_counts: bool) ![]const u8 {
-        const buffer = try std.ArrayList(u8).initCapacity(self.allocator, 100);
-        var fen_writer = std.Io.Writer.fixed(buffer);
+    /// 
+    /// The caller is responsible for freeing the string.
+    pub fn getFen(self: *const Board, move_counters: bool) ![]const u8 {
+        var fen_buffer = try std.ArrayList(u8).initCapacity(self.allocator, 100);
+        defer fen_buffer.deinit(self.allocator);
 
-        try fen_writer.print("{s}", .{"Hello, World!"});
-        _ = includes_move_counts;
+        // Loop through the ranks in reverse order for proper reconstruction from mailbox
+        var rank: usize = 7;
+        while (rank >= 0) : (rank -= 1) {
+            var free_space: usize = 0;
 
-        return fen_writer.buffered();
+            for (0..8) |file| {
+                const square = Square.fromInt(usize, rank * 8 + file);
+                const piece = self.at(Piece, square);
+
+                if (piece.valid()) {
+                    if (free_space != 0) {
+                        try fen_buffer.print(self.allocator, "{d}", .{free_space});
+                        free_space = 0;
+                    }
+
+                    try fen_buffer.append(self.allocator, piece.asChar());
+                } else {
+                    free_space += 1;
+                }
+            }
+
+            if (free_space != 0) {
+                try fen_buffer.print(self.allocator, "{d}", .{free_space});
+            }
+
+            if (rank == 0) {
+                break;
+            } else {
+                try fen_buffer.append(self.allocator, '/');
+            }
+        }
+
+        // Append side to move information
+        try fen_buffer.append(self.allocator, ' ');
+        try fen_buffer.append(self.allocator, self.side_to_move.asChar());
+
+        // Append castling rights
+        try fen_buffer.append(self.allocator, ' ');
+        if (self.castling_rights.empty()) {
+            try fen_buffer.append(self.allocator, '-');
+        } else {
+            try fen_buffer.appendSlice(self.allocator, self.castling_rights.asStr());
+        }
+
+        // Append the en passant square
+        try fen_buffer.append(self.allocator, ' ');
+        if (self.ep_square.valid()) {
+            try fen_buffer.appendSlice(self.allocator, self.ep_square.asStr());
+        } else {
+            try fen_buffer.append(self.allocator, '-');
+        }
+
+        // Append the move counters if requested
+        if (move_counters) {
+            try fen_buffer.append(self.allocator, ' ');
+            try fen_buffer.print(self.allocator, "{d}", .{self.halfmoves(u8)});
+            try fen_buffer.append(self.allocator, ' ');
+            try fen_buffer.print(self.allocator, "{d}", .{self.fullmoves(u8)});
+        }
+
+        return try fen_buffer.toOwnedSlice(self.allocator);
     }
 
     /// Returns the specified piece bitboard, use Color.none for side agnostic bitboard.
@@ -641,9 +700,15 @@ test "Fen reconstruction" {
         allocator.destroy(board);
     }
 
-    const str = try board.getFen(false);
-    std.debug.print("{s}", .{str});
-    board.allocator.free(str);
+    const fen_moves = try board.getFen(true);
+    defer board.allocator.free(fen_moves);
+
+    try expectEqualSlices(u8, StartingFen, fen_moves);
+
+    const fen_moveless = try board.getFen(false);
+    defer board.allocator.free(fen_moveless);
+
+    try expectEqualSlices(u8, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -", fen_moveless);
 }
 
 test "Illegal fen handling" {
