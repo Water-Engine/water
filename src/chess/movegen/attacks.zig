@@ -295,6 +295,35 @@ pub const Attacks = struct {
 
         return atks.andBB(occupied);
     }
+
+    /// Checks if the given color is attacking the square on the board.
+    ///
+    /// Does not consider whether or not the attack would be an illegal move.
+    pub fn isAttacked(board: *const Board, color: Color, square: Square) bool {
+        if (Attacks.pawn(color.opposite(), square).andBB(
+            board.pieces(color, .pawn),
+        ).nonzero()) {
+            return true;
+        } else if (Attacks.knight(square).andBB(
+            board.pieces(color, .knight),
+        ).nonzero()) {
+            return true;
+        } else if (Attacks.king(square).andBB(
+            board.pieces(color, .king),
+        ).nonzero()) {
+            return true;
+        } else if (Attacks.bishop(square, board.occ()).andBB(
+            board.piecesMany(color, &[_]PieceType{ .bishop, .queen }),
+        ).andBB(board.us(color)).nonzero()) {
+            return true;
+        } else if (Attacks.rook(square, board.occ()).andBB(
+            board.piecesMany(color, &[_]PieceType{ .rook, .queen }),
+        ).andBB(board.us(color)).nonzero()) {
+            return true;
+        }
+
+        return false;
+    }
 };
 
 // ================ TESTING ================
@@ -432,7 +461,7 @@ test "Direction Shifts" {
     );
 }
 
-test "Attackers in position" {
+test "Attackers in a complex position" {
     const allocator = testing.allocator;
     var board = try Board.init(
         allocator,
@@ -473,6 +502,24 @@ test "Attackers in position" {
         try expectEqual(white_attackers[i], atks.bits);
     }
 
+    const does_white_attack: [64]bool = .{
+        true,  true,  true,  true,  true,  true,  true,  true,
+        true,  false, true,  true,  true,  true,  true,  true,
+        true,  true,  true,  false, true,  true,  true,  true,
+        true,  false, false, true,  false, false, true,  true,
+        true,  true,  true,  true,  true,  true,  true,  false,
+        true,  false, true,  true,  false, false, false, false,
+        false, false, false, false, true,  true,  false, false,
+        false, true,  false, false, false, true,  true,  false,
+    };
+
+    for (0..64) |i| {
+        try expectEqual(
+            does_white_attack[i],
+            Attacks.isAttacked(board, .white, Square.fromInt(usize, i)),
+        );
+    }
+
     const black_attackers: [64]u64 = .{
         0x0000000000000200, 0x0000000000000000, 0x0000000000000200, 0x0000000000000000,
         0x0000000000000000, 0x0000000000000000, 0x0000020000000000, 0x0000000000000000,
@@ -499,5 +546,23 @@ test "Attackers in position" {
             Square.fromInt(usize, i),
         );
         try expectEqual(black_attackers[i], atks.bits);
+    }
+
+    const does_black_attack: [64]bool = .{
+        true,  false, true,  false, false, false, true,  false,
+        true,  true,  false, false, false, true,  false, false,
+        false, true,  true,  true,  true,  true,  false, false,
+        true,  true,  true,  true,  true,  false, true,  false,
+        true,  false, true,  true,  false, true,  false, true,
+        true,  true,  true,  true,  true,  true,  true,  true,
+        true,  true,  true,  true,  true,  true,  false, true,
+        false, true,  true,  true,  true,  true,  true,  false,
+    };
+
+    for (0..64) |i| {
+        try expectEqual(
+            does_black_attack[i],
+            Attacks.isAttacked(board, .black, Square.fromInt(usize, i)),
+        );
     }
 }

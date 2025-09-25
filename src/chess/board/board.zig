@@ -15,9 +15,9 @@ const piece_ = @import("../core/piece.zig");
 const Piece = piece_.Piece;
 const PieceType = piece_.PieceType;
 
-const move = @import("../core/move.zig");
-const MoveType = move.MoveType;
-const Move = move.Move;
+const move_ = @import("../core/move.zig");
+const MoveType = move_.MoveType;
+const Move = move_.Move;
 
 const castling = @import("castling.zig");
 const CastlingRights = castling.CastlingRights;
@@ -112,7 +112,7 @@ pub const Board = struct {
 
     /// Deinitializes the state history and frees the fen string.
     ///
-    /// THe Board pointer itself must be freed separately.
+    /// The Board pointer itself must be freed separately.
     pub fn deinit(self: *Board) void {
         self.previous_states.deinit(self.allocator);
         self.allocator.free(self.original_fen);
@@ -163,11 +163,19 @@ pub const Board = struct {
     }
 
     /// Enables or disables the fischer random variant for the board.
+    /// Will not modify the board if the fen cannot be updated correctly.
     ///
-    /// Ensures the internal fen is updated accordingly.
-    pub fn setFischerRandom(self: *Board, fischer_random: bool) void {
+    /// Using this in the middle of a game resets the board to its original fen position.
+    pub fn setFischerRandom(self: *Board, fischer_random: bool) !bool {
+        const previous_frc = self.fischer_random;
         self.fischer_random = fischer_random;
-        self.setFen(self.original_fen, false);
+
+        // Since setFen can error, we want to restore state before propagating an error
+        errdefer self.fischer_random = previous_frc;
+
+        const success = try self.setFen(self.original_fen, false);
+        if (!success) self.fischer_random = previous_frc;
+        return success;
     }
 
     /// Attempts to set the board fen position, reallocating the board original fen representation if requested.
@@ -526,6 +534,8 @@ pub const Board = struct {
     }
 
     /// Returns the specified piece bitboard, use Color.none for side agnostic bitboard.
+    ///
+    /// Asserts that the provided piece type is valid.
     pub fn pieces(self: *const Board, color: Color, piece_type: PieceType) Bitboard {
         std.debug.assert(piece_type.valid());
         return if (color == .none) blk: {
@@ -533,6 +543,18 @@ pub const Board = struct {
         } else blk: {
             break :blk self.pieces_bbs[piece_type.index()].andBB(self.occ_bbs[color.index()]);
         };
+    }
+
+    /// Returns the specified combined piece bitboards, use Color.none for side agnostic bitboard.
+    ///
+    /// Asserts that the provided piece types are valid.
+    pub fn piecesMany(self: *const Board, color: Color, piece_types: []const PieceType) Bitboard {
+        var result = Bitboard.init();
+        for (piece_types) |pt| {
+            _ = result.orAssign(self.pieces(color, pt));
+        }
+
+        return result;
     }
 
     /// Returns the Piece or PieceType at the given square.
@@ -614,6 +636,15 @@ pub const Board = struct {
         return self.pieces(color, .king).lsb();
     }
 
+    /// Checks if a move is a capture, including en passant.
+    ///
+    /// Moves are naively checked meaning legality is not considered.
+    pub fn isCapture(self: *const Board, move: *const Move) bool {
+        const valid_at = self.at(Piece, move.to()).valid();
+        const valid_type = move.typeOf(MoveType) == .castling or move.typeOf(MoveType) == .enpassant;
+        return valid_at and valid_type;
+    }
+
     /// Get the occupancy bitboard for the color.
     ///
     /// Asserts that the color is a valid color
@@ -648,6 +679,41 @@ pub const Board = struct {
             .int, .comptime_int => 1 + @divFloor(@as(T, @intCast(self.plies)), 2),
             else => @compileError("T must be an integer type"),
         };
+    }
+
+    /// Makes a LEGAL move on the board.
+    ///
+    /// A moves legality should be verified externally.
+    /// For external verification, check if the move is in the list of current legal moves.
+    pub fn makeMove(self: *Board, move: *const Move) void {
+        _ = self;
+        _ = move;
+        unreachable;
+    }
+
+    /// Unmakes a LEGAL move on the board.
+    ///
+    /// A moves legality should be verified externally.
+    pub fn unmakeMove(self: *Board, move: *const Move) void {
+        _ = self;
+        _ = move;
+        unreachable;
+    }
+
+    /// Makes a null move.
+    ///
+    /// Switches the side and updates core state only.
+    pub fn makeNullMove(self: *Board) void {
+        _ = self;
+        unreachable;
+    }
+
+    /// Unmakes a null move.
+    ///
+    /// Switches the side and updates core state only.
+    pub fn unmakeNullMove(self: *Board) void {
+        _ = self;
+        unreachable;
     }
 };
 
@@ -903,6 +969,34 @@ test "Chess960 board" {
         u8,
         "bbrknnqr/pppppppp/8/8/8/8/PPPPPPPP/BBRKNNQR w HChc - 0 1",
         actual_fen,
+    );
+
+    // A board should be able to be changed from FRC to Classic and back
+    var future_frc = try Board.init(allocator, .{
+        .fen = "brknqbnr/pppppppp/8/8/8/8/PPPPPPPP/BRKNQBNR w KQkq - 0 1",
+    });
+
+    defer {
+        future_frc.deinit();
+        allocator.destroy(future_frc);
+    }
+
+    try expect(try future_frc.setFischerRandom(true));
+    const frc_fen = try future_frc.getFen(true);
+    defer allocator.free(frc_fen);
+    try expectEqualSlices(
+        u8,
+        "brknqbnr/pppppppp/8/8/8/8/PPPPPPPP/BRKNQBNR w HBhb - 0 1",
+        frc_fen,
+    );
+
+    try expect(try future_frc.setFischerRandom(false));
+    const classical_fen = try future_frc.getFen(true);
+    defer allocator.free(classical_fen);
+    try expectEqualSlices(
+        u8,
+        "brknqbnr/pppppppp/8/8/8/8/PPPPPPPP/BRKNQBNR w KQkq - 0 1",
+        classical_fen,
     );
 }
 

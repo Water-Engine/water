@@ -80,12 +80,21 @@ pub const Move = struct {
         return Square.fromInt(u16, self.move & 0x3F);
     }
 
-    pub fn typeOf(self: *const Move) u16 {
-        return self.move & (@as(u16, 3) << @truncate(14));
+    /// Returns the type of the move as an int or MoveType.
+    pub fn typeOf(self: *const Move, comptime T: type) T {
+        if (T == MoveType) {
+            const bits = self.move & (@as(u16, 3) << @truncate(14));
+            return MoveType.fromInt(u16, bits);
+        }
+
+        switch (@typeInfo(T)) {
+            .int, .comptime_int => return self.move & (@as(T, 3) << @truncate(14)),
+            else => @compileError("T must be a MoveType or an integer type"),
+        }
     }
 
     pub fn promotionType(self: *const Move) PieceType {
-        std.debug.assert(self.typeOf() == MoveType.promotion.asInt(u16));
+        std.debug.assert(self.typeOf(MoveType) == .promotion);
         return PieceType.fromInt(u16, ((self.move >> @truncate(12)) & 3) + PieceType.knight.asInt(u16));
     }
 
@@ -172,10 +181,11 @@ test "Move" {
     // ================ Utilities ================
     try expectEqual(@as(u16, 8), opening_move.from().asInt(u16));
     try expectEqual(@as(u16, 16), opening_move.to().asInt(u16));
-    try expectEqual(MoveType.normal.asInt(u16), opening_move.typeOf());
+    try expectEqual(MoveType.normal.asInt(u16), opening_move.typeOf(u16));
 
     const promo_move = Move.make(.promotion, .e7, .e8, .queen);
-    try expectEqual(MoveType.promotion.asInt(u16), promo_move.typeOf());
+    try expectEqual(MoveType.promotion.asInt(u16), promo_move.typeOf(u16));
+    try expectEqual(MoveType.promotion, promo_move.typeOf(MoveType));
     try expectEqual(PieceType.queen, promo_move.promotionType());
 
     // ================ Move comparison ================
