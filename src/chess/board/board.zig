@@ -164,6 +164,7 @@ pub const Board = struct {
 
     /// Enables or disables the fischer random variant for the board.
     /// Will not modify the board if the fen cannot be updated correctly.
+    /// You must use this function before setting an FRC fen.
     ///
     /// Using this in the middle of a game resets the board to its original fen position.
     pub fn setFischerRandom(self: *Board, fischer_random: bool) !bool {
@@ -704,16 +705,39 @@ pub const Board = struct {
     ///
     /// Switches the side and updates core state only.
     pub fn makeNullMove(self: *Board) void {
-        _ = self;
-        unreachable;
+        self.previous_states.append(self.allocator, .{
+            .hash = self.key,
+            .castling = self.castling_rights,
+            .enpassant = self.ep_square,
+            .half_moves = @intCast(self.halfmove_clock),
+            .captured_piece = .none,
+        }) catch unreachable;
+
+        self.key ^= Zobrist.sideToMove();
+        if (self.ep_square.valid()) {
+            self.key ^= Zobrist.enPassant(self.ep_square.file());
+        }
+
+        self.ep_square = .none;
+        self.side_to_move = self.side_to_move.opposite();
+        self.plies += 1;
     }
 
     /// Unmakes a null move.
     ///
     /// Switches the side and updates core state only.
     pub fn unmakeNullMove(self: *Board) void {
-        _ = self;
-        unreachable;
+        const prev = self.previous_states.pop();
+
+        if (prev) |previous_state| {
+            self.ep_square = previous_state.enpassant;
+            self.castling_rights = previous_state.castling;
+            self.halfmove_clock = previous_state.half_moves;
+            self.key = previous_state.hash;
+
+            self.plies -= 1;
+            self.side_to_move = self.side_to_move.opposite();
+        }
     }
 };
 
@@ -1076,4 +1100,44 @@ test "Illegal fen handling" {
     try expectEqualSlices(u8, StartingFen, board.original_fen);
 
     // TODO: Test for illegal board positions such as non-stm king in check and illegal pawns
+}
+
+test "Null move making" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // From starting position
+    try expectEqual(5060803636482931868, board.key);
+
+    board.makeNullMove();
+    try expectEqual(13757846718353144213, board.key);
+
+    board.unmakeNullMove();
+    try expectEqual(5060803636482931868, board.key);
+
+    // From other position
+    try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80", true));
+    try expectEqual(8960625063001898923, board.key);
+
+    board.makeNullMove();
+    try expectEqual(9551202073125010082, board.key);
+
+    board.unmakeNullMove();
+    try expectEqual(8960625063001898923, board.key);
+
+    // From FRC position
+    try expect(try board.setFischerRandom(true));
+    try expect(try board.setFen("brknqbnr/pppppppp/8/8/8/8/PPPPPPPP/BRKNQBNR w HBhb - 0 1", true));
+    try expectEqual(2063133069522446414, board.key);
+
+    board.makeNullMove();
+    try expectEqual(16462800901167951175, board.key);
+
+    board.unmakeNullMove();
+    try expectEqual(2063133069522446414, board.key);
 }
