@@ -97,15 +97,13 @@ pub const CastlingRights = struct {
     }
 
     /// Returns `.king` if square > pred.
-    ///
-    /// The `comparator` param should return true if square > pred.
     pub fn closestSide(
         comptime T: type,
         square: T,
         pred: T,
-        comparator: *const fn (T, T) bool,
+        greater_than_fn: *const fn (T, T) bool,
     ) Side {
-        return if (comparator(square, pred)) .king else .queen;
+        return if (greater_than_fn(square, pred)) .king else .queen;
     }
 };
 

@@ -87,6 +87,7 @@ pub const Board = struct {
     side_to_move: Color = .white,
     ep_square: Square = .none,
     halfmove_clock: usize = 0,
+    fischer_random: bool = false,
 
     castling_path: [2][2]Bitboard = @splat(@splat(Bitboard.init())),
 
@@ -94,14 +95,18 @@ pub const Board = struct {
     /// Init calls should not be directly used with user input.
     ///
     /// Copies the provided fen and manages the dupe.
-    pub fn init(allocator: std.mem.Allocator, fen: []const u8) !*Board {
+    pub fn init(allocator: std.mem.Allocator, options: struct {
+        fen: []const u8 = StartingFen,
+        fischer_random: bool = false,
+    }) !*Board {
         const b = try allocator.create(Board);
         b.* = .{
             .allocator = allocator,
-            .original_fen = try allocator.dupe(u8, fen),
+            .original_fen = try allocator.dupe(u8, options.fen),
             .previous_states = try std.ArrayList(State).initCapacity(allocator, 256),
+            .fischer_random = options.fischer_random,
         };
-        _ = try b.setFen(fen, false);
+        _ = try b.setFen(options.fen, false);
         return b;
     }
 
@@ -134,6 +139,7 @@ pub const Board = struct {
             .side_to_move = self.side_to_move,
             .ep_square = self.ep_square,
             .halfmove_clock = self.halfmove_clock,
+            .fischer_random = self.fischer_random,
 
             .castling_path = self.castling_path,
         };
@@ -154,6 +160,14 @@ pub const Board = struct {
         self.side_to_move = .white;
         self.ep_square = .none;
         self.halfmove_clock = 0;
+    }
+
+    /// Enables or disables the fischer random variant for the board.
+    ///
+    /// Ensures the internal fen is updated accordingly.
+    pub fn setFischerRandom(self: *Board, fischer_random: bool) void {
+        self.fischer_random = fischer_random;
+        self.setFen(self.original_fen, false);
     }
 
     /// Attempts to set the board fen position, reallocating the board original fen representation if requested.
@@ -225,16 +239,70 @@ pub const Board = struct {
             }
         }
 
+        // In chess 960, we may need to determine rights based off of files
+        const find_rook = struct {
+            fn find_rook(board: *const Board, side: CastlingRights.Side, color: Color) File {
+                const king_side = side == .king;
+                const king_sq = board.kingSq(color);
+                const square: Square = if (king_side) .h1 else .a1;
+                const sq_corner = square.flipRelative(color);
+                const start = if (king_side) king_sq.next() else king_sq.prev();
+
+                var sq = start;
+                while (if (king_side) sq.lteq(sq_corner) else sq.gteq(sq_corner)) : (if (king_side) {
+                    _ = sq.inc();
+                } else {
+                    _ = sq.dec();
+                }) {
+                    if (board.at(PieceType, sq) == .rook and board.at(Piece, sq).color() == color) {
+                        return sq.file();
+                    }
+                }
+
+                return .none;
+            }
+        }.find_rook;
+
+        // The file API uses a const pointer, so we need to wrap it
+        const file_gt = struct {
+            fn gt(lhs: File, rhs: File) bool {
+                return lhs.gt(rhs);
+            }
+        }.gt;
+
         // Set all castling rights
         for (castle) |char| {
             if (char == '-') break;
 
-            switch (char) {
-                'K' => self.castling_rights.set(.white, .king, .fh),
-                'Q' => self.castling_rights.set(.white, .queen, .fa),
-                'k' => self.castling_rights.set(.black, .king, .fh),
-                'q' => self.castling_rights.set(.black, .queen, .fa),
-                else => success = false,
+            if (!self.fischer_random) {
+                switch (char) {
+                    'K' => self.castling_rights.set(.white, .king, .fh),
+                    'Q' => self.castling_rights.set(.white, .queen, .fa),
+                    'k' => self.castling_rights.set(.black, .king, .fh),
+                    'q' => self.castling_rights.set(.black, .queen, .fa),
+                    else => success = false,
+                }
+
+                continue;
+            }
+
+            // The location of the rooks are important for fischer random
+            const color: Color = if (std.ascii.isUpper(char)) .white else .black;
+            const king_sq = self.kingSq(color);
+
+            if (char == 'K' or char == 'k') {
+                const file = find_rook(self, .king, color);
+                if (!file.valid()) success = false;
+                self.castling_rights.set(color, .king, file);
+            } else if (char == 'Q' or char == 'q') {
+                const file = find_rook(self, .queen, color);
+                if (!file.valid()) success = false;
+                self.castling_rights.set(color, .queen, file);
+            } else {
+                const file = File.fromChar(char);
+                if (!file.valid()) success = false;
+                const side = CastlingRights.closestSide(File, file, king_sq.file(), file_gt);
+                self.castling_rights.set(color, side, file);
             }
         }
 
@@ -306,6 +374,7 @@ pub const Board = struct {
                 .side_to_move = backup.side_to_move,
                 .ep_square = backup.ep_square,
                 .halfmove_clock = backup.halfmove_clock,
+                .fischer_random = backup.fischer_random,
 
                 .castling_path = backup.castling_path,
             };
@@ -362,7 +431,19 @@ pub const Board = struct {
 
         // Append castling rights
         try fen_buffer.append(self.allocator, ' ');
-        if (self.castling_rights.empty()) {
+        if (self.fischer_random) {
+            for ([_]Color{ .white, .black }) |color| {
+                for ([_]CastlingRights.Side{ .king, .queen }) |side| {
+                    if (self.castling_rights.hasSide(color, side)) {
+                        const file = self.castling_rights.rookFile(color, side).asChar();
+                        const file_sided = if (color == .white) blk: {
+                            break :blk std.ascii.toUpper(file);
+                        } else file;
+                        try fen_buffer.append(self.allocator, file_sided);
+                    }
+                }
+            }
+        } else if (self.castling_rights.empty()) {
             try fen_buffer.append(self.allocator, '-');
         } else {
             try fen_buffer.appendSlice(self.allocator, self.castling_rights.asStr());
@@ -649,7 +730,7 @@ test "entryAfter helper" {
 
 test "Board initialization & copy from starting fen" {
     const allocator = testing.allocator;
-    var parent = try Board.init(allocator, StartingFen);
+    var parent = try Board.init(allocator, .{});
     try expectEqualSlices(u8, StartingFen, parent.original_fen);
     var board = try parent.clone(allocator);
 
@@ -786,9 +867,48 @@ test "Board initialization & copy from starting fen" {
     }
 }
 
+test "Chess960 board" {
+    const allocator = testing.allocator;
+    var board = try Board.init(
+        allocator,
+        .{
+            .fen = "bbrknnqr/pppppppp/8/8/8/8/PPPPPPPP/BBRKNNQR w KQkq - 0 1",
+            .fischer_random = true,
+        },
+    );
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // All that changes here is the castling rights & fen reconstruction
+    for (board.castling_rights.rooks) |rf| {
+        try expectEqual(File.fc, rf[0]);
+        try expectEqual(File.fh, rf[1]);
+    }
+
+    const expected_path = [_][2]u64{
+        .{ 0, 112 },
+        .{ 0, 8070450532247928832 },
+    };
+    for (expected_path, board.castling_path) |expected, c| {
+        try expectEqual(expected[0], c[0].bits);
+        try expectEqual(expected[1], c[1].bits);
+    }
+
+    const actual_fen = try board.getFen(true);
+    defer allocator.free(actual_fen);
+    try expectEqualSlices(
+        u8,
+        "bbrknnqr/pppppppp/8/8/8/8/PPPPPPPP/BBRKNNQR w HChc - 0 1",
+        actual_fen,
+    );
+}
+
 test "Fen reconstruction" {
     const allocator = testing.allocator;
-    var board = try Board.init(allocator, StartingFen);
+    var board = try Board.init(allocator, .{});
 
     defer {
         board.deinit();
@@ -808,7 +928,7 @@ test "Fen reconstruction" {
 
 test "EPD handling" {
     const allocator = testing.allocator;
-    var board = try Board.init(allocator, StartingFen);
+    var board = try Board.init(allocator, .{});
     const epd = try board.getEpd();
 
     defer {
@@ -850,7 +970,7 @@ test "EPD handling" {
 
 test "Illegal fen handling" {
     const allocator = testing.allocator;
-    var board = try Board.init(allocator, StartingFen);
+    var board = try Board.init(allocator, .{});
 
     defer {
         board.deinit();

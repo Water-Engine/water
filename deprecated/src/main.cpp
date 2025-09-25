@@ -11,10 +11,10 @@ int main() {
     std::signal(SIGINT, signal_handler);
     PROFILE_BEGIN_SESSION("Water", "Water-Main.json");
     // launch();
-    chess::Board b("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
-    for (size_t i = 0; i < 64; ++i) {
-        auto out = chess::attacks::attackers(b, chess::Color::BLACK, chess::Square(i));
-        fmt::println("{},", out.getBits());
-    }
+    chess::Board b("bbrknnqr/pppppppp/8/8/8/8/PPPPPPPP/BBRKNNQR w KQkq - 0 1", true);
+    fmt::println(b.getCastlingPath(chess::Color::WHITE, false).getBits());
+    fmt::println(b.getCastlingPath(chess::Color::WHITE, true).getBits());
+    fmt::println(b.getCastlingPath(chess::Color::BLACK, false).getBits());
+    fmt::println(b.getCastlingPath(chess::Color::BLACK, true).getBits());
     PROFILE_END_SESSION();
 }

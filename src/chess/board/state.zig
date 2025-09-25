@@ -332,7 +332,7 @@ test "Zobrist" {
 }
 
 test "Board hashing" {
-    var board = try Board.init(testing.allocator, board_.StartingFen);
+    var board = try Board.init(testing.allocator, .{});
     defer {
         board.deinit();
         testing.allocator.destroy(board);
