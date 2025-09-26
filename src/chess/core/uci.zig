@@ -6,9 +6,9 @@ const File = types.File;
 const Rank = types.Rank;
 const Color = types.Color;
 
-const piece = @import("piece.zig");
-const Piece = piece.Piece;
-const PieceType = piece.PieceType;
+const piece_ = @import("piece.zig");
+const Piece = piece_.Piece;
+const PieceType = piece_.PieceType;
 
 const board_ = @import("../board/board.zig");
 const Board = board_.Board;
@@ -124,6 +124,63 @@ pub fn isUciMove(move_str: []const u8) bool {
     return if (move_str.len > 5) false else is_uci;
 }
 
+/// Prints the board's diagram similar to uci compatible engine's 'd' command.
+///
+/// The caller is responsible for freeing the returned string.
+pub fn uciBoardDiagram(board: *const Board, options: struct {
+    black_at_top: ?bool = null,
+    highlighted_move: ?Move = null,
+}) ![]const u8 {
+    var diagram_buffer = try std.ArrayList(u8).initCapacity(board.allocator, 1000);
+    defer diagram_buffer.deinit(board.allocator);
+
+    const highlight_move_square: Square = if (options.highlighted_move) |hm| hm.to() else .none;
+    const black_at_top = if (options.black_at_top) |bat| blk: {
+        break :blk bat;
+    } else board.side_to_move == .white;
+
+    for (0..8) |y| {
+        const rank = if (black_at_top) 7 - y else y;
+        try diagram_buffer.appendSlice(board.allocator, "+---+---+---+---+---+---+---+---+\n");
+
+        for (0..8) |x| {
+            const file = if (black_at_top) x else 7 - x;
+            const square = Square.make(
+                Rank.fromInt(usize, rank),
+                File.fromInt(usize, file),
+            );
+
+            if (!square.valid()) continue;
+
+            const highlight = highlight_move_square.eq(square);
+            const piece = board.at(Piece, square);
+            const piece_char = if (piece.valid()) piece.asChar() else ' ';
+
+            if (highlight) {
+                try diagram_buffer.print(board.allocator, "|({c})", .{piece_char});
+            } else {
+                try diagram_buffer.print(board.allocator, "| {c} ", .{piece_char});
+            }
+        }
+
+        try diagram_buffer.print(board.allocator, "| {d}\n", .{rank + 1});
+    }
+
+    try diagram_buffer.appendSlice(board.allocator, "+---+---+---+---+---+---+---+---+\n");
+    if (black_at_top) {
+        try diagram_buffer.appendSlice(board.allocator, "  a   b   c   d   e   f   g   h  \n\n");
+    } else {
+        try diagram_buffer.appendSlice(board.allocator, "  h   g   f   e   d   c   b   a  \n\n");
+    }
+
+    const current_fen = try board.getFen(true);
+    defer board.allocator.free(current_fen);
+    try diagram_buffer.print(board.allocator, "Fen         : {s}\n", .{current_fen});
+    try diagram_buffer.print(board.allocator, "Hash        : {d}", .{board.key});
+
+    return diagram_buffer.toOwnedSlice(board.allocator);
+}
+
 // ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
@@ -235,4 +292,103 @@ test "Loosely checking uci legality" {
     try expect(!isUciMove("e7e8l"));
     try expect(!isUciMove("e7e81"));
     try expect(!isUciMove("move_str: []const u8"));
+}
+
+test "Board diagram creation" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // Expected strings from first iteration of the water engine
+    const expected_default =
+        \\+---+---+---+---+---+---+---+---+
+        \\| r | n | b | q | k | b | n | r | 8
+        \\+---+---+---+---+---+---+---+---+
+        \\| p | p | p | p | p | p | p | p | 7
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |   |   |   | 6
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |   |   |   | 5
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |   |   |   | 4
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |   |   |   | 3
+        \\+---+---+---+---+---+---+---+---+
+        \\| P | P | P | P | P | P | P | P | 2
+        \\+---+---+---+---+---+---+---+---+
+        \\| R | N | B | Q | K | B | N | R | 1
+        \\+---+---+---+---+---+---+---+---+
+        \\  a   b   c   d   e   f   g   h  
+        \\
+        \\Fen         : rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+        \\Hash        : 5060803636482931868
+    ;
+
+    const actual_default = try uciBoardDiagram(board, .{});
+    defer allocator.free(actual_default);
+    try expectEqualSlices(u8, expected_default, actual_default);
+
+    const expected_highlighted =
+        \\+---+---+---+---+---+---+---+---+
+        \\| r | n | b | q | k | b | n | r | 8
+        \\+---+---+---+---+---+---+---+---+
+        \\| p | p | p | p | p | p | p | p | 7
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |   |   |   | 6
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |   |   |   | 5
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |   |   |   | 4
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |( )|   |   | 3
+        \\+---+---+---+---+---+---+---+---+
+        \\| P | P | P | P | P | P | P | P | 2
+        \\+---+---+---+---+---+---+---+---+
+        \\| R | N | B | Q | K | B | N | R | 1
+        \\+---+---+---+---+---+---+---+---+
+        \\  a   b   c   d   e   f   g   h  
+        \\
+        \\Fen         : rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+        \\Hash        : 5060803636482931868
+    ;
+
+    const actual_highlighted = try uciBoardDiagram(board, .{
+        .highlighted_move = uciToMove(board, "f2f3"),
+    });
+    defer allocator.free(actual_highlighted);
+    try expectEqualSlices(u8, expected_highlighted, actual_highlighted);
+
+    const expected_flipped =
+        \\+---+---+---+---+---+---+---+---+
+        \\| R | N | B | K | Q | B | N | R | 1
+        \\+---+---+---+---+---+---+---+---+
+        \\| P | P | P | P | P | P | P | P | 2
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |   |   |   | 3
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |   |   |   | 4
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |   |   |   | 5
+        \\+---+---+---+---+---+---+---+---+
+        \\|   |   |   |   |   |   |   |   | 6
+        \\+---+---+---+---+---+---+---+---+
+        \\| p | p | p | p | p | p | p | p | 7
+        \\+---+---+---+---+---+---+---+---+
+        \\| r | n | b | k | q | b | n | r | 8
+        \\+---+---+---+---+---+---+---+---+
+        \\  h   g   f   e   d   c   b   a  
+        \\
+        \\Fen         : rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+        \\Hash        : 5060803636482931868
+    ;
+
+    const actual_flipped = try uciBoardDiagram(board, .{
+        .black_at_top = false,
+    });
+    defer allocator.free(actual_flipped);
+    try expectEqualSlices(u8, expected_flipped, actual_flipped);
 }
