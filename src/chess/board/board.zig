@@ -27,7 +27,9 @@ const Zobrist = state.Zobrist;
 const State = state.State;
 
 const attacks = @import("../movegen/attacks.zig");
-pub const Attacks = attacks.Attacks;
+const Attacks = attacks.Attacks;
+
+const uci = @import("../core/uci.zig");
 
 pub const StartingFen: []const u8 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -640,7 +642,7 @@ pub const Board = struct {
     /// Checks if a move is a capture, including en passant.
     ///
     /// Moves are naively checked meaning legality is not considered.
-    pub fn isCapture(self: *const Board, move: *const Move) bool {
+    pub fn isCapture(self: *const Board, move: Move) bool {
         const valid_at = self.at(Piece, move.to()).valid();
         const valid_type = move.typeOf(MoveType) == .castling or move.typeOf(MoveType) == .enpassant;
         return valid_at and valid_type;
@@ -686,7 +688,7 @@ pub const Board = struct {
     ///
     /// A moves legality should be verified externally.
     /// For external verification, check if the move is in the list of current legal moves.
-    pub fn makeMove(self: *Board, move: *const Move) void {
+    pub fn makeMove(self: *Board, move: Move) void {
         _ = self;
         _ = move;
         unreachable;
@@ -695,7 +697,7 @@ pub const Board = struct {
     /// Unmakes a LEGAL move on the board.
     ///
     /// A moves legality should be verified externally.
-    pub fn unmakeMove(self: *Board, move: *const Move) void {
+    pub fn unmakeMove(self: *Board, move: Move) void {
         _ = self;
         _ = move;
         unreachable;

@@ -34,6 +34,8 @@ const state = @import("chess/board/state.zig");
 pub const State = state.State;
 pub const Zobrist = state.Zobrist;
 
+pub const uci = @import("chess/core/uci.zig");
+
 // ================ TESTING ================
 
 test {
@@ -42,6 +44,7 @@ test {
     _ = @import("chess/core/distance.zig");
     _ = @import("chess/core/piece.zig");
     _ = @import("chess/core/move.zig");
+    _ = @import("chess/core/uci.zig");
 
     _ = @import("chess/board/board.zig");
     _ = @import("chess/board/castling.zig");

@@ -7,6 +7,7 @@ const CastlingRights = castling.CastlingRights;
 
 pub const ChessError = error{
     IllegalFenState,
+    IllegalMove,
 };
 
 // ================ COLOR ================
