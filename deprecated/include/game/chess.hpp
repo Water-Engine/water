@@ -3834,11 +3834,6 @@ inline void movegen::generatePawnMoves(const Board& board, Movelist& moves, Bitb
                                                                  Bitboard checkmask, Bitboard pin_d,
                                                                  Bitboard pawns_lr, Square ep,
                                                                  Color c) {
-    std::cout << checkmask.getBits() << "\n";
-    std::cout << pin_d.getBits() << "\n";
-    std::cout << pawns_lr.getBits() << "\n";
-    std::cout << ep << "\n";
-    std::cout << c << "\n";
     assert((ep.rank() == Rank::RANK_3 && board.sideToMove() == Color::BLACK) ||
            (ep.rank() == Rank::RANK_6 && board.sideToMove() == Color::WHITE));
 

@@ -1363,12 +1363,86 @@ test "Move Making" {
     board.makeMove(opening, .{});
     try expectEqual(9384546495678726550, board.key);
     try expect(board.side_to_move == .black);
-    // try expect(board.ep_square == .e4);
 
     board.unmakeMove(opening);
     try expectEqual(5060803636482931868, board.key);
     try expect(board.side_to_move == .white);
     try expect(board.ep_square == .none);
+
+    // From classical castling position
+    try expect(try board.setFen("rnbqkbnr/pppppppp/8/8/8/3BPP1N/PPPP2PP/RNBQK2R w KQkq - 0 1", true));
+    const classical_castle = uci.uciToMove(board, "e1g1");
+    try expectEqual(13502998632615454432, board.key);
+
+    board.makeMove(classical_castle, .{});
+    try expectEqual(14200186636676038128, board.key);
+
+    board.unmakeMove(classical_castle);
+    try expectEqual(13502998632615454432, board.key);
+
+    // En passant move - legal capture possible
+    try expect(try board.setFen("rnbqk1nr/pp2pp1p/7b/B5pP/1p1pP3/8/PPPK1P1P/RNBQ2NR w kq - 0 1", true));
+    const double_push_ep = uci.uciToMove(board, "c2c4");
+    try expectEqual(16818045822105834089, board.key);
+
+    board.makeMove(double_push_ep, .{});
+    try expectEqual(7312930370676297740, board.key);
+    try expect(board.ep_square == .c3);
+
+    board.unmakeMove(double_push_ep);
+    try expectEqual(16818045822105834089, board.key);
+    try expect(board.ep_square == .none);
+
+    // En passant move - illegal capture possible (Exact off)
+    try expect(try board.setFen("rnbq2nr/pp2pp1p/7b/B2k2pP/p2p4/4P3/PPP1KP1P/RNBQ2NR w - - 0 1", true));
+    const illegal_ep_no_exact = uci.uciToMove(board, "c2c4");
+    try expectEqual(7387365850737516480, board.key);
+
+    board.makeMove(illegal_ep_no_exact, .{});
+    try expectEqual(16905456255022161317, board.key);
+    try expect(board.ep_square == .c3);
+
+    board.unmakeMove(illegal_ep_no_exact);
+    try expectEqual(7387365850737516480, board.key);
+    try expect(board.ep_square == .none);
+
+    // En passant move - illegal capture possible (Exact on)
+    try expect(try board.setFen("rnbq2nr/pp2pp1p/7b/B2k2pP/p2p4/4P3/PPP1KP1P/RNBQ2NR w - - 0 1", true));
+    const illegal_ep_exact = uci.uciToMove(board, "c2c4");
+    try expectEqual(7387365850737516480, board.key);
+
+    board.makeMove(illegal_ep_exact, .{ .exact = true });
+    try expectEqual(16908392331399410887, board.key);
+    try expect(board.ep_square == .none);
+
+    board.unmakeMove(illegal_ep_exact);
+    try expectEqual(7387365850737516480, board.key);
+    try expect(board.ep_square == .none);
+
+    // From FRC starting position
+    try expect(try board.setFischerRandom(true));
+    try expect(try board.setFen("brknqbnr/pppppppp/8/8/8/8/PPPPPPPP/BRKNQBNR w HBhb - 0 1", true));
+    const double_push_ep_frc = uci.uciToMove(board, "c2c4");
+    try expectEqual(2063133069522446414, board.key);
+
+    board.makeMove(double_push_ep_frc, .{});
+    try expectEqual(10412928980166411081, board.key);
+
+    board.unmakeMove(
+        double_push_ep_frc,
+    );
+    try expectEqual(2063133069522446414, board.key);
+
+    // From FRC castling position
+    try expect(try board.setFen("brnbkrnq/pppppppp/8/8/8/1BPN4/PP1PPPPP/BR2KRNQ w BFbf - 0 1", true));
+    const frc_castle = uci.uciToMove(board, "e1b1");
+    try expectEqual(15836352940436779965, board.key);
+
+    board.makeMove(frc_castle, .{});
+    try expectEqual(13334023313799364008, board.key);
+
+    board.unmakeMove(frc_castle);
+    try expectEqual(15836352940436779965, board.key);
 }
 
 test "Null move making" {
@@ -1401,7 +1475,7 @@ test "Null move making" {
     board.unmakeNullMove();
     try expectEqual(8960625063001898923, board.key);
 
-    // From FRC position
+    // From FRC starting position
     try expect(try board.setFischerRandom(true));
     try expect(try board.setFen("brknqbnr/pppppppp/8/8/8/8/PPPPPPPP/BRKNQBNR w HBhb - 0 1", true));
     try expectEqual(2063133069522446414, board.key);
