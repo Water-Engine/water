@@ -22,6 +22,7 @@ const MoveType = move_.MoveType;
 
 const distance = @import("../core/distance.zig");
 
+const generators = @import("generators.zig");
 const attacks = @import("attacks.zig");
 
 pub const DefaultCheckMask = Bitboard.fromInt(u64, std.math.maxInt(u64));
@@ -116,6 +117,39 @@ pub fn pinMask(
     }
 
     return pin;
+}
+
+/// Determines if the provided square is a possible ep square based on the current position.
+pub fn isEpSquareValid(board: *const Board, color: Color, ep: Square) bool {
+    const stm = board.side_to_move;
+
+    const occ_us = board.us(stm);
+    const occ_opp = board.us(stm.opposite());
+    const king_sq = board.kingSq(stm);
+
+    const cm = checkMask(board, color, king_sq);
+    const pin_hv = pinMask(.rook, board, color, king_sq, occ_opp, occ_us);
+    const pin_diag = pinMask(.bishop, board, color, king_sq, occ_opp, occ_us);
+
+    const pawns = board.pieces(stm, .pawn);
+    const pawns_lr = pawns.andBB(pin_hv.not());
+    const contenders = generators.epMoves(
+        board,
+        cm.mask,
+        pin_diag,
+        pawns_lr,
+        ep,
+        stm,
+    );
+
+    var found = false;
+    for (contenders) |move| {
+        if (move.move != 0) {
+            found = true;
+            break;
+        }
+    }
+    return found;
 }
 
 // ================ TESTING ================
@@ -267,4 +301,29 @@ test "Check and pin masks" {
 
         try expectEqual(expected_black_bishop_pins[i], pm.bits);
     }
+}
+
+test "Ep square validity" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // No ep from starting position
+    try expect(!isEpSquareValid(board, .white, .e6));
+
+    // White has a single ep move
+    try expect(try board.setFen("rnbqk1nr/pp2pp1p/2pp3b/1B4pP/3PP3/8/PPPK1P1P/RNBQ2NR w kq g6 0 1", true));
+    try expect(isEpSquareValid(board, .white, .g6));
+
+    // Black has two ep options but can't use them because of a check
+    try expect(try board.setFen("rnbqk1nr/pp2pp1p/7b/1B4pP/1pPpP3/8/PP1K1P1P/RNBQ2NR b kq c3 0 1", true));
+    try expect(!isEpSquareValid(board, .black, .c3));
+
+    // Black has two ep options and can use them
+    try expect(try board.setFen("rnbqk1nr/pp2pp1p/7b/B5pP/1pPpP3/8/PP1K1P1P/RNBQ2NR b kq c3 0 1", true));
+    try expect(isEpSquareValid(board, .black, .c3));
 }

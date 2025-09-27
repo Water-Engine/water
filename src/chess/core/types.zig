@@ -3,6 +3,9 @@ const std = @import("std");
 const castling = @import("../board/castling.zig");
 const CastlingRights = castling.CastlingRights;
 
+const bitboard = @import("bitboard.zig");
+const Bitboard = bitboard.Bitboard;
+
 // ================ ERRORS ================
 
 pub const ChessError = error{

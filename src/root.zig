@@ -52,4 +52,5 @@ test {
 
     _ = @import("chess/movegen/attacks.zig");
     _ = @import("chess/movegen/movegen.zig");
+    _ = @import("chess/movegen/generators.zig");
 }

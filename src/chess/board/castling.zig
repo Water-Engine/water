@@ -28,12 +28,20 @@ pub const CastlingRights = struct {
         self.rooks = @splat(@splat(File.init()));
     }
 
+    /// Clears the specified color's rights
+    pub fn clearColor(self: *CastlingRights, color: Color) void {
+        self.rooks[color.index()][0] = .none;
+        self.rooks[color.index()][1] = .none;
+    }
+
     /// Gives the right to castle for a color on the specified side
     pub fn set(self: *CastlingRights, color: Color, side: Side, rook_file: File) void {
         self.rooks[color.index()][side.index()] = rook_file;
     }
 
-    /// Removes the right to castle for a color on the specified side
+    /// Removes the right to castle for a color on the specified side.
+    ///
+    /// The index is returned as an int `T`.
     pub fn pop(self: *CastlingRights, comptime T: type, color: Color, side: Side) T {
         self.rooks[color.index()][side.index()] = .none;
         return color.asInt(T) * 2 + side.asInt(T);

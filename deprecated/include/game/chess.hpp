@@ -3834,6 +3834,11 @@ inline void movegen::generatePawnMoves(const Board& board, Movelist& moves, Bitb
                                                                  Bitboard checkmask, Bitboard pin_d,
                                                                  Bitboard pawns_lr, Square ep,
                                                                  Color c) {
+    std::cout << checkmask.getBits() << "\n";
+    std::cout << pin_d.getBits() << "\n";
+    std::cout << pawns_lr.getBits() << "\n";
+    std::cout << ep << "\n";
+    std::cout << c << "\n";
     assert((ep.rank() == Rank::RANK_3 && board.sideToMove() == Color::BLACK) ||
            (ep.rank() == Rank::RANK_6 && board.sideToMove() == Color::WHITE));
 
@@ -4104,6 +4109,10 @@ template <Color::underlying c> inline bool movegen::isEpSquareValid(const Board&
     const auto m = movegen::generateEPMove(board, checkmask, pin_d, pawns_lr, ep, stm);
     bool found = false;
 
+    std::cout << "\n";
+    for (const auto& move : m) {
+        std::cout << move.move() << "\n";
+    }
     for (const auto& move : m) {
         if (move != Move::NO_MOVE) {
             found = true;

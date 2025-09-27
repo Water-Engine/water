@@ -28,6 +28,8 @@ const State = state.State;
 
 const attacks = @import("../movegen/attacks.zig");
 
+const movegen = @import("../movegen/movegen.zig");
+
 const uci = @import("../core/uci.zig");
 
 pub const StartingFen: []const u8 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -326,9 +328,7 @@ pub const Board = struct {
         }
 
         if (self.ep_square.valid()) {
-            // TODO: Ensure ep square is valid with the context of the given position
-            const valid = true;
-
+            const valid = movegen.isEpSquareValid(self, self.side_to_move, self.ep_square);
             if (!valid) self.ep_square = .none else self.key ^= Zobrist.enPassant(self.ep_square.file());
         }
 
@@ -684,22 +684,266 @@ pub const Board = struct {
     }
 
     /// Makes a LEGAL move on the board.
+    /// The `exact` option forces the ep square to only be true if capture is legal.
     ///
     /// A moves legality should be verified externally.
     /// For external verification, check if the move is in the list of current legal moves.
-    pub fn makeMove(self: *Board, move: Move) void {
-        _ = self;
-        _ = move;
-        unreachable;
+    ///
+    /// Only asserts that the side to move aligns with the piece to move.
+    pub fn makeMove(self: *Board, move: Move, comptime options: struct {
+        exact: bool = false,
+    }) void {
+        std.debug.assert(self.at(Piece, move.from()).lt(.black_pawn) == (self.side_to_move == .white));
+
+        const capture = self.at(Piece, move.to()) != .none and move.typeOf(MoveType) != .castling;
+        const captured = self.at(Piece, move.to());
+        const pt_from = self.at(PieceType, move.from());
+
+        self.previous_states.append(self.allocator, .{
+            .hash = self.key,
+            .castling = self.castling_rights,
+            .enpassant = self.ep_square,
+            .half_moves = @intCast(self.halfmove_clock),
+            .captured_piece = captured,
+        }) catch unreachable;
+
+        self.halfmove_clock += 1;
+        self.plies += 1;
+
+        if (self.ep_square.valid()) self.key ^= Zobrist.enPassant(self.ep_square.file());
+        self.ep_square = .none;
+
+        const sq_gt = struct {
+            pub fn gt(s1: Square, s2: Square) bool {
+                return s1.gt(s2);
+            }
+        }.gt;
+
+        // Handle direct captures (excludes EP)
+        if (capture) {
+            self.removePiece(captured, move.to());
+
+            self.halfmove_clock = 0;
+            self.key ^= Zobrist.piece(captured, move.to());
+
+            // If the rook is captured, then the respective rights must be removed
+            if (captured.asType() == .rook and move.to().rank().backRank(self.side_to_move.opposite())) {
+                const king_sq = self.kingSq(self.side_to_move.opposite());
+                const file = CastlingRights.closestSide(
+                    Square,
+                    move.to(),
+                    king_sq,
+                    sq_gt,
+                );
+
+                if (self.castling_rights.rookFile(
+                    self.side_to_move.opposite(),
+                    file,
+                ) == move.to().file()) {
+                    self.key ^= Zobrist.castlingIdx(
+                        self.castling_rights.pop(usize, self.side_to_move.opposite(), file),
+                    );
+                }
+            }
+        }
+
+        // Handle other special piece moves
+        if (pt_from == .king and self.castling_rights.hasEither(self.side_to_move)) {
+            self.key ^= Zobrist.castling(self.castling_rights.hash());
+            self.castling_rights.clearColor(self.side_to_move);
+            self.key ^= Zobrist.castling(self.castling_rights.hash());
+        } else if (pt_from == .rook and move.from().backRank(self.side_to_move)) {
+            const king_sq = self.kingSq(self.side_to_move);
+            const file = CastlingRights.closestSide(
+                Square,
+                move.from(),
+                king_sq,
+                sq_gt,
+            );
+
+            if (self.castling_rights.rookFile(self.side_to_move, file) == move.from().file()) {
+                self.key ^= Zobrist.castlingIdx(self.castling_rights.pop(
+                    usize,
+                    self.side_to_move,
+                    file,
+                ));
+            }
+        } else if (pt_from == .pawn) {
+            self.halfmove_clock = 0;
+
+            // A distance of 16 means a double push
+            if (distance.ValueDist[move.to().index()][move.from().index()] == 16) {
+                const ep_mask = attacks.pawn(self.side_to_move, move.to().ep());
+
+                // Add en passant only if enemy pawns are attacking the square
+                if (ep_mask.andBB(self.pieces(self.side_to_move.opposite(), .pawn)).nonzero()) {
+                    var found: i32 = -1;
+
+                    // Check if the enemy can legally capture ep
+                    if (options.exact) {
+                        const piece = self.at(Piece, move.from());
+                        found = 0;
+
+                        // Simulate piece removal so masks are calculated properly
+                        self.removePiece(piece, move.from());
+                        self.placePiece(piece, move.to());
+
+                        self.side_to_move = self.side_to_move.opposite();
+                        const valid = movegen.isEpSquareValid(self, self.side_to_move, move.to().ep());
+                        if (valid) found = 1;
+
+                        self.side_to_move = self.side_to_move.opposite();
+                        self.removePiece(piece, move.to());
+                        self.placePiece(piece, move.from());
+                    }
+
+                    if (found != 0) {
+                        std.debug.assert(self.at(Piece, move.to().ep()) == .none);
+                        self.ep_square = move.to().ep();
+                        self.key ^= Zobrist.enPassant(move.to().ep().file());
+                    }
+                }
+            }
+        }
+
+        // Handle actual piece removal
+        if (move.typeOf(MoveType) == .castling) {
+            std.debug.assert(self.at(PieceType, move.from()) == .king);
+            std.debug.assert(self.at(PieceType, move.to()) == .rook);
+
+            const side: CastlingRights.Side = if (move.to().gt(move.from())) .king else .queen;
+            const rook_to = Square.castlingRookTo(side, self.side_to_move);
+            const king_to = Square.castlingKingTo(side, self.side_to_move);
+
+            const king = self.at(Piece, move.from());
+            const rook = self.at(Piece, move.to());
+
+            self.removePiece(king, move.from());
+            self.removePiece(rook, move.to());
+
+            std.debug.assert(king == Piece.make(self.side_to_move, .king));
+            std.debug.assert(rook == Piece.make(self.side_to_move, .rook));
+
+            self.placePiece(king, king_to);
+            self.placePiece(rook, rook_to);
+
+            self.key ^= Zobrist.piece(king, move.from()) ^ Zobrist.piece(king, king_to);
+            self.key ^= Zobrist.piece(rook, move.to()) ^ Zobrist.piece(rook, rook_to);
+        } else if (move.typeOf(MoveType) == .promotion) {
+            const piece_pawn = Piece.make(self.side_to_move, .pawn);
+            const piece_prom = Piece.make(self.side_to_move, move.promotionType());
+
+            self.removePiece(piece_pawn, move.from());
+            self.placePiece(piece_prom, move.to());
+
+            self.key ^= Zobrist.piece(piece_pawn, move.from()) ^ Zobrist.piece(piece_prom, move.to());
+        } else {
+            std.debug.assert(self.at(Piece, move.from()) != .none);
+            std.debug.assert(self.at(Piece, move.to()) == .none);
+
+            const piece = self.at(Piece, move.from());
+
+            self.removePiece(piece, move.from());
+            self.placePiece(piece, move.to());
+
+            self.key ^= Zobrist.piece(piece, move.from()) ^ Zobrist.piece(piece, move.to());
+        }
+
+        // Handle ep captures as the first capture handler ignores it
+        if (move.typeOf(MoveType) == .en_passant) {
+            std.debug.assert(self.at(PieceType, move.to().ep()) == .pawn);
+
+            const piece = Piece.make(self.side_to_move.opposite(), .pawn);
+            self.removePiece(piece, move.to().ep());
+
+            self.key ^= Zobrist.piece(piece, move.to().ep());
+        }
+
+        self.key ^= Zobrist.sideToMove();
+        self.side_to_move = self.side_to_move.opposite();
     }
 
     /// Unmakes a LEGAL move on the board.
     ///
     /// A moves legality should be verified externally.
+    ///
+    /// Asserts that the board has a state history.
     pub fn unmakeMove(self: *Board, move: Move) void {
-        _ = self;
-        _ = move;
-        unreachable;
+        const prev = self.previous_states.getLastOrNull();
+        if (prev) |previous_state| {
+            self.ep_square = previous_state.enpassant;
+            self.castling_rights = previous_state.castling;
+            self.halfmove_clock = previous_state.half_moves;
+            self.side_to_move = self.side_to_move.opposite();
+            self.plies -= 1;
+
+            if (move.typeOf(MoveType) == .castling) {
+                const king_side = move.to().gt(move.from());
+                const rook_from_sq = Square.make(
+                    move.from().rank(),
+                    if (king_side) .ff else .fd,
+                );
+                const king_to_sq = Square.make(
+                    move.from().rank(),
+                    if (king_side) .fg else .fc,
+                );
+
+                std.debug.assert(self.at(PieceType, rook_from_sq) == .rook);
+                std.debug.assert(self.at(PieceType, king_to_sq) == .king);
+
+                const rook = self.at(Piece, rook_from_sq);
+                const king = self.at(Piece, king_to_sq);
+
+                self.removePiece(rook, rook_from_sq);
+                self.removePiece(king, king_to_sq);
+
+                std.debug.assert(king == Piece.make(self.side_to_move, .king));
+                std.debug.assert(rook == Piece.make(self.side_to_move, .rook));
+
+                self.placePiece(king, move.from());
+                self.placePiece(rook, move.to());
+            } else if (move.typeOf(MoveType) == .promotion) {
+                const pawn = Piece.make(self.side_to_move, .pawn);
+                const piece = self.at(Piece, move.to());
+
+                std.debug.assert(piece.asType() == move.promotionType());
+                std.debug.assert(piece.asType() != .pawn);
+                std.debug.assert(piece.asType() != .king);
+                std.debug.assert(piece.asType() != .none);
+
+                self.removePiece(piece, move.to());
+                self.placePiece(pawn, move.from());
+
+                if (previous_state.captured_piece != .none) {
+                    std.debug.assert(self.at(Piece, move.to()) == .none);
+                    self.placePiece(previous_state.captured_piece, move.to());
+                }
+            } else {
+                std.debug.assert(self.at(Piece, move.to()) != .none);
+                std.debug.assert(self.at(Piece, move.from()) == .none);
+
+                const piece = self.at(Piece, move.to());
+
+                self.removePiece(piece, move.to());
+                self.placePiece(piece, move.from());
+
+                if (move.typeOf(MoveType) == .en_passant) {
+                    const pawn = Piece.make(self.side_to_move.opposite(), .pawn);
+                    const pawn_to = self.ep_square.xor(Square.fromInt(usize, 8));
+
+                    std.debug.assert(self.at(Piece, pawn_to) == .none);
+
+                    self.placePiece(pawn, pawn_to);
+                } else if (previous_state.captured_piece != .none) {
+                    std.debug.assert(self.at(Piece, move.to()) == .none);
+
+                    self.placePiece(previous_state.captured_piece, move.to());
+                }
+            }
+
+            self.key = previous_state.hash;
+            _ = self.previous_states.pop();
+        } else unreachable;
     }
 
     /// Makes a null move.
@@ -1103,6 +1347,30 @@ test "Illegal fen handling" {
     // TODO: Test for illegal board positions such as non-stm king in check and illegal pawns
 }
 
+test "Move Making" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // From starting position
+    const opening = uci.uciToMove(board, "e2e4");
+    try expectEqual(5060803636482931868, board.key);
+
+    board.makeMove(opening, .{});
+    try expectEqual(9384546495678726550, board.key);
+    try expect(board.side_to_move == .black);
+    // try expect(board.ep_square == .e4);
+
+    board.unmakeMove(opening);
+    try expectEqual(5060803636482931868, board.key);
+    try expect(board.side_to_move == .white);
+    try expect(board.ep_square == .none);
+}
+
 test "Null move making" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
@@ -1117,9 +1385,11 @@ test "Null move making" {
 
     board.makeNullMove();
     try expectEqual(13757846718353144213, board.key);
+    try expect(board.side_to_move == .black);
 
     board.unmakeNullMove();
     try expectEqual(5060803636482931868, board.key);
+    try expect(board.side_to_move == .white);
 
     // From other position
     try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80", true));
