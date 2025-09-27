@@ -10,7 +10,6 @@ const piece = @import("piece.zig");
 const PieceType = piece.PieceType;
 
 const attacks = @import("../movegen/attacks.zig");
-const Attacks = attacks.Attacks;
 
 const square_fields = @typeInfo(Square).@"enum".fields;
 
@@ -115,7 +114,7 @@ fn genValueDistance() [64][64]u8 {
 }
 
 fn attacksOf(comptime pt: PieceType, comptime sq: Square, comptime occ: Bitboard) Bitboard {
-    return if (pt == .bishop) Attacks.bishop(sq, occ) else Attacks.rook(sq, occ);
+    return if (pt == .bishop) attacks.bishop(sq, occ) else attacks.rook(sq, occ);
 }
 
 fn genSquaresBetween() [64][64]Bitboard {

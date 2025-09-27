@@ -17,9 +17,6 @@ const piece = @import("chess/core/piece.zig");
 pub const PieceType = piece.PieceType;
 pub const Piece = piece.Piece;
 
-const attacks = @import("chess/movegen/attacks.zig");
-pub const Attacks = attacks.Attacks;
-
 const move = @import("chess/core/move.zig");
 pub const Move = move.Move;
 pub const MoveType = move.MoveType;
@@ -36,6 +33,9 @@ pub const Zobrist = state.Zobrist;
 
 pub const uci = @import("chess/core/uci.zig");
 
+pub const attacks = @import("chess/movegen/attacks.zig");
+pub const movegen = @import("chess/movegen/movegen.zig");
+
 // ================ TESTING ================
 
 test {
@@ -51,4 +51,5 @@ test {
     _ = @import("chess/board/state.zig");
 
     _ = @import("chess/movegen/attacks.zig");
+    _ = @import("chess/movegen/movegen.zig");
 }

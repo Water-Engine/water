@@ -1508,7 +1508,7 @@ class movegen {
                                         PieceGenType::BISHOP | PieceGenType::ROOK |
                                         PieceGenType::QUEEN | PieceGenType::KING);
 
-  private:
+  public:
     static auto init_squares_between();
     static const std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB;
 

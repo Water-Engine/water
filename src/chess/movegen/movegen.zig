@@ -1,0 +1,270 @@
+const std = @import("std");
+
+const types = @import("../core/types.zig");
+const Square = types.Square;
+const File = types.File;
+const Rank = types.Rank;
+const Color = types.Color;
+
+const bitboard = @import("../core/bitboard.zig");
+const Bitboard = bitboard.Bitboard;
+
+const piece_ = @import("../core/piece.zig");
+const Piece = piece_.Piece;
+const PieceType = piece_.PieceType;
+
+const board_ = @import("../board/board.zig");
+const Board = board_.Board;
+
+const move_ = @import("../core/move.zig");
+const Move = move_.Move;
+const MoveType = move_.MoveType;
+
+const distance = @import("../core/distance.zig");
+
+const attacks = @import("attacks.zig");
+
+pub const DefaultCheckMask = Bitboard.fromInt(u64, std.math.maxInt(u64));
+
+/// Generates the check mask where the attacker path from the king and enemy piece is set.
+///
+/// The number of checks is also tracked and returned.
+pub fn checkMask(board: *const Board, color: Color, square: Square) struct {
+    mask: Bitboard,
+    checks: usize,
+} {
+    const opponent_knights = board.pieces(color.opposite(), .knight);
+    const opponent_bishops = board.pieces(color.opposite(), .bishop);
+    const opponent_rooks = board.pieces(color.opposite(), .rook);
+    const opponent_queens = board.pieces(color.opposite(), .queen);
+    const opponent_pawns = board.pieces(color.opposite(), .pawn);
+
+    var checks: usize = 0;
+
+    const knight_attacks = attacks.knight(square).andBB(opponent_knights);
+    checks += @intFromBool(knight_attacks.nonzero());
+    var mask = knight_attacks;
+
+    const pawn_attacks = attacks.pawn(board.side_to_move, square).andBB(opponent_pawns);
+    checks += @intFromBool(pawn_attacks.nonzero());
+    _ = mask.orAssign(pawn_attacks);
+
+    const bishop_attacks = attacks.bishop(
+        square,
+        board.occ(),
+    ).andBB(opponent_bishops.orBB(opponent_queens));
+    if (bishop_attacks.nonzero()) {
+        _ = mask.orAssign(distance.SquaresBetween[square.index()][bishop_attacks.lsb().index()]);
+        checks += 1;
+    }
+
+    const rook_attacks = attacks.rook(
+        square,
+        board.occ(),
+    ).andBB(opponent_rooks.orBB(opponent_queens));
+    if (rook_attacks.nonzero()) {
+        if (rook_attacks.count() > 1) {
+            checks = 2;
+            return .{ .mask = mask, .checks = checks };
+        }
+
+        _ = mask.orAssign(distance.SquaresBetween[square.index()][rook_attacks.lsb().index()]);
+        checks += 1;
+    }
+
+    return .{
+        .mask = if (mask.empty()) DefaultCheckMask else mask,
+        .checks = checks,
+    };
+}
+
+/// Generate the pin mask for the specified non-queen slider.
+/// Returns a mask where the ray between the king and pinner are set.
+///
+/// Use `pt = .rook` for horizontal and vertical pins.
+///
+/// Use `pt = .bishop` for diagonal pins.
+///
+/// Asserts that pt is either a rook or bishop.
+pub fn pinMask(
+    comptime pt: PieceType,
+    board: *const Board,
+    color: Color,
+    square: Square,
+    occ_them: Bitboard,
+    occ_us: Bitboard,
+) Bitboard {
+    if (!(pt == .bishop or pt == .rook)) @compileError("Pins can only be generated for rooks and bishops");
+
+    const opponent_pt_queen = board.piecesMany(
+        color.opposite(),
+        &[_]PieceType{ pt, .queen },
+    );
+
+    var pt_attacks = attacks.slider(
+        pt,
+        square,
+        occ_them,
+    ).andBB(opponent_pt_queen);
+    var pin = Bitboard.init();
+
+    while (pt_attacks.nonzero()) {
+        const possible_pin = distance.SquaresBetween[square.index()][pt_attacks.popLsb().index()];
+        if (possible_pin.andBB(occ_us).count() == 1) {
+            _ = pin.orAssign(possible_pin);
+        }
+    }
+
+    return pin;
+}
+
+// ================ TESTING ================
+const testing = std.testing;
+const expect = testing.expect;
+const expectEqual = testing.expectEqual;
+const expectEqualSlices = testing.expectEqualSlices;
+
+test "Check and pin masks" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{
+        .fen = "8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80",
+    });
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // Expected check mask values from https://github.com/Disservin/chess-library
+    const expected_check_masks_white: [64]u64 = .{
+        18446744073709551615, 2207646876160,        18446744073709551615, 18446744073709551615,
+        18446744073709551615, 18446744073709551615, 18446744073709551615, 18446744073709551615,
+        18446744073709551615, 2207646875648,        18446744073709551615, 18446744073709551615,
+        18446744073709551615, 18446744073709551615, 18446744073709551615, 18446744073709551615,
+        18446744073709551615, 2207646744576,        18446744073709551615, 18446744073709551615,
+        18446744073709551615, 18446744073709551615, 18446744073709551615, 18446744073709551615,
+        18446744073709551615, 2207613190144,        18446744073709551615, 18446744073709551615,
+        18446744073709551615, 18446744073709551615, 18446744073709551615, 18446744073709551615,
+        18446744073709551615, 3298534883328,        18446744073709551615, 18446744073709551615,
+        18446744073709551615, 70368744177664,       18446744073709551615, 70368744177664,
+        2199023255552,        18446744073709551615, 2199023255552,        0,
+        18446744073709551615, 18446744073709551615, 18446744073709551615, 18446744073709551615,
+        3940649673949184,     0,                    2251799813685248,     18446744073709551615,
+        2251799813685248,     6755399441055744,     15762598695796736,    33776997205278720,
+        18446744073709551615, 565148976676864,      18446744073709551615, 2251799813685248,
+        18446744073709551615, 18446744073709551615, 18446744073709551615, 18446744073709551615,
+    };
+
+    const expected_checks_white: [64]usize = .{
+        0, 1, 0, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0, 0, 0,
+        0, 2, 0, 0, 0, 1, 0, 1,
+        1, 0, 1, 2, 0, 0, 0, 0,
+        1, 2, 1, 0, 1, 1, 1, 1,
+        0, 1, 0, 1, 0, 0, 0, 0,
+    };
+
+    for (0..64) |i| {
+        const cm = checkMask(
+            board,
+            .white,
+            Square.fromInt(usize, i),
+        );
+
+        try expectEqual(expected_check_masks_white[i], cm.mask.bits);
+        try expectEqual(expected_checks_white[i], cm.checks);
+    }
+
+    const expected_check_masks_black: [64]u64 = .{
+        62,                   60,                   56,                   0,
+        32,                   18446744073709551615, 32,                   96,
+        3584,                 3072,                 2048,                 18446744073709551615,
+        2048,                 4194304,              14336,                4225024,
+        18446744073709551615, 18446744073709551615, 18446744073709551615, 2048,
+        18446744073709551615, 8224,                 2147483648,           18446744073709551615,
+        18446744073709551615, 18446744073709551615, 18446744073709551615, 526336,
+        18446744073709551615, 2105376,              18446744073709551615, 18446744073709551615,
+        18446744073709551615, 18446744073709551615, 8796093022208,        134744064,
+        8796093022208,        538976288,            18446744073709551615, 18446744073709551615,
+        18446744073709551615, 18446744073709551615, 18446744073709551615, 34494482432,
+        18446744073709551615, 137977929760,         18446744073709551615, 18446744073709551615,
+        18446744073709551615, 18446744073709551615, 18446744073709551615, 18446744073709551615,
+        18446744073709551615, 35322350018592,       18446744073709551615, 18446744073709551615,
+        18446744073709551615, 18446744073709551615, 18446744073709551615, 18446744073709551615,
+        18446744073709551615, 9042521604759584,     18446744073709551615, 18446744073709551615,
+    };
+
+    const expected_checks_black: [64]usize = .{
+        1, 1, 1, 2, 1, 0, 1, 1,
+        1, 1, 1, 0, 1, 2, 1, 2,
+        0, 0, 0, 1, 0, 1, 1, 0,
+        0, 0, 0, 1, 0, 1, 0, 0,
+        0, 0, 1, 1, 1, 1, 0, 0,
+        0, 0, 0, 1, 0, 1, 0, 0,
+        0, 0, 0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 0, 1, 0, 0,
+    };
+
+    for (0..64) |i| {
+        const cm = checkMask(
+            board,
+            .black,
+            Square.fromInt(usize, i),
+        );
+
+        try expectEqual(expected_check_masks_black[i], cm.mask.bits);
+        try expectEqual(expected_checks_black[i], cm.checks);
+    }
+
+    // Expected pin mask values from https://github.com/Disservin/chess-library
+    const expected_white_rook_pins: [64]u64 = .{
+        0, 0, 0, 0,                0,              0, 0, 0,
+        0, 0, 0, 2260630401187840, 0,              0, 0, 0,
+        0, 0, 0, 2260630400663552, 0,              0, 0, 0,
+        0, 0, 0, 2260630266445824, 0,              0, 0, 0,
+        0, 0, 0, 2260595906707456, 0,              0, 0, 0,
+        0, 0, 0, 0,                15393162788864, 0, 0, 0,
+        0, 0, 0, 0,                0,              0, 0, 0,
+        0, 0, 0, 0,                0,              0, 0, 0,
+    };
+
+    for (0..64) |i| {
+        const pm = pinMask(
+            .rook,
+            board,
+            .white,
+            Square.fromInt(usize, i),
+            board.us(.black),
+            board.us(.white),
+        );
+
+        try expectEqual(expected_white_rook_pins[i], pm.bits);
+    }
+
+    try expect(try board.setFen("rnbqk1nr/pp2p2p/2pp1pp1/1B6/3P3b/4P3/PPP2PPP/RNBQK1NR w KQkq - 0 1", true));
+    const expected_black_bishop_pins: [64]u64 = .{
+        0, 0, 0, 0,             0,                0, 0, 0,
+        0, 0, 0, 0,             0,                0, 0, 0,
+        0, 0, 0, 0,             0,                0, 0, 0,
+        0, 0, 0, 0,             0,                0, 0, 0,
+        0, 0, 0, 0,             0,                0, 0, 0,
+        0, 0, 0, 0,             0,                0, 0, 0,
+        0, 0, 0, 4406636445696, 0,                0, 0, 0,
+        0, 0, 0, 0,             2256206450130944, 0, 0, 0,
+    };
+
+    for (0..64) |i| {
+        const pm = pinMask(
+            .bishop,
+            board,
+            .black,
+            Square.fromInt(usize, i),
+            board.us(.white),
+            board.us(.black),
+        );
+
+        try expectEqual(expected_black_bishop_pins[i], pm.bits);
+    }
+}

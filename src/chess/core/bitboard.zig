@@ -29,7 +29,7 @@ pub const Bitboard = struct {
     pub fn fromInt(comptime T: type, num: T) Bitboard {
         switch (@typeInfo(T)) {
             .int, .comptime_int => {
-                return if (num < 0 or num >= std.math.maxInt(T)) blk: {
+                return if (num < 0 or num > std.math.maxInt(u64)) blk: {
                     break :blk .{ .bits = 0 };
                 } else blk: {
                     break :blk .{ .bits = @intCast(num) };
@@ -143,19 +143,19 @@ pub const Bitboard = struct {
 
     // ================= IN-PLACE OPS =================
 
-    pub fn andAssign(self: *Bitboard, rhs: Bitboard) Bitboard {
+    pub fn andAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
         self.bits &= rhs.bits;
-        return self.*;
+        return self;
     }
 
-    pub fn orAssign(self: *Bitboard, rhs: Bitboard) Bitboard {
+    pub fn orAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
         self.bits |= rhs.bits;
-        return self.*;
+        return self;
     }
 
-    pub fn xorAssign(self: *Bitboard, rhs: Bitboard) Bitboard {
+    pub fn xorAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
         self.bits ^= rhs.bits;
-        return self.*;
+        return self;
     }
 
     // ================ MISC UTILS ================

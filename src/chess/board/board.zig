@@ -27,7 +27,6 @@ const Zobrist = state.Zobrist;
 const State = state.State;
 
 const attacks = @import("../movegen/attacks.zig");
-const Attacks = attacks.Attacks;
 
 const uci = @import("../core/uci.zig");
 
