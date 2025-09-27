@@ -26,6 +26,64 @@ const generators = @import("generators.zig");
 const attacks = @import("attacks.zig");
 
 pub const DefaultCheckMask = Bitboard.fromInt(u64, std.math.maxInt(u64));
+pub const MaxMoves: usize = 256;
+
+/// A zero allocation static initialized array with the ability to store up to 256 moves.
+///
+/// Out of bounds checks are asserted.
+pub const Movelist = struct {
+    moves: [MaxMoves]Move = @splat(Move.init()),
+    size: usize = 0,
+
+    /// Returns the first move in the internal list.
+    pub fn front(self: *const Movelist) Move {
+        return self.moves[0];
+    }
+
+    /// Returns the last move in the internal list.
+    pub fn back(self: *const Movelist) Move {
+        return self.moves[self.size - 1];
+    }
+
+    /// Retrieves the move at the given index.
+    pub fn at(self: *const Movelist, index: usize) Move {
+        std.debug.assert(index < self.size);
+        return self.moves[index];
+    }
+
+    /// Linearly searches the Movelist for the given move.
+    ///
+    /// Returns null if the move is not found.
+    pub fn find(self: *const Movelist, move: Move) ?usize {
+        for (self.moves[0..self.size], 0..) |m, i| {
+            if (move.eqMove(m)) return i;
+        }
+        return null;
+    }
+
+    /// Resets the size and internal moves to their starting values.
+    pub fn reset(self: *Movelist) void {
+        self.moves = @splat(Move.init());
+        self.size = 0;
+    }
+
+    /// Appends a move to the Movelist.
+    pub fn add(self: *Movelist, move: Move) void {
+        std.debug.assert(self.size < MaxMoves);
+        self.moves[self.size] = move;
+        self.size += 1;
+    }
+
+    /// Returns a reference to the first N moves.
+    ///
+    /// The length must be compile time known, for non-comptime slices, use:
+    ///
+    /// `ml.moves[0..ml.size]` where ml is the Movelist.
+    pub fn slice(self: *const Movelist, comptime N: usize) *const [N]Move {
+        std.debug.assert(N < self.size);
+        return self.moves[0..N];
+    }
+};
 
 /// Generates the check mask where the attacker path from the king and enemy piece is set.
 ///
@@ -119,6 +177,40 @@ pub fn pinMask(
     return pin;
 }
 
+/// Calculates a mask of the squares seen by the given color on the board.
+pub fn seenSquares(comptime C: Color, board: *const Board, enemy_empty: Bitboard) Bitboard {
+    const king_sq = board.kingSq(C.opposite());
+    const map_king_atk = attacks.king(king_sq).andBB(enemy_empty);
+
+    if (map_king_atk.empty() and !board.fischer_random) return Bitboard.init();
+
+    const occ = board.occ().xorBB(Bitboard.fromSquare(king_sq));
+    const queens = board.pieces(C, .queen);
+    const pawns = board.pieces(C, .pawn);
+    var knights = board.pieces(C, .knight);
+    var bishops = board.pieces(C, .bishop).orBB(queens);
+    var rooks = board.pieces(C, .rook).orBB(queens);
+
+    var seen = attacks.pawnLeftAttacks(C, pawns).orBB(
+        attacks.pawnRightAttacks(C, pawns),
+    );
+
+    while (knights.nonzero()) {
+        _ = seen.orAssign(attacks.knight(knights.popLsb()));
+    }
+
+    while (bishops.nonzero()) {
+        _ = seen.orAssign(attacks.bishop(bishops.popLsb(), occ));
+    }
+
+    while (rooks.nonzero()) {
+        _ = seen.orAssign(attacks.rook(rooks.popLsb(), occ));
+    }
+
+    _ = seen.orAssign(attacks.king(board.kingSq(C)));
+    return seen;
+}
+
 /// Determines if the provided square is a possible ep square based on the current position.
 pub fn isEpSquareValid(board: *const Board, color: Color, ep: Square) bool {
     const stm = board.side_to_move;
@@ -157,6 +249,23 @@ const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 const expectEqualSlices = testing.expectEqualSlices;
+
+test "Movelist creation and operations" {
+    var ml = Movelist{};
+    ml.size = MaxMoves;
+    for (ml.slice(MaxMoves - 1)) |move| {
+        try expectEqual(0, move.move);
+    }
+
+    ml.reset();
+    ml.add(Move.make(.e2, .e3, .{}));
+
+    try expect(ml.find(Move.make(.e2, .e3, .{})) != null);
+    try expect(ml.find(Move.make(.e2, .e4, .{})) == null);
+
+    try expectEqual(ml.front().move, ml.back().move);
+    try expect(ml.at(0).move == Move.make(.e2, .e3, .{}).move);
+}
 
 test "Check and pin masks" {
     const allocator = testing.allocator;
@@ -301,6 +410,24 @@ test "Check and pin masks" {
 
         try expectEqual(expected_black_bishop_pins[i], pm.bits);
     }
+}
+
+test "Seen squares" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // Expected values from https://github.com/Disservin/chess-library
+    const opening = seenSquares(.white, board, board.us(.black).not());
+    try expectEqual(0, opening.bits);
+
+    try expect(try board.setFen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", true));
+    const complex = seenSquares(.white, board, board.us(.black).not());
+    try expectEqual(7075169857099529727, complex.bits);
 }
 
 test "Ep square validity" {

@@ -218,9 +218,9 @@ pub fn pawnLeftAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
 
 pub fn pawnRightAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
     return if (C.isWhite()) blk: {
-        break :blk pawns.shl(9).andBB(Bitboard.fromInt(u64, File.fh.mask()).not());
+        break :blk pawns.shl(9).andBB(Bitboard.fromInt(u64, File.fa.mask()).not());
     } else blk: {
-        break :blk pawns.shr(9).andBB(Bitboard.fromInt(u64, File.fa.mask()).not());
+        break :blk pawns.shr(9).andBB(Bitboard.fromInt(u64, File.fh.mask()).not());
     };
 }
 
