@@ -3897,16 +3897,10 @@ inline void movegen::generatePawnMoves(const Board& board, Movelist& moves, Bitb
 
 [[nodiscard]] inline Bitboard movegen::generateBishopMoves(Square sq, Bitboard pin_d,
                                                            Bitboard occ_all) {
-    std::cout << sq << "\n";
-    std::cout << pin_d.getBits() << "\n";
-    std::cout << occ_all.getBits() << "\n";
     // The Bishop is pinned diagonally thus can only move diagonally.
-    Bitboard moves;
     if (pin_d & Bitboard::fromSquare(sq))
-        moves = attacks::bishop(sq, occ_all) & pin_d;
-    moves = attacks::bishop(sq, occ_all);
-    std::cout << moves.getBits() << "\n";
-    return moves;
+        return attacks::bishop(sq, occ_all) & pin_d;
+    return attacks::bishop(sq, occ_all);
 }
 
 [[nodiscard]] inline Bitboard movegen::generateRookMoves(Square sq, Bitboard pin_hv,
@@ -3942,8 +3936,11 @@ template <Color::underlying c>
 [[nodiscard]] inline Bitboard movegen::generateCastleMoves(const Board& board, Square sq,
                                                            Bitboard seen,
                                                            Bitboard pin_hv) noexcept {
+    std::cout << sq << "\n";
+    std::cout << seen.getBits() << "\n";
+    std::cout << pin_hv.getBits() << "\n";
     if (!Square::back_rank(sq, c) || !board.castlingRights().has(c))
-        return 0ull;
+        {std::cout << 0 << "\n"; return 0ull;}
 
     const auto rights = board.castlingRights();
 
@@ -3974,6 +3971,7 @@ template <Color::underlying c>
         moves |= from_rook_bb;
     }
 
+    std::cout << moves.getBits() << "\n";
     return moves;
 }
 

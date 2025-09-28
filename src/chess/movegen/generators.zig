@@ -16,6 +16,9 @@ const PieceType = piece_.PieceType;
 const board_ = @import("../board/board.zig");
 const Board = board_.Board;
 
+const castling = @import("../board/castling.zig");
+const CastlingRights = castling.CastlingRights;
+
 const move_ = @import("../core/move.zig");
 const Move = move_.Move;
 const MoveType = move_.MoveType;
@@ -293,6 +296,59 @@ pub fn kingMoves(square: Square, seen: Bitboard, moveable_square: Bitboard) Bitb
     return attacks.king(square).andBB(moveable_square).andBB(seen.not());
 }
 
+/// Returns a bitboard containing all possible castling moves.
+pub fn castleMoves(
+    board: *const Board,
+    square: Square,
+    seen: Bitboard,
+    pin_hv: Bitboard,
+    comptime options: struct { color: Color },
+) Bitboard {
+    var moves = Bitboard.init();
+    if (!square.backRank(options.color) or !board.castling_rights.hasEither(options.color)) {
+        return moves;
+    }
+
+    for ([_]CastlingRights.Side{ .king, .queen }) |side| {
+        if (!board.castling_rights.hasSide(options.color, side)) {
+            std.debug.print("You have no right!", .{});
+            continue;
+        }
+
+        // Check if the castling path is vacant
+        if (board.occ().andBB(
+            board.castling_path[options.color.index()][side.index()],
+        ).nonzero()) {
+            std.debug.print("Filled path!", .{});
+            continue;
+        }
+
+        // Check for attacks on the king's path
+        const king_to = Square.castlingKingTo(side, options.color);
+        if (distance.SquaresBetween[square.index()][king_to.index()].andBB(seen).nonzero()) {
+            std.debug.print("Kings path attacked!", .{});
+            continue;
+        }
+
+        const from_rook_bb = Bitboard.fromSquare(Square.make(
+            square.rank(),
+            board.castling_rights.rookFile(options.color, side),
+        ));
+
+        // Check for rook pins only in FRC
+        if (board.fischer_random and pin_hv.andBB(board.us(
+            board.side_to_move,
+        )).andBB(from_rook_bb).nonzero()) {
+            std.debug.print("In FRC", .{});
+            continue;
+        }
+
+        _ = moves.orAssign(from_rook_bb);
+    }
+
+    return moves;
+}
+
 /// Returns a bitboard containing all possible moves a bishop on the given square can move to.
 pub fn bishopMoves(square: Square, pin_d: Bitboard, occ_all: Bitboard) Bitboard {
     return if (pin_d.andBB(Bitboard.fromSquare(square)).nonzero()) blk: {
@@ -313,9 +369,9 @@ pub fn rookMoves(square: Square, pin_hv: Bitboard, occ_all: Bitboard) Bitboard {
 
 /// Returns a bitboard containing all possible moves a queen on the given square can move to.
 pub fn queenMoves(square: Square, pin_d: Bitboard, pin_hv: Bitboard, occ_all: Bitboard) Bitboard {
-    return if (pin_d.andBB(Bitboard.fromSquare(square))) blk: {
+    return if (pin_d.andBB(Bitboard.fromSquare(square)).nonzero()) blk: {
         break :blk attacks.bishop(square, occ_all).andBB(pin_d);
-    } else if (pin_hv.andBB(Bitboard.fromSquare(square))) blk: {
+    } else if (pin_hv.andBB(Bitboard.fromSquare(square)).nonzero()) blk: {
         break :blk attacks.rook(square, occ_all).andBB(pin_hv);
     } else blk: {
         break :blk attacks.rook(square, occ_all).orBB(
@@ -500,17 +556,45 @@ test "Pawn move generation" {
     }
 }
 
-test "Bishop move generation" {
+test "King and castling move generation" {
     const allocator = testing.allocator;
-    var board = try Board.init(allocator, .{});
+    var board = try Board.init(allocator, .{
+        .fen = "1nbqkb1r/Pp3p2/2r2n2/2p1p2P/1PPp2PN/2N1Q2p/1BP1P1B1/R3K2R w KQk - 0 1",
+    });
 
     defer {
         board.deinit();
         allocator.destroy(board);
     }
 
-    // Mid-game position
-    try expect(try board.setFen("rnbqkb1r/Pp3p2/5n2/2p5/1P1ppPP1/3PQN2/2P1P1pp/RNB1KB1R b KQkq - 0 1", true));
+    // Basic king moves from position
+    try expectEqual(10280, kingMoves(
+        .e1,
+        Bitboard.fromInt(u64, 9006917425330126912),
+        Bitboard.fromInt(u64, 18446462045653805422),
+    ).bits);
+
+    // Both castling options available
+    try expectEqual(1, castleMoves(
+        board,
+        .e1,
+        Bitboard.fromInt(u64, 9006917425330126912),
+        Bitboard.fromInt(u64, 0),
+        .{ .color = .white },
+    ).bits);
+}
+
+test "Bishop move generation" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{
+        .fen = "rnbqkb1r/Pp3p2/5n2/2p5/1P1ppPP1/3PQN2/2P1P1pp/RNB1KB1R b KQkq - 0 1",
+    });
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
     const bishop_mid_c8 = bishopMoves(
         .c8,
         Bitboard.fromInt(u64, 0),
@@ -527,4 +611,54 @@ test "Bishop move generation" {
     for (bishop_mid_expected, bishop_mid_actual) |bb_e, bb_a| {
         try expectEqual(bb_e, bb_a.bits);
     }
+}
+
+test "Rook move generation" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{
+        .fen = "rnbqkb1r/Pp3p2/5n2/2p5/1P1ppPP1/3PQN2/2P1P1pp/RNB1KB1R b KQkq - 0 1",
+    });
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    const rook_mid_a8 = rookMoves(
+        .a8,
+        Bitboard.fromInt(u64, 4521260802375680),
+        Bitboard.fromInt(u64, 13772887289031611575),
+    );
+    const rook_mid_h8 = rookMoves(
+        .h8,
+        Bitboard.fromInt(u64, 4521260802375680),
+        Bitboard.fromInt(u64, 13772887289031611575),
+    );
+
+    const rook_mid_actual: [2]Bitboard = .{ rook_mid_a8, rook_mid_h8 };
+    const rook_mid_expected: [2]u64 = .{ 144396663052566528, 6953699114060120064 };
+    for (rook_mid_expected, rook_mid_actual) |bb_e, bb_a| {
+        try expectEqual(bb_e, bb_a.bits);
+    }
+}
+
+test "Queen move generation" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{
+        .fen = "1nbqkb1r/Pp3p2/2r2n2/2p1p2P/1PPp2PN/4Q3/2P1P1pp/RNB1KB1R w KQk - 0 1",
+    });
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    const queen_mid = queenMoves(
+        .e3,
+        Bitboard.fromInt(u64, 0),
+        Bitboard.fromInt(u64, 0),
+        Bitboard.fromInt(u64, 13700834712922150071),
+    );
+
+    try expectEqual(141082040940612, queen_mid.bits);
 }
