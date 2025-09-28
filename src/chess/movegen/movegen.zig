@@ -80,7 +80,7 @@ pub const Movelist = struct {
     ///
     /// `ml.moves[0..ml.size]` where ml is the Movelist.
     pub fn slice(self: *const Movelist, comptime N: usize) *const [N]Move {
-        std.debug.assert(N < self.size);
+        std.debug.assert(N <= self.size);
         return self.moves[0..N];
     }
 };
