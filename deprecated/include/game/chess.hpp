@@ -3897,10 +3897,16 @@ inline void movegen::generatePawnMoves(const Board& board, Movelist& moves, Bitb
 
 [[nodiscard]] inline Bitboard movegen::generateBishopMoves(Square sq, Bitboard pin_d,
                                                            Bitboard occ_all) {
+    std::cout << sq << "\n";
+    std::cout << pin_d.getBits() << "\n";
+    std::cout << occ_all.getBits() << "\n";
     // The Bishop is pinned diagonally thus can only move diagonally.
+    Bitboard moves;
     if (pin_d & Bitboard::fromSquare(sq))
-        return attacks::bishop(sq, occ_all) & pin_d;
-    return attacks::bishop(sq, occ_all);
+        moves = attacks::bishop(sq, occ_all) & pin_d;
+    moves = attacks::bishop(sq, occ_all);
+    std::cout << moves.getBits() << "\n";
+    return moves;
 }
 
 [[nodiscard]] inline Bitboard movegen::generateRookMoves(Square sq, Bitboard pin_hv,

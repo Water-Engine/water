@@ -283,6 +283,47 @@ pub fn pawnMoves(
     }
 }
 
+/// Returns a bitboard containing all possible moves a knight on the given square can move to.
+pub fn knightMoves(square: Square) Bitboard {
+    return attacks.knight(square);
+}
+
+/// Returns a bitboard containing all possible moves a king on the given square can move to.
+pub fn kingMoves(square: Square, seen: Bitboard, moveable_square: Bitboard) Bitboard {
+    return attacks.king(square).andBB(moveable_square).andBB(seen.not());
+}
+
+/// Returns a bitboard containing all possible moves a bishop on the given square can move to.
+pub fn bishopMoves(square: Square, pin_d: Bitboard, occ_all: Bitboard) Bitboard {
+    return if (pin_d.andBB(Bitboard.fromSquare(square)).nonzero()) blk: {
+        break :blk attacks.bishop(square, occ_all).andBB(pin_d);
+    } else blk: {
+        break :blk attacks.bishop(square, occ_all);
+    };
+}
+
+/// Returns a bitboard containing all possible moves a rook on the given square can move to.
+pub fn rookMoves(square: Square, pin_hv: Bitboard, occ_all: Bitboard) Bitboard {
+    return if (pin_hv.andBB(Bitboard.fromSquare(square)).nonzero()) blk: {
+        break :blk attacks.rook(square, occ_all).andBB(pin_hv);
+    } else blk: {
+        break :blk attacks.rook(square, occ_all);
+    };
+}
+
+/// Returns a bitboard containing all possible moves a queen on the given square can move to.
+pub fn queenMoves(square: Square, pin_d: Bitboard, pin_hv: Bitboard, occ_all: Bitboard) Bitboard {
+    return if (pin_d.andBB(Bitboard.fromSquare(square))) blk: {
+        break :blk attacks.bishop(square, occ_all).andBB(pin_d);
+    } else if (pin_hv.andBB(Bitboard.fromSquare(square))) blk: {
+        break :blk attacks.rook(square, occ_all).andBB(pin_hv);
+    } else blk: {
+        break :blk attacks.rook(square, occ_all).orBB(
+            attacks.bishop(square, occ_all),
+        );
+    };
+}
+
 // ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
@@ -456,5 +497,34 @@ test "Pawn move generation" {
     };
     for (ml.slice(10), 0..) |move, i| {
         try expectEqual(expected_captures[i], move.move);
+    }
+}
+
+test "Bishop move generation" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // Mid-game position
+    try expect(try board.setFen("rnbqkb1r/Pp3p2/5n2/2p5/1P1ppPP1/3PQN2/2P1P1pp/RNB1KB1R b KQkq - 0 1", true));
+    const bishop_mid_c8 = bishopMoves(
+        .c8,
+        Bitboard.fromInt(u64, 0),
+        Bitboard.fromInt(u64, 13772887289031611575),
+    );
+    const bishop_mid_f8 = bishopMoves(
+        .f8,
+        Bitboard.fromInt(u64, 0),
+        Bitboard.fromInt(u64, 13772887289031611575),
+    );
+
+    const bishop_mid_actual: [2]Bitboard = .{ bishop_mid_c8, bishop_mid_f8 };
+    const bishop_mid_expected: [2]u64 = .{ 2832480465846272, 22667548898099200 };
+    for (bishop_mid_expected, bishop_mid_actual) |bb_e, bb_a| {
+        try expectEqual(bb_e, bb_a.bits);
     }
 }
