@@ -10,6 +10,9 @@ const Piece = piece.Piece;
 const castling = @import("castling.zig");
 const CastlingRights = castling.CastlingRights;
 
+const board_ = @import("board.zig");
+const Board = board_.Board;
+
 /// Random Numbers for Zobrist Hashing that are also Polyglot Compatible
 const ZobristArray: [781]u64 = .{
     0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
@@ -263,9 +266,38 @@ pub const Zobrist = struct {
     pub fn sideToMove() u64 {
         return ZobristArray[780];
     }
+
+    /// Generate the zobrist key for a board, very expensive.
+    ///
+    /// When possible, use incremental updates of the hash.
+    pub fn fromBoard(board: *const Board) u64 {
+        var key: u64 = 0;
+        var pieces = board.occ();
+
+        while (pieces.nonzero()) {
+            const square = pieces.popLsb();
+            key ^= Zobrist.piece(board.at(Piece, square), square);
+        }
+
+        var ep_hash: u64 = 0;
+        if (board.ep_square.valid()) ep_hash ^= Zobrist.enPassant(board.ep_square.file());
+
+        var stm_hash: u64 = 0;
+        if (board.side_to_move.isWhite()) stm_hash ^= Zobrist.sideToMove();
+
+        const castling_hash: u64 = Zobrist.castling(board.castling_rights.hash());
+
+        return key ^ ep_hash ^ stm_hash ^ castling_hash;
+    }
 };
 
-pub const State = struct { hash: u64, castling: CastlingRights, enpassant: Square, half_moves: u8, captured_piece: Piece };
+pub const State = struct {
+    hash: u64,
+    castling: CastlingRights,
+    enpassant: Square,
+    half_moves: usize,
+    captured_piece: Piece,
+};
 
 // ================ TESTING ================
 const testing = std.testing;
@@ -297,4 +329,22 @@ test "Zobrist" {
     }
 
     try expectEqual(0xF8D626AAAF278509, Zobrist.sideToMove());
+}
+
+test "Board hashing" {
+    var board = try Board.init(testing.allocator, .{});
+    defer {
+        board.deinit();
+        testing.allocator.destroy(board);
+    }
+
+    // Expected Values from https://github.com/Disservin/chess-library
+    _ = try board.setFen(board_.StartingFen, true);
+    try expectEqual(5060803636482931868, Zobrist.fromBoard(board));
+
+    _ = try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -", true);
+    try expectEqual(14109232545397825053, Zobrist.fromBoard(board));
+
+    _ = try board.setFen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", true);
+    try expectEqual(5730634958646359440, Zobrist.fromBoard(board));
 }

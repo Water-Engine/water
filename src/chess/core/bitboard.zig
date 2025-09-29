@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const types = @import("types.zig");
 const Square = types.Square;
@@ -29,7 +30,7 @@ pub const Bitboard = struct {
     pub fn fromInt(comptime T: type, num: T) Bitboard {
         switch (@typeInfo(T)) {
             .int, .comptime_int => {
-                return if (num < 0 or num >= std.math.maxInt(T)) blk: {
+                return if (num < 0 or num > std.math.maxInt(u64)) blk: {
                     break :blk .{ .bits = 0 };
                 } else blk: {
                     break :blk .{ .bits = @intCast(num) };
@@ -57,19 +58,19 @@ pub const Bitboard = struct {
     }
 
     pub fn set(self: *Bitboard, index: usize) Bitboard {
-        if (index > 63) return self.*;
+        std.debug.assert(index < 64);
         self.bits |= (@as(u64, 1) << @truncate(index));
         return self.*;
     }
 
     pub fn remove(self: *Bitboard, index: usize) Bitboard {
-        if (index > 63) return self.*;
+        std.debug.assert(index < 64);
         self.bits &= ~(@as(u64, 1) << @truncate(index));
         return self.*;
     }
 
     pub fn contains(self: *const Bitboard, index: usize) bool {
-        if (index > 63) return false;
+        std.debug.assert(index < 64);
         return (self.bits & (@as(u64, 1) << @truncate(index))) != 0;
     }
 
@@ -143,19 +144,19 @@ pub const Bitboard = struct {
 
     // ================= IN-PLACE OPS =================
 
-    pub fn andAssign(self: *Bitboard, rhs: Bitboard) Bitboard {
+    pub fn andAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
         self.bits &= rhs.bits;
-        return self.*;
+        return self;
     }
 
-    pub fn orAssign(self: *Bitboard, rhs: Bitboard) Bitboard {
+    pub fn orAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
         self.bits |= rhs.bits;
-        return self.*;
+        return self;
     }
 
-    pub fn xorAssign(self: *Bitboard, rhs: Bitboard) Bitboard {
+    pub fn xorAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
         self.bits ^= rhs.bits;
-        return self.*;
+        return self;
     }
 
     // ================ MISC UTILS ================
@@ -262,10 +263,6 @@ test "Bitboard Base" {
     _ = bb.remove(63);
     try expect(!bb.contains(63));
 
-    _ = bb.set(64);
-    _ = bb.remove(64);
-    try expect(!bb.contains(64));
-
     // ================ POP LSB / LSB / MSB ================
     bb = Bitboard.init();
     _ = bb.set(0);
@@ -333,7 +330,6 @@ test "Bitboard Operators" {
     // ================= SHIFTS =================
     var shl_a = a.shl(1);
     try expect(shl_a.contains(1));
-    try expect(shl_a.contains(64) == false);
     var shr_a = a.shr(1);
     try expect(shr_a.contains(62));
     try expect(shr_a.contains(63) == false);

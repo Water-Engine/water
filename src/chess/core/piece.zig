@@ -134,6 +134,13 @@ pub const Piece = enum(u8) {
         return .none;
     }
 
+    pub fn make(piece_color: Color, piece_type: PieceType) Piece {
+        return Piece.fromInt(
+            usize,
+            piece_type.asInt(usize) + piece_color.asInt(usize) * 6,
+        );
+    }
+
     pub fn valid(self: *const Piece) bool {
         return self.* != .none;
     }
@@ -249,10 +256,6 @@ pub const Piece = enum(u8) {
         if (self.* == .none) return .none;
         return if (self.lteq(.white_king)) .white else .black;
     }
-
-    pub fn internal(self: *const Piece) Piece {
-        return self.*;
-    }
 };
 
 // ================ TESTING ================
@@ -308,6 +311,10 @@ test "Piece" {
     try expectEqual(0, Piece.white_pawn.asInt(u8));
     try expectEqual(11, Piece.black_king.asInt(u8));
 
+    // ================ MAKE =================
+    try expectEqual(Piece.black_knight, Piece.make(.black, .knight));
+    try expectEqual(Piece.white_pawn, Piece.make(.white, .pawn));
+
     // ================ FROM / AS CHAR =================
     try expectEqual(Piece.white_pawn, Piece.fromChar('P'));
     try expectEqual(Piece.black_knight, Piece.fromChar('n'));
@@ -332,5 +339,4 @@ test "Piece" {
     try expectEqual(PieceType.knight, Piece.black_knight.asType());
     try expectEqual(Color.white, Piece.white_queen.color());
     try expectEqual(Color.black, Piece.black_king.color());
-    try expectEqual(Piece.white_rook, Piece.white_rook.internal());
 }

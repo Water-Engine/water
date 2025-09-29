@@ -204,82 +204,125 @@ const BishopAttacks: [64][]const Bitboard = .{
     &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks62), slider_bbs.BishopAttacks62), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks63), slider_bbs.BishopAttacks63),
 };
 
-pub const Attacks = struct {
-    pub fn pawn(color: Color, square: Square) Bitboard {
-        return PawnAttacks[color.index()][square.index()];
+pub fn pawn(color: Color, square: Square) Bitboard {
+    return PawnAttacks[color.index()][square.index()];
+}
+
+pub fn pawnLeftAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
+    return if (C.isWhite()) blk: {
+        break :blk pawns.shl(7).andBB(Bitboard.fromInt(u64, File.fh.mask()).not());
+    } else blk: {
+        break :blk pawns.shr(7).andBB(Bitboard.fromInt(u64, File.fa.mask()).not());
+    };
+}
+
+pub fn pawnRightAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
+    return if (C.isWhite()) blk: {
+        break :blk pawns.shl(9).andBB(Bitboard.fromInt(u64, File.fa.mask()).not());
+    } else blk: {
+        break :blk pawns.shr(9).andBB(Bitboard.fromInt(u64, File.fh.mask()).not());
+    };
+}
+
+pub fn knight(square: Square) Bitboard {
+    return KnightAttacks[square.index()];
+}
+
+pub fn king(square: Square) Bitboard {
+    return KingAttacks[square.index()];
+}
+
+pub fn rook(square: Square, occupied: Bitboard) Bitboard {
+    const index = square.index();
+    const masked_occ = occupied.andBB(slider_bbs.RookMasks[index]);
+    const key = (masked_occ.mulU64Wrapped(slider_bbs.RookMagics[index])).shr(slider_bbs.RookShifts[index]);
+    return RookAttacks[index][key.bits];
+}
+
+pub fn bishop(square: Square, occupied: Bitboard) Bitboard {
+    const index = square.index();
+    const masked_occ = occupied.andBB(slider_bbs.BishopMasks[index]);
+    const key = (masked_occ.mulU64Wrapped(slider_bbs.BishopMagics[index])).shr(slider_bbs.BishopShifts[index]);
+    return BishopAttacks[index][key.bits];
+}
+
+pub fn queen(square: Square, occupied: Bitboard) Bitboard {
+    return rook(square, occupied).orBB(bishop(square, occupied));
+}
+
+/// Returns all slider attacks for the PieceType on the given square.
+pub fn slider(comptime pt: PieceType, square: Square, occupied: Bitboard) Bitboard {
+    return switch (pt) {
+        .rook => rook(square, occupied),
+        .bishop => bishop(square, occupied),
+        .queen => queen(square, occupied),
+        else => @compileError("PieceType must be a slider!"),
+    };
+}
+
+/// Shifts the given bitboard in the given direction
+pub fn shift(comptime D: Square.Direction, bb: Bitboard) Bitboard {
+    return switch (D) {
+        .north => |d| return bb.shl(@abs(d.asInt(i32))),
+        .south => |d| return bb.shr(@abs(d.asInt(i32))),
+        .east => |d| return bb.andU64(~File.MASKS[7]).shl(@abs(d.asInt(i32))),
+        .west => |d| return bb.andU64(~File.MASKS[0]).shr(@abs(d.asInt(i32))),
+        .north_east => |d| return bb.andU64(~File.MASKS[7]).shl(@abs(d.asInt(i32))),
+        .north_west => |d| return bb.andU64(~File.MASKS[0]).shl(@abs(d.asInt(i32))),
+        .south_east => |d| return bb.andU64(~File.MASKS[7]).shr(@abs(d.asInt(i32))),
+        .south_west => |d| return bb.andU64(~File.MASKS[0]).shr(@abs(d.asInt(i32))),
+    };
+}
+
+/// Returns the origin squares of pieces of a given color attacking a target square.
+pub fn attackers(board: *const Board, color: Color, square: Square) Bitboard {
+    const queens = board.pieces(color, .queen);
+    const occupied = board.occ();
+
+    // Principle: if we can attack PieceType from square, they can attack us back
+    var atks = pawn(color.opposite(), square).andBB(
+        board.pieces(color, .pawn),
+    );
+    _ = atks.orAssign(knight(square).andBB(board.pieces(color, .knight)));
+    _ = atks.orAssign(bishop(square, occupied).andBB(
+        board.pieces(color, .bishop).orBB(queens),
+    ));
+    _ = atks.orAssign(rook(square, occupied).andBB(
+        board.pieces(color, .rook).orBB(queens),
+    ));
+    _ = atks.orAssign(king(square).andBB(board.pieces(color, .king)));
+
+    return atks.andBB(occupied);
+}
+
+/// Checks if the given color is attacking the square on the board.
+///
+/// Does not consider whether or not the attack would be an illegal move.
+pub fn isAttacked(board: *const Board, color: Color, square: Square) bool {
+    if (pawn(color.opposite(), square).andBB(
+        board.pieces(color, .pawn),
+    ).nonzero()) {
+        return true;
+    } else if (knight(square).andBB(
+        board.pieces(color, .knight),
+    ).nonzero()) {
+        return true;
+    } else if (king(square).andBB(
+        board.pieces(color, .king),
+    ).nonzero()) {
+        return true;
+    } else if (bishop(square, board.occ()).andBB(
+        board.piecesMany(color, &[_]PieceType{ .bishop, .queen }),
+    ).andBB(board.us(color)).nonzero()) {
+        return true;
+    } else if (rook(square, board.occ()).andBB(
+        board.piecesMany(color, &[_]PieceType{ .rook, .queen }),
+    ).andBB(board.us(color)).nonzero()) {
+        return true;
     }
 
-    pub fn pawnLeftAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
-        return if (C.isWhite()) blk: {
-            break :blk pawns.shl(7).andBB(Bitboard.fromInt(u64, File.fh.mask()).not());
-        } else blk: {
-            break :blk pawns.shr(7).andBB(Bitboard.fromInt(u64, File.fa.mask()).not());
-        };
-    }
-
-    pub fn pawnRightAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
-        return if (C.isWhite()) blk: {
-            break :blk pawns.shl(9).andBB(Bitboard.fromInt(u64, File.fh.mask()).not());
-        } else blk: {
-            break :blk pawns.shr(9).andBB(Bitboard.fromInt(u64, File.fa.mask()).not());
-        };
-    }
-
-    pub fn knight(square: Square) Bitboard {
-        return KnightAttacks[square.index()];
-    }
-
-    pub fn king(square: Square) Bitboard {
-        return KingAttacks[square.index()];
-    }
-
-    pub fn rook(square: Square, occupied: Bitboard) Bitboard {
-        const index = square.index();
-        const masked_occ = occupied.andBB(slider_bbs.RookMasks[index]);
-        const key = (masked_occ.mulU64Wrapped(slider_bbs.RookMagics[index])).shr(slider_bbs.RookShifts[index]);
-        return RookAttacks[index][key.bits];
-    }
-
-    pub fn bishop(square: Square, occupied: Bitboard) Bitboard {
-        const index = square.index();
-        const masked_occ = occupied.andBB(slider_bbs.BishopMasks[index]);
-        const key = (masked_occ.mulU64Wrapped(slider_bbs.BishopMagics[index])).shr(slider_bbs.BishopShifts[index]);
-        return BishopAttacks[index][key.bits];
-    }
-
-    pub fn queen(square: Square, occupied: Bitboard) Bitboard {
-        return rook(square, occupied).orBB(bishop(square, occupied));
-    }
-
-    pub fn slider(comptime PT: PieceType, square: Square, occupied: Bitboard) Bitboard {
-        return switch (PT) {
-            .rook => rook(square, occupied),
-            .bishop => bishop(square, occupied),
-            .queen => queen(square, occupied),
-            else => @compileError("PieceType must be a slider!"),
-        };
-    }
-
-    pub fn shift(comptime D: Square.Direction, bb: Bitboard) Bitboard {
-        return switch (D) {
-            .north => |d| return bb.shl(@abs(d.asInt(i32))),
-            .south => |d| return bb.shr(@abs(d.asInt(i32))),
-            .east => |d| return bb.andU64(~File.MASKS[7]).shl(@abs(d.asInt(i32))),
-            .west => |d| return bb.andU64(~File.MASKS[0]).shr(@abs(d.asInt(i32))),
-            .north_east => |d| return bb.andU64(~File.MASKS[7]).shl(@abs(d.asInt(i32))),
-            .north_west => |d| return bb.andU64(~File.MASKS[0]).shl(@abs(d.asInt(i32))),
-            .south_east => |d| return bb.andU64(~File.MASKS[7]).shr(@abs(d.asInt(i32))),
-            .south_west => |d| return bb.andU64(~File.MASKS[0]).shr(@abs(d.asInt(i32))),
-        };
-    }
-
-    pub fn attackers(board: *const Board, color: Color, square: Square) Bitboard {
-        _ = board;
-        _ = color;
-        _ = square;
-        @compileError("Todo: not implemented!");
-    }
-};
+    return false;
+}
 
 // ================ TESTING ================
 const testing = std.testing;
@@ -321,14 +364,14 @@ test "Attacks" {
     const black_pawn_bb = Bitboard.fromInt(u64, @as(u64, 1) << @truncate(e2.index()));
 
     // Simple lookups
-    try expectEqual(PawnAttacks[Color.white.index()][e2.index()], Attacks.pawn(.white, e2));
-    try expectEqual(PawnAttacks[Color.black.index()][e2.index()], Attacks.pawn(.black, e2));
+    try expectEqual(PawnAttacks[Color.white.index()][e2.index()], pawn(.white, e2));
+    try expectEqual(PawnAttacks[Color.black.index()][e2.index()], pawn(.black, e2));
 
     // Comptime pawn left/right attacks
-    const w_left = Attacks.pawnLeftAttacks(.white, white_pawn_bb);
-    const w_right = Attacks.pawnRightAttacks(.white, white_pawn_bb);
-    const b_left = Attacks.pawnLeftAttacks(.black, black_pawn_bb);
-    const b_right = Attacks.pawnRightAttacks(.black, black_pawn_bb);
+    const w_left = pawnLeftAttacks(.white, white_pawn_bb);
+    const w_right = pawnRightAttacks(.white, white_pawn_bb);
+    const b_left = pawnLeftAttacks(.black, black_pawn_bb);
+    const b_right = pawnRightAttacks(.black, black_pawn_bb);
 
     try expect(w_left.bits != 0);
     try expect(w_right.bits != 0);
@@ -337,31 +380,31 @@ test "Attacks" {
 
     // Knight attacks
     const g1 = Square.fromInt(usize, 6);
-    const knight_bb = Attacks.knight(g1);
+    const knight_bb = knight(g1);
     try expect(knight_bb.bits != 0);
 
     // King attacks
     const e1 = Square.fromInt(usize, 4);
-    const king_bb = Attacks.king(e1);
+    const king_bb = king(e1);
     try expect(king_bb.bits != 0);
 
     // Rook attacks
     const occ = Bitboard.fromInt(u64, 0x000000000000FF00);
-    const rook_bb = Attacks.rook(e1, occ);
+    const rook_bb = rook(e1, occ);
     try expect(rook_bb.bits != 0);
 
     // Bishop attacks
-    const bishop_bb = Attacks.bishop(e1, occ);
+    const bishop_bb = bishop(e1, occ);
     try expect(bishop_bb.bits != 0);
 
     // Queen attacks
-    const queen_bb = Attacks.queen(e1, occ);
+    const queen_bb = queen(e1, occ);
     try expect(queen_bb.bits == (rook_bb.orBB(bishop_bb).bits));
 
     // Slider function
-    try expect(Attacks.slider(.rook, e1, occ).bits == rook_bb.bits);
-    try expect(Attacks.slider(.bishop, e1, occ).bits == bishop_bb.bits);
-    try expect(Attacks.slider(.queen, e1, occ).bits == queen_bb.bits);
+    try expect(slider(.rook, e1, occ).bits == rook_bb.bits);
+    try expect(slider(.bishop, e1, occ).bits == bishop_bb.bits);
+    try expect(slider(.queen, e1, occ).bits == queen_bb.bits);
 }
 
 test "Direction Shifts" {
@@ -369,49 +412,155 @@ test "Direction Shifts" {
 
     // One-step north from d4 should be d5
     try expectEqual(
-        Attacks.shift(.north, d4_bb).bits,
+        shift(.north, d4_bb).bits,
         Bitboard.fromSquare(.d5).bits,
     );
 
     // One-step south from d4 should be d3
     try expectEqual(
-        Attacks.shift(.south, d4_bb).bits,
+        shift(.south, d4_bb).bits,
         Bitboard.fromSquare(.d3).bits,
     );
 
     // One-step east from d4 should be e4
     try expectEqual(
-        Attacks.shift(.east, d4_bb).bits,
+        shift(.east, d4_bb).bits,
         Bitboard.fromSquare(.e4).bits,
     );
 
     // One-step west from d4 should be c4
     try expectEqual(
-        Attacks.shift(.west, d4_bb).bits,
+        shift(.west, d4_bb).bits,
         Bitboard.fromSquare(.c4).bits,
     );
 
     // One-step north-east from d4 should be e5
     try expectEqual(
-        Attacks.shift(.north_east, d4_bb).bits,
+        shift(.north_east, d4_bb).bits,
         Bitboard.fromSquare(.e5).bits,
     );
 
     // One-step north-west from d4 should be c5
     try expectEqual(
-        Attacks.shift(.north_west, d4_bb).bits,
+        shift(.north_west, d4_bb).bits,
         Bitboard.fromSquare(.c5).bits,
     );
 
     // One-step south-east from d4 should be e3
     try expectEqual(
-        Attacks.shift(.south_east, d4_bb).bits,
+        shift(.south_east, d4_bb).bits,
         Bitboard.fromSquare(.e3).bits,
     );
 
     // One-step south-west from d4 should be c3
     try expectEqual(
-        Attacks.shift(.south_west, d4_bb).bits,
+        shift(.south_west, d4_bb).bits,
         Bitboard.fromSquare(.c3).bits,
     );
+}
+
+test "Attackers in a complex position" {
+    const allocator = testing.allocator;
+    var board = try Board.init(
+        allocator,
+        .{ .fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1" },
+    );
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // Attackers from fen verified with https://github.com/Disservin/chess-library
+    const white_attackers: [64]u64 = .{
+        0x0000000000000008, 0x0000000000000009, 0x0000000000000009, 0x0000000001000021,
+        0x0000000000200028, 0x0000000000000048, 0x0000000000200020, 0x0000000000000040,
+        0x0000000000000001, 0x0000000000000000, 0x0000000001000008, 0x0000000002200008,
+        0x0000000000000008, 0x0000000000000060, 0x0000000000000040, 0x0000000000200040,
+        0x0000000002000000, 0x0000000001000108, 0x0000000002000800, 0x0000000000000000,
+        0x0000000000000800, 0x0000000000004028, 0x0000000000008000, 0x0000000000004000,
+        0x0000000000000008, 0x0000000000000000, 0x0000000000000000, 0x0000000000200000,
+        0x0000000000000000, 0x0000000000000000, 0x0000800000000000, 0x0000000000200000,
+        0x0000000002000000, 0x0000000005000000, 0x0000000002000000, 0x0000000014000000,
+        0x0000000000200000, 0x0000800010000000, 0x0000000000200000, 0x0000000000000000,
+        0x0000000200000000, 0x0000000000000000, 0x0000000200000000, 0x0000000002000000,
+        0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000002000000, 0x0000800000000000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000000000, 0x0001000000000000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000000000, 0x0000000002000000, 0x0000800000000000, 0x0000000000000000,
+    };
+
+    for (0..64) |i| {
+        const atks = attackers(
+            board,
+            .white,
+            Square.fromInt(usize, i),
+        );
+        try expectEqual(white_attackers[i], atks.bits);
+    }
+
+    const does_white_attack: [64]bool = .{
+        true,  true,  true,  true,  true,  true,  true,  true,
+        true,  false, true,  true,  true,  true,  true,  true,
+        true,  true,  true,  false, true,  true,  true,  true,
+        true,  false, false, true,  false, false, true,  true,
+        true,  true,  true,  true,  true,  true,  true,  false,
+        true,  false, true,  true,  false, false, false, false,
+        false, false, false, false, true,  true,  false, false,
+        false, true,  false, false, false, true,  true,  false,
+    };
+
+    for (0..64) |i| {
+        try expectEqual(
+            does_white_attack[i],
+            isAttacked(board, .white, Square.fromInt(usize, i)),
+        );
+    }
+
+    const black_attackers: [64]u64 = .{
+        0x0000000000000200, 0x0000000000000000, 0x0000000000000200, 0x0000000000000000,
+        0x0000000000000000, 0x0000000000000000, 0x0000020000000000, 0x0000000000000000,
+        0x0000000000010000, 0x0000000000010000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000000000, 0x0000020000000000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000000000, 0x0000000100010000, 0x0000000000010000, 0x0000000000010000,
+        0x0000020000010000, 0x0000000000010000, 0x0000000000000000, 0x0000000000000000,
+        0x0000000000010000, 0x0000000000010000, 0x0000000100000000, 0x0000020000000000,
+        0x0000600000000000, 0x0000000000000000, 0x0000200000000000, 0x0000000000000000,
+        0x0000020000000000, 0x0000000000000000, 0x0000020000000000, 0x0000200000000000,
+        0x0000000000000000, 0x0000400000000000, 0x0000000000000000, 0x0000600000000000,
+        0x0002000000000000, 0x0004000000000000, 0x000A000100000000, 0x0004000000000000,
+        0x0028000000000000, 0x0040000000000000, 0x00A0000000000000, 0x0040000000000000,
+        0x0100020000000000, 0x0000000100000000, 0x0000020000000000, 0x1000200000000000,
+        0x1000000000000000, 0x1000400000000000, 0x0000000000000000, 0x8000600000000000,
+        0x0000000000000000, 0x0100000000000000, 0x0100000000000000, 0x1100000000000000,
+        0x8100200000000000, 0x9000000000000000, 0x8000200000000000, 0x0000000000000000,
+    };
+
+    for (0..64) |i| {
+        const atks = attackers(
+            board,
+            .black,
+            Square.fromInt(usize, i),
+        );
+        try expectEqual(black_attackers[i], atks.bits);
+    }
+
+    const does_black_attack: [64]bool = .{
+        true,  false, true,  false, false, false, true,  false,
+        true,  true,  false, false, false, true,  false, false,
+        false, true,  true,  true,  true,  true,  false, false,
+        true,  true,  true,  true,  true,  false, true,  false,
+        true,  false, true,  true,  false, true,  false, true,
+        true,  true,  true,  true,  true,  true,  true,  true,
+        true,  true,  true,  true,  true,  true,  false, true,
+        false, true,  true,  true,  true,  true,  true,  false,
+    };
+
+    for (0..64) |i| {
+        try expectEqual(
+            does_black_attack[i],
+            isAttacked(board, .black, Square.fromInt(usize, i)),
+        );
+    }
 }
