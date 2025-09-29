@@ -780,7 +780,7 @@ pub const Board = struct {
                     var found: i32 = -1;
 
                     // Check if the enemy can legally capture ep
-                    if (options.exact) {
+                    if (comptime options.exact) {
                         const piece = self.at(Piece, move.from());
                         found = 0;
 

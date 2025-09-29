@@ -73,15 +73,18 @@ pub fn bench(board: *water.Board, test_case: TestCase) !void {
         }
     }
 
-    const elapsed = @as(f128, @floatFromInt(end - start)) / 1_000_000.0;
-    const nps = (@as(f128, @floatFromInt(nodes)) * 1000.0) / (elapsed + 1.0);
+    const elapsed_float = @as(f128, @floatFromInt(end - start)) / 1_000_000.0;
+    const nps_float = (@as(f128, @floatFromInt(nodes)) * 1000.0) / (elapsed_float + 1.0);
+
+    const elapsed: u64 = @intFromFloat(elapsed_float);
+    const nps: u64 = @intFromFloat(nps_float);
 
     var out_buffer = try std.ArrayList(u8).initCapacity(board.allocator, 500);
     defer out_buffer.deinit(board.allocator);
 
     try out_buffer.print(
         board.allocator,
-        "depth {d: <2} time {d: <5} nodes {d: <12} nps {d: <9} fen {s: <87}",
+        "depth {d:<2} time {d:<5} nodes {d:<12} nps {d:<9} fen {s:<87}",
         .{ test_case.depth, elapsed, nodes, nps, test_case.fen },
     );
 
