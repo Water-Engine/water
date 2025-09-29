@@ -78,10 +78,17 @@ pub const Movelist = struct {
     ///
     /// The length must be compile time known, for non-comptime slices, use:
     ///
-    /// `ml.moves[0..ml.size]` where ml is the Movelist.
+    /// `ml.items()` or `ml.moves[0..ml.size]` where ml is the Movelist.
     pub fn slice(self: *const Movelist, comptime N: usize) *const [N]Move {
         std.debug.assert(N <= self.size);
         return self.moves[0..N];
+    }
+
+    /// Returns a reference to the filled items.
+    ///
+    /// May not be as performant as the `slice` fn or runtime slices.
+    pub fn items(self: *const Movelist) []const Move {
+        return self.moves[0..self.size];
     }
 };
 
@@ -281,6 +288,9 @@ test "Movelist creation and operations" {
     var ml = Movelist{};
     ml.size = MaxMoves;
     for (ml.slice(MaxMoves - 1)) |move| {
+        try expectEqual(0, move.move);
+    }
+    for (ml.items()) |move| {
         try expectEqual(0, move.move);
     }
 

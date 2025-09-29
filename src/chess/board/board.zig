@@ -984,6 +984,25 @@ pub const Board = struct {
             self.side_to_move = self.side_to_move.opposite();
         }
     }
+
+    /// Perform a perft test to the given depth.
+    pub fn perft(self: *Board, depth: usize) usize {
+        var moves = movegen.Movelist{};
+        movegen.legalmoves(self, &moves, .{});
+
+        if (depth <= 1) {
+            return moves.size;
+        }
+
+        var nodes: usize = 0;
+        for (moves.moves[0..moves.size]) |move| {
+            self.makeMove(move, .{});
+            nodes += self.perft(depth - 1);
+            self.unmakeMove(move);
+        }
+
+        return nodes;
+    }
 };
 
 // ================ TESTING ================
@@ -1485,4 +1504,24 @@ test "Null move making" {
 
     board.unmakeNullMove();
     try expectEqual(2063133069522446414, board.key);
+}
+
+test "Shallow perft" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{
+        .fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
+    });
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    const expected_nodes: [4]usize = .{
+        48, 2039, 97862, 4085603,
+    };
+
+    for (expected_nodes, 1..5) |expected, i| {
+        try expectEqual(expected, board.perft(i));
+    }
 }

@@ -161,7 +161,7 @@ pub fn pawnMoves(
     ).andBB(occ.not()).orBB(attacks.shift(
         up,
         pinned_single_push.andBB(rank_double_push),
-    ).andBB(occ.not()).andBB(check_mask));
+    ).andBB(occ.not())).andBB(check_mask);
 
     // Generate promoting moves
     if (pawns.andBB(rank_before_promo).nonzero()) {
@@ -422,7 +422,7 @@ pub fn all(
 
     const occ_us = board.us(options.color);
     const occ_opp = board.us(options.color.opposite());
-    const occ_all = board.occ();
+    const occ_all = occ_us.orBB(occ_opp);
 
     const opp_empty = occ_us.not();
 

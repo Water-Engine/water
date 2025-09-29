@@ -295,7 +295,7 @@ pub const State = struct {
     hash: u64,
     castling: CastlingRights,
     enpassant: Square,
-    half_moves: u8,
+    half_moves: usize,
     captured_piece: Piece,
 };
 

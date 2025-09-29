@@ -27,6 +27,8 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe);
 
     addRunStep(b, exe);
+    addPerftStep(b, mod);
+
     addFmtStep(b);
     addLintStep(b);
     addClocStep(b);
@@ -44,8 +46,28 @@ fn addRunStep(b: *std.Build, exe: *std.Build.Step.Compile) void {
         run_cmd.addArgs(args);
     }
 
-    const run_step = b.step("run", "Run the app");
+    const run_step = b.step("run", "Run the engine");
     run_step.dependOn(&run_cmd.step);
+}
+
+fn addPerftStep(b: *std.Build, module: *std.Build.Module) void {
+    const perft_exe = b.addExecutable(.{
+        .name = "perft",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/chess/perft.zig"),
+            .target = module.resolved_target,
+            .optimize = module.optimize,
+            .imports = &.{
+                .{ .name = "water", .module = module },
+            },
+        }),
+    });
+
+    const run_perft = b.addRunArtifact(perft_exe);
+    run_perft.step.dependOn(b.getInstallStep());
+
+    const perft_step = b.step("perft", "Run perft suite");
+    perft_step.dependOn(&run_perft.step);
 }
 
 fn addToTestStep(b: *std.Build, module: *std.Build.Module, step: *std.Build.Step) void {
