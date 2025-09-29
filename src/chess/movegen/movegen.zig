@@ -85,6 +85,33 @@ pub const Movelist = struct {
     }
 };
 
+/// Generates all legal moves for the position.
+///
+/// The movelist provided is reset before filling.
+pub fn legalmoves(
+    board: *const Board,
+    movelist: *Movelist,
+    comptime options: struct {
+        gen_type: generators.MovegenType = .all,
+        pieces: []const PieceType = &generators.AllPieces,
+    },
+) void {
+    movelist.reset();
+    switch (board.side_to_move) {
+        .white => generators.all(board, movelist, .{
+            .color = .white,
+            .gen_type = options.gen_type,
+            .pieces = options.pieces,
+        }),
+        .black => generators.all(board, movelist, .{
+            .color = .black,
+            .gen_type = options.gen_type,
+            .pieces = options.pieces,
+        }),
+        .none => unreachable,
+    }
+}
+
 /// Generates the check mask where the attacker path from the king and enemy piece is set.
 ///
 /// The number of checks is also tracked and returned.
@@ -453,4 +480,27 @@ test "Ep square validity" {
     // Black has two ep options and can use them
     try expect(try board.setFen("rnbqk1nr/pp2pp1p/7b/B5pP/1pPpP3/8/PP1K1P1P/RNBQ2NR b kq c3 0 1", true));
     try expect(isEpSquareValid(board, .black, .c3));
+}
+
+test "Legalmoves API endpoint validity" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{
+        .fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
+    });
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // Legal moves for white
+    var ml = Movelist{};
+    legalmoves(board, &ml, .{});
+    try expectEqual(48, ml.size);
+
+    // Legal moves for black
+    try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - ", true));
+    ml.reset();
+    legalmoves(board, &ml, .{});
+    try expectEqual(43, ml.size);
 }

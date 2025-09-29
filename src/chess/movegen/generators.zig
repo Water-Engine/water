@@ -31,6 +31,7 @@ const movegen = @import("movegen.zig");
 const Movelist = movegen.Movelist;
 
 pub const MovegenType = enum { all, capture, quiet };
+pub const AllPieces: [6]PieceType = [_]PieceType{ .pawn, .knight, .bishop, .rook, .queen, .king };
 
 /// Generates the (up to) two possible moves that could capture en passant.
 ///
@@ -97,7 +98,7 @@ pub fn epMoves(
 /// Generates all pawn moves for the current position and appends them to the movelist.
 pub fn pawnMoves(
     board: *const Board,
-    moves: *Movelist,
+    movelist: *Movelist,
     check_mask: Bitboard,
     pin_hv: Bitboard,
     pin_diag: Bitboard,
@@ -172,19 +173,19 @@ pub fn pawnMoves(
         if (options.gen_type != .quiet) {
             while (left_promo.nonzero()) {
                 const index = left_promo.popLsb();
-                moves.add(Move.make(index.addToDirection(down_right), index, .{
+                movelist.add(Move.make(index.addToDirection(down_right), index, .{
                     .move_type = .promotion,
                     .promotion_type = .queen,
                 }));
-                moves.add(Move.make(index.addToDirection(down_right), index, .{
+                movelist.add(Move.make(index.addToDirection(down_right), index, .{
                     .move_type = .promotion,
                     .promotion_type = .rook,
                 }));
-                moves.add(Move.make(index.addToDirection(down_right), index, .{
+                movelist.add(Move.make(index.addToDirection(down_right), index, .{
                     .move_type = .promotion,
                     .promotion_type = .bishop,
                 }));
-                moves.add(Move.make(index.addToDirection(down_right), index, .{
+                movelist.add(Move.make(index.addToDirection(down_right), index, .{
                     .move_type = .promotion,
                     .promotion_type = .knight,
                 }));
@@ -192,19 +193,19 @@ pub fn pawnMoves(
 
             while (right_promo.nonzero()) {
                 const index = right_promo.popLsb();
-                moves.add(Move.make(index.addToDirection(down_left), index, .{
+                movelist.add(Move.make(index.addToDirection(down_left), index, .{
                     .move_type = .promotion,
                     .promotion_type = .queen,
                 }));
-                moves.add(Move.make(index.addToDirection(down_left), index, .{
+                movelist.add(Move.make(index.addToDirection(down_left), index, .{
                     .move_type = .promotion,
                     .promotion_type = .rook,
                 }));
-                moves.add(Move.make(index.addToDirection(down_left), index, .{
+                movelist.add(Move.make(index.addToDirection(down_left), index, .{
                     .move_type = .promotion,
                     .promotion_type = .bishop,
                 }));
-                moves.add(Move.make(index.addToDirection(down_left), index, .{
+                movelist.add(Move.make(index.addToDirection(down_left), index, .{
                     .move_type = .promotion,
                     .promotion_type = .knight,
                 }));
@@ -215,19 +216,19 @@ pub fn pawnMoves(
         if (options.gen_type != .capture) {
             while (push_promo.nonzero()) {
                 const index = push_promo.popLsb();
-                moves.add(Move.make(index.addToDirection(down), index, .{
+                movelist.add(Move.make(index.addToDirection(down), index, .{
                     .move_type = .promotion,
                     .promotion_type = .queen,
                 }));
-                moves.add(Move.make(index.addToDirection(down), index, .{
+                movelist.add(Move.make(index.addToDirection(down), index, .{
                     .move_type = .promotion,
                     .promotion_type = .rook,
                 }));
-                moves.add(Move.make(index.addToDirection(down), index, .{
+                movelist.add(Move.make(index.addToDirection(down), index, .{
                     .move_type = .promotion,
                     .promotion_type = .bishop,
                 }));
-                moves.add(Move.make(index.addToDirection(down), index, .{
+                movelist.add(Move.make(index.addToDirection(down), index, .{
                     .move_type = .promotion,
                     .promotion_type = .knight,
                 }));
@@ -244,24 +245,24 @@ pub fn pawnMoves(
     if (options.gen_type != .quiet) {
         while (pawns_l.nonzero()) {
             const index = pawns_l.popLsb();
-            moves.add(Move.make(index.addToDirection(down_right), index, .{}));
+            movelist.add(Move.make(index.addToDirection(down_right), index, .{}));
         }
 
         while (pawns_r.nonzero()) {
             const index = pawns_r.popLsb();
-            moves.add(Move.make(index.addToDirection(down_left), index, .{}));
+            movelist.add(Move.make(index.addToDirection(down_left), index, .{}));
         }
     }
 
     if (options.gen_type != .capture) {
         while (single_push.nonzero()) {
             const index = single_push.popLsb();
-            moves.add(Move.make(index.addToDirection(down), index, .{}));
+            movelist.add(Move.make(index.addToDirection(down), index, .{}));
         }
 
         while (double_push.nonzero()) {
             const index = double_push.popLsb();
-            moves.add(Move.make(
+            movelist.add(Move.make(
                 index.addToDirection(down).addToDirection(down),
                 index,
                 .{},
@@ -281,7 +282,7 @@ pub fn pawnMoves(
         );
 
         for (contenders) |move| {
-            if (move.valid()) moves.add(move);
+            if (move.valid()) movelist.add(move);
         }
     }
 }
@@ -311,7 +312,6 @@ pub fn castleMoves(
 
     for ([_]CastlingRights.Side{ .king, .queen }) |side| {
         if (!board.castling_rights.hasSide(options.color, side)) {
-            std.debug.print("You have no right!", .{});
             continue;
         }
 
@@ -319,14 +319,12 @@ pub fn castleMoves(
         if (board.occ().andBB(
             board.castling_path[options.color.index()][side.index()],
         ).nonzero()) {
-            std.debug.print("Filled path!", .{});
             continue;
         }
 
         // Check for attacks on the king's path
         const king_to = Square.castlingKingTo(side, options.color);
         if (distance.SquaresBetween[square.index()][king_to.index()].andBB(seen).nonzero()) {
-            std.debug.print("Kings path attacked!", .{});
             continue;
         }
 
@@ -339,7 +337,6 @@ pub fn castleMoves(
         if (board.fischer_random and pin_hv.andBB(board.us(
             board.side_to_move,
         )).andBB(from_rook_bb).nonzero()) {
-            std.debug.print("In FRC", .{});
             continue;
         }
 
@@ -378,6 +375,234 @@ pub fn queenMoves(square: Square, pin_d: Bitboard, pin_hv: Bitboard, occ_all: Bi
             attacks.bishop(square, occ_all),
         );
     };
+}
+
+/// An enum used for mapping PieceTypes to powers of two
+const PieceGenType = enum(u6) {
+    pawn = 1,
+    knight = 2,
+    bishop = 4,
+    rook = 8,
+    queen = 16,
+    king = 32,
+
+    pub fn pt2pgt(comptime pt: PieceType) PieceGenType {
+        return switch (pt) {
+            .pawn => PieceGenType.pawn,
+            .knight => PieceGenType.knight,
+            .bishop => PieceGenType.bishop,
+            .rook => PieceGenType.rook,
+            .queen => PieceGenType.queen,
+            .king => PieceGenType.king,
+            .none => @compileError("No matching PieceGenType for PieceType.none"),
+        };
+    }
+
+    pub fn pts2bb(comptime pts: []const PieceType) Bitboard {
+        var bb = Bitboard.init();
+        inline for (pts) |pt| {
+            _ = bb.orAssign(Bitboard.fromInt(u6, @intFromEnum(pt2pgt(pt))));
+        }
+        return bb;
+    }
+};
+
+/// Generates all legal moves for the current position and appends them to the movelist.
+pub fn all(
+    board: *const Board,
+    movelist: *Movelist,
+    comptime options: struct {
+        color: Color,
+        gen_type: MovegenType,
+        pieces: []const PieceType,
+    },
+) void {
+    const pieces = comptime PieceGenType.pts2bb(options.pieces);
+    const king_sq = board.kingSq(options.color);
+
+    const occ_us = board.us(options.color);
+    const occ_opp = board.us(options.color.opposite());
+    const occ_all = board.occ();
+
+    const opp_empty = occ_us.not();
+
+    const cm = movegen.checkMask(board, options.color, king_sq);
+    const check_mask = cm.mask;
+    const checks = cm.checks;
+    std.debug.assert(checks <= 2);
+
+    const pin_hv = movegen.pinMask(
+        .rook,
+        board,
+        options.color,
+        king_sq,
+        occ_opp,
+        occ_us,
+    );
+
+    const pin_d = movegen.pinMask(
+        .bishop,
+        board,
+        options.color,
+        king_sq,
+        occ_opp,
+        occ_us,
+    );
+
+    var moveable_square = if (comptime options.gen_type == .all) blk: {
+        break :blk opp_empty;
+    } else if (comptime options.gen_type == .capture) blk: {
+        break :blk occ_opp;
+    } else occ_all.not();
+
+    const addMovesFromMask = struct {
+        /// Adds moves to the movelist for each square in the mask.
+        ///
+        /// The args to the function should assume to be starting at index 1.
+        pub fn addMovesFromMask(
+            ml: *Movelist,
+            mask: Bitboard,
+            comptime function: anytype,
+            args: anytype,
+        ) void {
+            var mask_copy = mask;
+            while (mask_copy.nonzero()) {
+                const from = mask_copy.popLsb();
+                var generated: Bitboard = @call(.auto, function, .{from} ++ args);
+                while (generated.nonzero()) {
+                    const to = generated.popLsb();
+                    ml.add(Move.make(from, to, .{}));
+                }
+            }
+        }
+    }.addMovesFromMask;
+
+    if (comptime pieces.andU64(@intFromEnum(PieceGenType.king)).nonzero()) {
+        const seen = movegen.seenSquares(options.color.opposite(), board, opp_empty);
+
+        addMovesFromMask(movelist, Bitboard.fromSquare(king_sq), struct {
+            pub fn afn(square: Square, seen_: Bitboard, moveable_square_: Bitboard) Bitboard {
+                return kingMoves(square, seen_, moveable_square_);
+            }
+        }.afn, .{ seen, moveable_square });
+
+        if (options.gen_type != .capture and checks == 0) {
+            var moves_bb = castleMoves(
+                board,
+                king_sq,
+                seen,
+                pin_hv,
+                .{ .color = options.color },
+            );
+
+            while (moves_bb.nonzero()) {
+                const to = moves_bb.popLsb();
+                movelist.add(Move.make(king_sq, to, .{ .move_type = .castling }));
+            }
+        }
+    }
+
+    // There can only be 2 checks in any legal position
+    if (checks == 2) return;
+    _ = moveable_square.andAssign(check_mask);
+
+    // Add all the pieces to the movelist
+    if (comptime pieces.andU64(@intFromEnum(PieceGenType.pawn)).nonzero()) {
+        pawnMoves(
+            board,
+            movelist,
+            check_mask,
+            pin_hv,
+            pin_d,
+            occ_opp,
+            .{ .color = options.color, .gen_type = options.gen_type },
+        );
+    }
+
+    if (comptime pieces.andU64(@intFromEnum(PieceGenType.knight)).nonzero()) {
+        // Remove any pinned knights
+        const knights_mask = board.pieces(
+            options.color,
+            .knight,
+        ).andBB(pin_d.orBB(pin_hv).not());
+
+        addMovesFromMask(movelist, knights_mask, struct {
+            pub fn afn(square: Square, moveable_square_: Bitboard) Bitboard {
+                return knightMoves(square).andBB(moveable_square_);
+            }
+        }.afn, .{moveable_square});
+    }
+
+    if (comptime pieces.andU64(@intFromEnum(PieceGenType.bishop)).nonzero()) {
+        // Remove any horizontally/vertically pinned bishops
+        const bishops_mask = board.pieces(
+            options.color,
+            .bishop,
+        ).andBB(pin_hv.not());
+
+        addMovesFromMask(movelist, bishops_mask, struct {
+            pub fn afn(
+                square: Square,
+                pin_d_: Bitboard,
+                occ_all_: Bitboard,
+                moveable_square_: Bitboard,
+            ) Bitboard {
+                return bishopMoves(
+                    square,
+                    pin_d_,
+                    occ_all_,
+                ).andBB(moveable_square_);
+            }
+        }.afn, .{ pin_d, occ_all, moveable_square });
+    }
+
+    if (comptime pieces.andU64(@intFromEnum(PieceGenType.rook)).nonzero()) {
+        // Remove any diagonally pinned rooks
+        const rooks_mask = board.pieces(
+            options.color,
+            .rook,
+        ).andBB(pin_d.not());
+
+        addMovesFromMask(movelist, rooks_mask, struct {
+            pub fn afn(
+                square: Square,
+                pin_hv_: Bitboard,
+                occ_all_: Bitboard,
+                moveable_square_: Bitboard,
+            ) Bitboard {
+                return rookMoves(
+                    square,
+                    pin_hv_,
+                    occ_all_,
+                ).andBB(moveable_square_);
+            }
+        }.afn, .{ pin_hv, occ_all, moveable_square });
+    }
+
+    if (comptime pieces.andU64(@intFromEnum(PieceGenType.queen)).nonzero()) {
+        // Only remove queens who are pinned twice
+        const queens_mask = board.pieces(
+            options.color,
+            .queen,
+        ).andBB(pin_d.andBB(pin_hv).not());
+
+        addMovesFromMask(movelist, queens_mask, struct {
+            pub fn afn(
+                square: Square,
+                pin_d_: Bitboard,
+                pin_hv_: Bitboard,
+                occ_all_: Bitboard,
+                moveable_square_: Bitboard,
+            ) Bitboard {
+                return queenMoves(
+                    square,
+                    pin_d_,
+                    pin_hv_,
+                    occ_all_,
+                ).andBB(moveable_square_);
+            }
+        }.afn, .{ pin_d, pin_hv, occ_all, moveable_square });
+    }
 }
 
 // ================ TESTING ================
@@ -575,11 +800,52 @@ test "King and castling move generation" {
     ).bits);
 
     // Both castling options available
-    try expectEqual(1, castleMoves(
+    try expectEqual(129, castleMoves(
         board,
         .e1,
-        Bitboard.fromInt(u64, 9006917425330126912),
+        Bitboard.fromInt(u64, 9006917425330143232),
         Bitboard.fromInt(u64, 0),
+        .{ .color = .white },
+    ).bits);
+
+    // Doesn't have the right on queen side
+    try expect(try board.setFen("1nbqkb1r/Pp3p2/2r2n2/2p1p2P/1PPp2PN/2N1Q2p/1BP1P1B1/R3K2R w Kk - 0 1", true));
+    try expectEqual(128, castleMoves(
+        board,
+        .e1,
+        Bitboard.fromInt(u64, 9006917425330143232),
+        Bitboard.fromInt(u64, 0),
+        .{ .color = .white },
+    ).bits);
+
+    // King side path is blocked for black
+    try expect(try board.setFen("r3kb1r/Ppq2p2/1n1b1n2/2p1p2P/1PPp2PN/4Q2p/1BP1P1B1/RN2K2R b KQkq - 0 1", true));
+    try expectEqual(72057594037927936, castleMoves(
+        board,
+        .e8,
+        Bitboard.fromInt(u64, 145177312985348607),
+        Bitboard.fromInt(u64, 4521260802375680),
+        .{ .color = .black },
+    ).bits);
+
+    // FRC both castling
+    try expect(try board.setFischerRandom(true));
+    try expect(try board.setFen("rbnnbkrq/pp1p1ppp/2p1p3/8/6Q1/N1NBB3/PPPPPPPP/R4KR1 w AGag - 0 1", true));
+    try expectEqual(65, castleMoves(
+        board,
+        .f1,
+        Bitboard.fromInt(u64, 17509994501354061824),
+        Bitboard.fromInt(u64, 0),
+        .{ .color = .white },
+    ).bits);
+
+    // FRC can only castle one side due to pin on king side
+    try expect(try board.setFen("qnrkbn1b/pppppppp/8/8/8/3BN1B1/PPPPPPPP/QNRK2Rr w CGcg - 0 1", true));
+    try expectEqual(4, castleMoves(
+        board,
+        .d1,
+        Bitboard.fromInt(u64, 2233784315664171072),
+        Bitboard.fromInt(u64, 240),
         .{ .color = .white },
     ).bits);
 }
@@ -661,4 +927,138 @@ test "Queen move generation" {
     );
 
     try expectEqual(141082040940612, queen_mid.bits);
+}
+
+test "PieceGenType compile time computation" {
+    const pawns = comptime PieceGenType.pts2bb(&[_]PieceType{.pawn});
+    try expectEqual(@intFromEnum(PieceGenType.pawn), pawns.bits);
+
+    const all_types = comptime PieceGenType.pts2bb(&AllPieces);
+    try expectEqual(63, all_types.bits);
+}
+
+test "Generate all legal moves" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // Legal moves from starting position
+    var ml = Movelist{};
+    all(
+        board,
+        &ml,
+        .{
+            .color = .white,
+            .gen_type = .all,
+            .pieces = &AllPieces,
+        },
+    );
+    try expectEqual(20, ml.size);
+
+    const expected_starting: [20]u16 = .{
+        528, 593, 658, 723, 788, 853, 918, 983,
+        536, 601, 666, 731, 796, 861, 926, 991,
+        80,  82,  405, 407,
+    };
+    for (expected_starting, ml.slice(20)) |expected, move| {
+        try expectEqual(expected, move.move);
+    }
+
+    // Position from https://www.chessprogramming.org/Perft_Results
+    ml.reset();
+    try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ", true));
+    all(
+        board,
+        &ml,
+        .{
+            .color = .white,
+            .gen_type = .all,
+            .pieces = &AllPieces,
+        },
+    );
+    try expectEqual(48, ml.size);
+
+    const expected_mid: [48]u16 = .{
+        259,  261,  49408, 49415, 919,  2284, 528,  593,
+        918,  2283, 536,   926,   1153, 1155, 1176, 1185,
+        2323, 2330, 2334,  2346,  2350, 2355, 2357, 706,
+        724,  733,  742,   751,   771,  773,  787,  794,
+        801,  808,  1,     2,     3,    453,  454,  1363,
+        1364, 1366, 1367,  1373,  1374, 1381, 1383, 1389,
+    };
+    for (expected_mid, ml.slice(48)) |expected, move| {
+        try expectEqual(expected, move.move);
+    }
+
+    // Same position, but only quiet moves for white
+    ml.reset();
+    all(
+        board,
+        &ml,
+        .{
+            .color = .white,
+            .gen_type = .quiet,
+            .pieces = &AllPieces,
+        },
+    );
+    try expectEqual(40, ml.size);
+
+    const expected_mid_white_quiets: [40]u16 = .{
+        259,  261,  49408, 49415, 528,  593,  918,  2283,
+        536,  926,  1153,  1155,  1176, 1185, 2323, 2330,
+        2334, 2346, 706,   724,   733,  742,  751,  771,
+        773,  787,  794,   801,   1,    2,    3,    453,
+        454,  1363, 1364,  1366,  1373, 1374, 1381, 1383,
+    };
+    for (expected_mid_white_quiets, ml.slice(40)) |expected, move| {
+        try expectEqual(expected, move.move);
+    }
+
+    // Same position, but only captures and for black
+    ml.reset();
+    all(
+        board,
+        &ml,
+        .{
+            .color = .black,
+            .gen_type = .capture,
+            .pieces = &AllPieces,
+        },
+    );
+    try expectEqual(7, ml.size);
+
+    const expected_mid_black_captures: [7]u16 = .{
+        1618, 1486, 2851, 2659, 2908, 2915, 2572,
+    };
+    for (expected_mid_black_captures, ml.slice(7)) |expected, move| {
+        try expectEqual(expected, move.move);
+    }
+
+    // FRC Position for black
+    ml.reset();
+    try expect(try board.setFischerRandom(true));
+    try expect(try board.setFen("1rqbkrbn/1ppppp1p/1n6/p1N3p1/8/2P4P/PP1PPPP1/1RQBKRBN w FBfb - 0 9", true));
+    all(
+        board,
+        &ml,
+        .{
+            .color = .black,
+            .gen_type = .all,
+            .pieces = &AllPieces,
+        },
+    );
+    try expectEqual(17, ml.size);
+
+    const expected_frc: [17]u16 = .{
+        2072, 2462, 3242, 3307, 3372, 3437, 3567, 3299,
+        3364, 3429, 3559, 2648, 2650, 2659, 2680, 4078,
+        3704,
+    };
+    for (expected_frc, ml.slice(17)) |expected, move| {
+        try expectEqual(expected, move.move);
+    }
 }

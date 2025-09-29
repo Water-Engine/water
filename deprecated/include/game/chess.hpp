@@ -3936,11 +3936,8 @@ template <Color::underlying c>
 [[nodiscard]] inline Bitboard movegen::generateCastleMoves(const Board& board, Square sq,
                                                            Bitboard seen,
                                                            Bitboard pin_hv) noexcept {
-    std::cout << sq << "\n";
-    std::cout << seen.getBits() << "\n";
-    std::cout << pin_hv.getBits() << "\n";
     if (!Square::back_rank(sq, c) || !board.castlingRights().has(c))
-        {std::cout << 0 << "\n"; return 0ull;}
+        return 0ull;
 
     const auto rights = board.castlingRights();
 
@@ -3971,7 +3968,6 @@ template <Color::underlying c>
         moves |= from_rook_bb;
     }
 
-    std::cout << moves.getBits() << "\n";
     return moves;
 }
 
@@ -4108,10 +4104,6 @@ template <Color::underlying c> inline bool movegen::isEpSquareValid(const Board&
     const auto m = movegen::generateEPMove(board, checkmask, pin_d, pawns_lr, ep, stm);
     bool found = false;
 
-    std::cout << "\n";
-    for (const auto& move : m) {
-        std::cout << move.move() << "\n";
-    }
     for (const auto& move : m) {
         if (move != Move::NO_MOVE) {
             found = true;
