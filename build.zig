@@ -107,8 +107,7 @@ fn addClocStep(b: *std.Build) void {
         "cloc",
         "build.zig",
         "src",
-        "scripts",
-        "--not-match-f=(slider_bbs.zig|pretty_print.py)",
+        "--not-match-f=(slider_bbs.zig)",
     });
 
     const cloc_step = b.step(

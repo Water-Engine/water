@@ -305,7 +305,7 @@ pub const Zobrist = struct {
 pub const State = struct {
     hash: u64,
     castling: CastlingRights,
-    enpassant: Square,
+    en_passant: Square,
     half_moves: usize,
     captured_piece: Piece,
 };

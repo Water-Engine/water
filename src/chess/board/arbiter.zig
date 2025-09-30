@@ -30,7 +30,7 @@ pub const Result = struct {
 };
 
 /// Determines the halfmove draw type, or null if the 50 move rule is not met.
-/// 
+///
 /// Passing a precomputed movelist will greatly improve performance.
 pub fn halfmove(board: *const Board, precomputed_movelist: ?*const movegen.Movelist) ?Result {
     if (board.halfmove_clock < 100) return null;

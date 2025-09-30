@@ -655,7 +655,7 @@ pub const Board = struct {
     /// Moves are naively checked meaning legality is not considered.
     pub fn isCapture(self: *const Board, move: Move) bool {
         const valid_at = self.at(Piece, move.to()).valid();
-        const valid_type = move.typeOf(MoveType) == .castling or move.typeOf(MoveType) == .enpassant;
+        const valid_type = move.typeOf(MoveType) == .castling or move.typeOf(MoveType) == .en_passant;
         return valid_at and valid_type;
     }
 
@@ -714,7 +714,7 @@ pub const Board = struct {
         self.previous_states.append(self.allocator, .{
             .hash = self.key,
             .castling = self.castling_rights,
-            .enpassant = self.ep_square,
+            .en_passant = self.ep_square,
             .half_moves = @intCast(self.halfmove_clock),
             .captured_piece = captured,
         }) catch unreachable;
@@ -883,7 +883,7 @@ pub const Board = struct {
     pub fn unmakeMove(self: *Board, move: Move) void {
         const prev = self.previous_states.getLastOrNull();
         if (prev) |previous_state| {
-            self.ep_square = previous_state.enpassant;
+            self.ep_square = previous_state.en_passant;
             self.castling_rights = previous_state.castling;
             self.halfmove_clock = previous_state.half_moves;
             self.side_to_move = self.side_to_move.opposite();
@@ -965,7 +965,7 @@ pub const Board = struct {
         self.previous_states.append(self.allocator, .{
             .hash = self.key,
             .castling = self.castling_rights,
-            .enpassant = self.ep_square,
+            .en_passant = self.ep_square,
             .half_moves = @intCast(self.halfmove_clock),
             .captured_piece = .none,
         }) catch unreachable;
@@ -987,7 +987,7 @@ pub const Board = struct {
         const prev = self.previous_states.pop();
 
         if (prev) |previous_state| {
-            self.ep_square = previous_state.enpassant;
+            self.ep_square = previous_state.en_passant;
             self.castling_rights = previous_state.castling;
             self.halfmove_clock = previous_state.half_moves;
             self.key = previous_state.hash;
@@ -1168,6 +1168,14 @@ pub const Board = struct {
             else => unreachable,
         };
     }
+
+    /// Determines the number of non-pawn and non-king pieces for the given color.
+    pub fn nonPawnMaterial(self: *const Board, color: Color) usize {
+        const material = self.us(color).xorBB(
+            self.piecesMany(color, &[_]PieceType{ .pawn, .king }),
+        );
+        return material.count();
+    }
 };
 
 // ================ TESTING ================
@@ -1257,7 +1265,7 @@ test "Board initialization & copy from starting fen" {
         .hash = 0,
         .captured_piece = .none,
         .castling = .{},
-        .enpassant = .none,
+        .en_passant = .none,
         .half_moves = 0,
     });
     try expect(parent.previous_states.items.len == 1);
@@ -1673,7 +1681,7 @@ test "Null move making" {
     try expectEqual(2063133069522446414, board.key);
 }
 
-test "Shallow perft" {
+test "Shallow perft and check alignment" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{
         .fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
@@ -1736,3 +1744,5 @@ test "Check detection" {
     try expect(board.inCheck(.{ .color = .black }));
     try expect(!board.inCheck(.{ .color = .white }));
 }
+
+test "Non-pawn material calculation" {}
