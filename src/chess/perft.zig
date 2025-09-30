@@ -63,7 +63,7 @@ pub fn bench(board: *water.Board, test_case: TestCase) !void {
     std.debug.assert(try board.setFen(test_case.fen, true));
 
     const start = std.time.nanoTimestamp();
-    const nodes = board.perft(test_case.depth);
+    const nodes = board.perft(test_case.depth, .{});
     const end = std.time.nanoTimestamp();
 
     if (test_case.expected_nodes) |expected| {

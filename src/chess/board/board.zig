@@ -364,7 +364,19 @@ pub const Board = struct {
             }
         }
 
-        // TODO: Verify position as per https://chess.stackexchange.com/questions/1482/how-do-you-know-when-a-fen-position-is-legal
+        // Both sides cannot be in check
+        const white_checked = self.inCheckNAssert(.{ .color = .white }) catch blk: {
+            success = false;
+            break :blk true;
+        };
+        const black_checked = self.inCheckNAssert(.{ .color = .black }) catch blk: {
+            success = false;
+            break :blk true;
+        };
+
+        if (white_checked and black_checked) {
+            success = false;
+        }
 
         if (!success) {
             self.deinit();
@@ -986,7 +998,11 @@ pub const Board = struct {
     }
 
     /// Perform a perft test to the given depth.
-    pub fn perft(self: *Board, depth: usize) usize {
+    /// 
+    /// Indicating `check_checks` tests `givesCheck` against `inCheck`.
+    pub fn perft(self: *Board, depth: usize, comptime options: struct {
+        check_checks: bool = false,
+    }) usize {
         var moves = movegen.Movelist{};
         movegen.legalmoves(self, &moves, .{});
 
@@ -996,12 +1012,161 @@ pub const Board = struct {
 
         var nodes: usize = 0;
         for (moves.moves[0..moves.size]) |move| {
+            // Verify alignment of checks if asked
+            if (comptime options.check_checks) {
+                const gives_check = self.givesCheck(move).check();
+                self.makeMove(move, .{});
+                const in_check = self.inCheck(.{});
+
+                if (gives_check != in_check) {
+                    std.log.err(
+                        "Move: {d}, givesCheck(...) = {} but inCheck(...) = {}",
+                        .{ move.move, gives_check, in_check },
+                    );
+                    unreachable;
+                }
+
+                nodes += self.perft(depth - 1, options);
+                self.unmakeMove(move);
+                continue;
+            }
+
+            // Otherwise just perform normal perft
             self.makeMove(move, .{});
-            nodes += self.perft(depth - 1);
+            nodes += self.perft(depth - 1, options);
             self.unmakeMove(move);
         }
 
         return nodes;
+    }
+
+    /// Checks if the current position is a repetition.
+    ///
+    /// Only returns true if the position has been seen at `count` times.
+    pub fn isRepetition(self: *const Board, count: usize) bool {
+        std.debug.assert(count > 0);
+        var seen_count: usize = 0;
+
+        // Repetitions cannot cross halfmoves, walk backwards
+        const numel: i32 = @intCast(self.previous_states.items.len);
+        var i = numel - 2;
+
+        while (i >= 0 and i >= numel - @as(i32, @intCast(self.halfmove_clock)) - 1) : (i -= 2) {
+            if (self.previous_states.items[@intCast(i)].hash == self.key) {
+                seen_count += 1;
+            }
+
+            if (seen_count == count) return true;
+        }
+
+        return false;
+    }
+
+    /// Determines if the given color is in check.
+    ///
+    /// If the color is null, uses the side to move.
+    pub fn inCheck(self: *const Board, comptime options: struct {
+        color: ?Color = null,
+    }) bool {
+        const color = if (options.color) |c| c else self.side_to_move;
+        return attacks.isAttacked(self, color.opposite(), self.kingSq(color));
+    }
+
+    /// For internal use only, opts for errors instead of assertions for explicit handling.
+    fn inCheckNAssert(self: *const Board, comptime options: struct {
+        color: ?Color = null,
+    }) !bool {
+        const color = if (options.color) |c| c else self.side_to_move;
+        return attacks.isAttacked(self, color.opposite(), try self.kingSqNAssert(color));
+    }
+
+    /// Check if the move gives a check.
+    pub fn givesCheck(self: *const Board, move: Move) state.CheckType {
+        std.debug.assert(self.at(Piece, move.from()).color() == self.side_to_move);
+        const sniper = struct {
+            pub fn sniper(board: *const Board, king_sq_: Square, occ_: Bitboard) Bitboard {
+                const b_atks = attacks.bishop(king_sq_, occ_).andBB(
+                    board.piecesMany(board.side_to_move, &[_]PieceType{ .bishop, .queen }),
+                );
+                const r_atks = attacks.rook(king_sq_, occ_).andBB(
+                    board.piecesMany(board.side_to_move, &[_]PieceType{ .rook, .queen }),
+                );
+
+                return b_atks.orBB(r_atks);
+            }
+        }.sniper;
+
+        const from = move.from();
+        const to = move.to();
+
+        const king_sq = self.kingSq(self.side_to_move.opposite());
+        const pt = self.at(PieceType, from);
+
+        const from_bb = Bitboard.fromSquare(from);
+        const to_bb = Bitboard.fromSquare(to);
+
+        const from_king = switch (pt) {
+            .pawn => attacks.pawn(self.side_to_move.opposite(), king_sq),
+            .knight => attacks.knight(king_sq),
+            .bishop => attacks.bishop(king_sq, self.occ()),
+            .rook => attacks.rook(king_sq, self.occ()),
+            .queen => attacks.queen(king_sq, self.occ()),
+            else => Bitboard.init(),
+        };
+
+        if (from_king.andBB(to_bb).nonzero()) return .direct;
+
+        // Check for a discovered check
+        const relevant_occ = self.occ().xorBB(from_bb);
+        var sniper_bb = sniper(self, king_sq, relevant_occ);
+        while (sniper_bb.nonzero()) {
+            const index = sniper_bb.popLsb();
+            const relevant_between = distance.SquaresBetween[king_sq.index()][index.index()].andBB(to_bb);
+            return if (relevant_between.empty() or move.typeOf(MoveType) == .castling) blk: {
+                break :blk .discovery;
+            } else .none;
+        }
+
+        // Handle all move types now
+        return switch (move.typeOf(MoveType)) {
+            .normal => .none,
+            .promotion => blk: {
+                const promoting_attacks = switch (move.promotionType()) {
+                    .knight => attacks.knight(to),
+                    .bishop => attacks.bishop(to, relevant_occ),
+                    .rook => attacks.rook(to, relevant_occ),
+                    .queen => attacks.queen(to, relevant_occ),
+                    else => unreachable,
+                };
+
+                const relevant_attacks = promoting_attacks.andBB(
+                    self.pieces(self.side_to_move.opposite(), .king),
+                );
+                break :blk if (relevant_attacks.nonzero()) .direct else .none;
+            },
+            .en_passant => blk: {
+                const capture_sq = Square.make(from.rank(), to.file());
+                sniper_bb = sniper(
+                    self,
+                    king_sq,
+                    relevant_occ.xorBB(Bitboard.fromSquare(capture_sq)).orBB(to_bb),
+                );
+
+                break :blk if (sniper_bb.nonzero()) .discovery else .none;
+            },
+            .castling => blk: {
+                const rook_to = Square.castlingRookTo(
+                    if (to.gt(from)) .king else .queen,
+                    self.side_to_move,
+                );
+                const relevant_attacks = attacks.rook(
+                    king_sq,
+                    self.occ(),
+                ).andBB(Bitboard.fromSquare(rook_to));
+                break :blk if (relevant_attacks.nonzero()) .discovery else .none;
+            },
+            else => unreachable,
+        };
     }
 };
 
@@ -1359,11 +1524,13 @@ test "Illegal fen handling" {
         allocator.destroy(board);
     }
 
-    const ok = try board.setFen("fen: []const u8", true);
-    try expect(!ok);
+    // Completely garbage input
+    try expect(!try board.setFen("fen: []const u8", true));
     try expectEqualSlices(u8, StartingFen, board.original_fen);
 
-    // TODO: Test for illegal board positions such as non-stm king in check and illegal pawns
+    // Check case where both sides are in check
+    try expect(!try board.setFen("rnb1kbnr/pppp1ppp/3p4/8/1q6/3P1P2/PPP1QPPP/RNB1KBNR w KQkq - 0 1", true));
+    try expectEqualSlices(u8, StartingFen, board.original_fen);
 }
 
 test "Move Making" {
@@ -1522,6 +1689,50 @@ test "Shallow perft" {
     };
 
     for (expected_nodes, 1..5) |expected, i| {
-        try expectEqual(expected, board.perft(i));
+        try expectEqual(expected, board.perft(i, .{ .check_checks = true }));
     }
+}
+
+test "Repetition tracking" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    try expect(!board.isRepetition(1));
+    const knight_move_white_to = Move.make(.g1, .f3, .{});
+    const knight_move_black_to = Move.make(.g8, .f6, .{});
+    const knight_move_white_back = Move.make(.f3, .g1, .{});
+    const knight_move_black_back = Move.make(.f6, .g8, .{});
+
+    board.makeMove(knight_move_white_to, .{});
+    board.makeMove(knight_move_black_to, .{});
+    board.makeMove(knight_move_white_back, .{});
+    board.makeMove(knight_move_black_back, .{});
+
+    try expect(board.isRepetition(1));
+    try expect(!board.isRepetition(2));
+}
+
+test "Check detection" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    try expect(!board.inCheck(.{}));
+    try expect(!board.inCheck(.{ .color = .white }));
+    try expect(!board.inCheck(.{ .color = .black }));
+
+    // Black is in check
+    try expect(try board.setFen("rnbqkbnr/pppp1ppp/3p4/8/8/5P2/PPPPQPPP/RNB1KBNR b KQkq - 0 1", true));
+    try expect(board.inCheck(.{}));
+    try expect(board.inCheck(.{ .color = .black }));
+    try expect(!board.inCheck(.{ .color = .white }));
 }

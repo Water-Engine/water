@@ -13,6 +13,17 @@ const CastlingRights = castling.CastlingRights;
 const board_ = @import("board.zig");
 const Board = board_.Board;
 
+pub const CheckType = enum {
+    direct,
+    discovery,
+    none,
+
+    /// Returns true if the check type if not none.
+    pub fn check(self: *const CheckType) bool {
+        return self.* != .none;
+    }
+};
+
 /// Random Numbers for Zobrist Hashing that are also Polyglot Compatible
 const ZobristArray: [781]u64 = .{
     0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
