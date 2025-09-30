@@ -27,7 +27,7 @@ jobs:
 
       - name: Extract LOC
         run: |
-          cloc build.zig src scripts --not-match-f="(slider_bbs.zig|pretty_print.py)" --json > cloc.json
+          cloc build.zig src --not-match-f="(slider_bbs.zig)" --json > cloc.json
           total_lines=$(jq '.SUM.code' cloc.json)
           echo "{\"label\":\"LOC\",\"message\":\"$total_lines\",\"color\":\"blue\"}" > .github/loc_badge.json
           cat .github/loc_badge.json

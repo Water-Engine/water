@@ -61,6 +61,11 @@ pub const Movelist = struct {
         return null;
     }
 
+    /// Determines if the Movelist is empty.
+    pub fn empty(self: *const Movelist) bool {
+        return self.size == 0;
+    }
+
     /// Resets the size and internal moves to their starting values.
     pub fn reset(self: *Movelist) void {
         self.moves = @splat(Move.init());
@@ -286,6 +291,7 @@ const expectEqualSlices = testing.expectEqualSlices;
 
 test "Movelist creation and operations" {
     var ml = Movelist{};
+    try expect(ml.empty());
     ml.size = MaxMoves;
     for (ml.slice(MaxMoves - 1)) |move| {
         try expectEqual(0, move.move);
@@ -302,6 +308,7 @@ test "Movelist creation and operations" {
 
     try expectEqual(ml.front().move, ml.back().move);
     try expect(ml.at(0).move == Move.make(.e2, .e3, .{}).move);
+    try expect(!ml.empty());
 }
 
 test "Check and pin masks" {
