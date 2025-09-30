@@ -24,7 +24,7 @@ pub const MoveType = move.MoveType;
 const board = @import("chess/board/board.zig");
 pub const Board = board.Board;
 
-const arbiter = @import("chess/board/arbiter.zig");
+pub const arbiter = @import("chess/board/arbiter.zig");
 
 const castling = @import("chess/board/castling.zig");
 pub const CastlingRights = castling.CastlingRights;
