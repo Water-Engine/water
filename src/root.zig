@@ -38,6 +38,8 @@ pub const uci = @import("chess/core/uci.zig");
 pub const attacks = @import("chess/movegen/attacks.zig");
 pub const movegen = @import("chess/movegen/movegen.zig");
 
+pub const engine = @import("chess/engine/engine.zig");
+
 // ================ TESTING ================
 
 test {
@@ -56,4 +58,6 @@ test {
     _ = @import("chess/movegen/attacks.zig");
     _ = @import("chess/movegen/movegen.zig");
     _ = @import("chess/movegen/generators.zig");
+
+    _ = @import("chess/engine/engine.zig");
 }

@@ -1,6 +1,8 @@
 const std = @import("std");
 const water = @import("water");
 
+const search = @import("water/search.zig");
+
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
     var board = try water.Board.init(allocator, .{});
@@ -10,8 +12,6 @@ pub fn main() !void {
         allocator.destroy(board);
     }
 
-    const d = try water.uci.uciBoardDiagram(board, .{});
-    defer allocator.free(d);
-
-    std.debug.print("{s}", .{d});
+    const engine = water.engine.Engine(search.Search);
+    _ = engine;
 }
