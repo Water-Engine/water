@@ -1745,4 +1745,26 @@ test "Check detection" {
     try expect(!board.inCheck(.{ .color = .white }));
 }
 
-test "Non-pawn material calculation" {}
+test "Non-pawn material calculation" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+
+    defer {
+        board.deinit();
+        allocator.destroy(board);
+    }
+
+    // Starting position
+    try expectEqual(7, board.nonPawnMaterial(.white));
+    try expectEqual(7, board.nonPawnMaterial(.black));
+
+    // Only white has a piece
+    try expect(try board.setFen("8/8/8/8/8/7K/5Q2/7k b - - 0 1", true));
+    try expectEqual(1, board.nonPawnMaterial(.white));
+    try expectEqual(0, board.nonPawnMaterial(.black));
+
+    // Neither have anything but kings
+    try expect(try board.setFen("8/8/8/8/8/7K/8/7k b - - 0 1", true));
+    try expectEqual(0, board.nonPawnMaterial(.white));
+    try expectEqual(0, board.nonPawnMaterial(.black));
+}
