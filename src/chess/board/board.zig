@@ -547,7 +547,7 @@ pub const Board = struct {
         );
     }
 
-    /// Returns the specified piece bitboard, use Color.none for side agnostic bitboard.
+    /// Returns the specified piece bitboard, use `Color.none` for side agnostic bitboard.
     ///
     /// Asserts that the provided piece type is valid.
     pub fn pieces(self: *const Board, color: Color, piece_type: PieceType) Bitboard {
@@ -559,7 +559,7 @@ pub const Board = struct {
         };
     }
 
-    /// Returns the specified combined piece bitboards, use Color.none for side agnostic bitboard.
+    /// Returns the specified combined piece bitboards, use `Color.none` for side agnostic bitboard.
     ///
     /// Asserts that the provided piece types are valid.
     pub fn piecesMany(self: *const Board, color: Color, piece_types: []const PieceType) Bitboard {
@@ -998,7 +998,7 @@ pub const Board = struct {
     }
 
     /// Perform a perft test to the given depth.
-    /// 
+    ///
     /// Indicating `check_checks` tests `givesCheck` against `inCheck`.
     pub fn perft(self: *Board, depth: usize, comptime options: struct {
         check_checks: bool = false,
