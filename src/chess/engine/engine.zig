@@ -8,7 +8,6 @@ fn validateReturnType(comptime Fn: type, comptime Expected: type, comptime msg: 
     switch (fn_type) {
         .@"fn" => |f| {
             const ret_type = f.return_type;
-            // Destructure return types
             if (ret_type) |Actual| {
                 if (Actual != Expected) @compileError(msg);
             } else @compileError(msg);
@@ -28,7 +27,7 @@ fn validateReturnType(comptime Fn: type, comptime Expected: type, comptime msg: 
 pub fn Engine(comptime Searcher: type) type {
     const SearcherInitFnExpected = anyerror!*Searcher;
     const SearcherDeinitFnExpected = void;
-    const SearchFnExpected = void;
+    const SearchFnExpected = anyerror!void;
 
     // Verify the Searcher's contract with some beautiful metaprogramming
     comptime {
@@ -72,17 +71,21 @@ pub fn Engine(comptime Searcher: type) type {
         allocator: std.mem.Allocator,
 
         searcher: *Searcher,
+        search_thread: ?std.Thread = null,
+
+        writer: *std.Io.Writer,
 
         const Self = @This();
 
         /// Initializes the engine and allocates all its resources.
         ///
         /// The `search_init_args` are forwarded to the Searcher's `init` function.
-        pub fn init(allocator: std.mem.Allocator, search_init_args: anytype) !*Self {
+        pub fn init(allocator: std.mem.Allocator, writer: *std.Io.Writer, search_init_args: anytype) !*Self {
             const engine = try allocator.create(Self);
             engine.* = .{
                 .allocator = allocator,
                 .searcher = try @call(.auto, Searcher.init, search_init_args),
+                .writer = writer,
             };
 
             return engine;
@@ -91,7 +94,7 @@ pub fn Engine(comptime Searcher: type) type {
         /// Deinitializes the engine, fully freeing all constituent resources.
         ///
         /// The `search_deinit_args` are forwarded to the Searcher's `deinit` function.
-        /// The function automatically handles the first argument for the `deinit` call.
+        /// The function automatically handles the first argument (*Searcher) for the `deinit` call.
         ///
         /// The user is responsible for destroying the pointer to the instance itself.
         pub fn deinit(self: *Self, search_deinit_args: anytype) void {
@@ -104,6 +107,31 @@ pub fn Engine(comptime Searcher: type) type {
                 Searcher.deinit,
                 .{self.searcher} ++ search_deinit_args,
             );
+
+            if (self.search_thread) |search_thread| {
+                search_thread.join();
+            }
+        }
+
+        /// Initiates the search, forwarding any provided args in `search_args`.
+        /// The search spins up on a background thread to prevent IO blocking.
+        ///
+        /// The function automatically handles the first argument (*Searcher) for the `search` call.
+        /// This can be disabled through the `options` arg.
+        ///
+        /// If a search is currently in progress, waits for the thread to wrap up.
+        pub fn search(self: *Self, search_args: anytype, comptime options: struct {
+            forward_ptr: bool = true,
+        }) void {
+            if (self.search_thread) |search_thread| {
+                search_thread.join();
+            }
+
+            self.search_thread = std.Thread.spawn(
+                .{},
+                Searcher.search,
+                if (options.forward_ptr) .{self.searcher} ++ search_args else search_args,
+            ) catch unreachable;
         }
     };
 }

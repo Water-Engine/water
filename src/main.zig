@@ -12,9 +12,21 @@ pub fn main() !void {
         allocator.destroy(board);
     }
 
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
+
     const engine = try water.engine.Engine(search.Search).init(
         allocator,
-        .{allocator},
+        stdout,
+        .{ allocator, stdout },
     );
-    defer engine.deinit(.{});
+
+    // The writer must flush after engine deinitializes to prevent a concurrency issue
+    defer {
+        engine.deinit(.{});
+        stdout.flush() catch unreachable;
+    }
+
+    engine.search(.{}, .{});
 }
