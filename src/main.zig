@@ -12,6 +12,9 @@ pub fn main() !void {
         allocator.destroy(board);
     }
 
-    const engine = water.engine.Engine(search.Search);
-    _ = engine;
+    const engine = try water.engine.Engine(search.Search).init(
+        allocator,
+        .{allocator},
+    );
+    defer engine.deinit(.{});
 }
