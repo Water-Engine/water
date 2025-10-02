@@ -343,11 +343,9 @@ test "Zobrist" {
 }
 
 test "Board hashing" {
-    var board = try Board.init(testing.allocator, .{});
-    defer {
-        board.deinit();
-        testing.allocator.destroy(board);
-    }
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+    defer board.deinit();
 
     // Expected Values from https://github.com/Disservin/chess-library
     _ = try board.setFen(board_.StartingFen, true);

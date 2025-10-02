@@ -1,15 +1,18 @@
 const std = @import("std");
+const water = @import("water");
 
 pub const Search = struct {
     allocator: std.mem.Allocator,
 
     writer: *std.Io.Writer,
+    board: *water.Board,
 
-    pub fn init(allocator: std.mem.Allocator, writer: *std.Io.Writer) anyerror!*Search {
+    pub fn init(allocator: std.mem.Allocator, board: *water.Board, writer: *std.Io.Writer) anyerror!*Search {
         const searcher = try allocator.create(Search);
         searcher.* = .{
             .allocator = allocator,
             .writer = writer,
+            .board = board,
         };
 
         return searcher;

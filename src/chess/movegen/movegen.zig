@@ -316,11 +316,7 @@ test "Check and pin masks" {
     var board = try Board.init(allocator, .{
         .fen = "8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80",
     });
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Expected check mask values from https://github.com/Disservin/chess-library
     const expected_check_masks_white: [64]u64 = .{
@@ -459,11 +455,7 @@ test "Check and pin masks" {
 test "Seen squares" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Expected values from https://github.com/Disservin/chess-library
     const opening = seenSquares(.white, board, board.us(.black).not());
@@ -477,11 +469,7 @@ test "Seen squares" {
 test "Ep square validity" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // No ep from starting position
     try expect(!isEpSquareValid(board, .white, .e6));
@@ -504,11 +492,7 @@ test "Legalmoves API endpoint validity" {
     var board = try Board.init(allocator, .{
         .fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
     });
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Legal moves for white
     var ml = Movelist{};

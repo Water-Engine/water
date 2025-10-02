@@ -79,26 +79,22 @@ pub fn bench(board: *water.Board, test_case: TestCase) !void {
     const elapsed: u64 = @intFromFloat(elapsed_float);
     const nps: u64 = @intFromFloat(nps_float);
 
-    var out_buffer = try std.ArrayList(u8).initCapacity(board.allocator, 500);
-    defer out_buffer.deinit(board.allocator);
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
 
-    try out_buffer.print(
+    try stdout_writer.interface.print(
         board.allocator,
         "depth {d:<2} time {d:<5} nodes {d:<12} nps {d:<9} fen {s:<87}",
         .{ test_case.depth, elapsed, nodes, nps, test_case.fen },
     );
 
-    std.debug.print("{s}\n", .{out_buffer.items});
+    try stdout_writer.interface.flush();
 }
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
     var board = try water.Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Test a variety of classical positions
     std.debug.print("Classical Positions:\n", .{});

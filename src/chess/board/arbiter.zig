@@ -147,11 +147,7 @@ const expectEqual = testing.expectEqual;
 test "Halfmove draws" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Clock is less than 100 - no draw
     try expect(try board.setFen("k7/8/K7/8/8/8/8/8 w - - 0 1", true));
@@ -197,11 +193,7 @@ test "Halfmove draws" {
 test "Insufficient material draws" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     try expect(try board.setFen("8/8/8/3k4/8/4K3/8/8 w - - 0 1", true));
     try expect(insufficientMaterial(board));
@@ -234,11 +226,7 @@ test "Insufficient material draws" {
 test "Game over" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Starting position
     try expect(try board.setFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", true));

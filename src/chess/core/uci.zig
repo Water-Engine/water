@@ -31,16 +31,17 @@ pub fn moveToUci(allocator: std.mem.Allocator, move: Move, fischer_random: bool)
         to = Square.make(from.rank(), if (to.gt(from)) .fg else .fc);
     }
 
-    var out_buffer = try std.ArrayList(u8).initCapacity(allocator, 5);
-    defer out_buffer.deinit(allocator);
+    var buffer = std.Io.Writer.Allocating.init(allocator);
+    defer buffer.deinit();
+    const writer = &buffer.writer;
 
-    try out_buffer.appendSlice(allocator, from.asStr());
-    try out_buffer.appendSlice(allocator, to.asStr());
+    try writer.print("{s}", .{from.asStr()});
+    try writer.print("{s}", .{to.asStr()});
     if (move.typeOf(MoveType) == .promotion) {
-        try out_buffer.append(allocator, move.promotionType().asChar());
+        try writer.print("{c}", .{move.promotionType().asChar()});
     }
 
-    return try out_buffer.toOwnedSlice(allocator);
+    return try allocator.dupe(u8, writer.buffered());
 }
 
 /// Uses the board's current state to convert a UCI move string to a move.
@@ -131,8 +132,9 @@ pub fn uciBoardDiagram(board: *const Board, options: struct {
     black_at_top: ?bool = null,
     highlighted_move: ?Move = null,
 }) ![]const u8 {
-    var diagram_buffer = try std.ArrayList(u8).initCapacity(board.allocator, 1000);
-    defer diagram_buffer.deinit(board.allocator);
+    var buffer = std.Io.Writer.Allocating.init(board.allocator);
+    defer buffer.deinit();
+    const writer = &buffer.writer;
 
     const highlight_move_square: Square = if (options.highlighted_move) |hm| hm.to() else .none;
     const black_at_top = if (options.black_at_top) |bat| blk: {
@@ -141,7 +143,7 @@ pub fn uciBoardDiagram(board: *const Board, options: struct {
 
     for (0..8) |y| {
         const rank = if (black_at_top) 7 - y else y;
-        try diagram_buffer.appendSlice(board.allocator, "+---+---+---+---+---+---+---+---+\n");
+        try writer.print("+---+---+---+---+---+---+---+---+\n", .{});
 
         for (0..8) |x| {
             const file = if (black_at_top) x else 7 - x;
@@ -157,28 +159,28 @@ pub fn uciBoardDiagram(board: *const Board, options: struct {
             const piece_char = if (piece.valid()) piece.asChar() else ' ';
 
             if (highlight) {
-                try diagram_buffer.print(board.allocator, "|({c})", .{piece_char});
+                try writer.print("|({c})", .{piece_char});
             } else {
-                try diagram_buffer.print(board.allocator, "| {c} ", .{piece_char});
+                try writer.print("| {c} ", .{piece_char});
             }
         }
 
-        try diagram_buffer.print(board.allocator, "| {d}\n", .{rank + 1});
+        try writer.print("| {d}\n", .{rank + 1});
     }
 
-    try diagram_buffer.appendSlice(board.allocator, "+---+---+---+---+---+---+---+---+\n");
+    try writer.print("+---+---+---+---+---+---+---+---+\n", .{});
     if (black_at_top) {
-        try diagram_buffer.appendSlice(board.allocator, "  a   b   c   d   e   f   g   h  \n\n");
+        try writer.print("  a   b   c   d   e   f   g   h  \n\n", .{});
     } else {
-        try diagram_buffer.appendSlice(board.allocator, "  h   g   f   e   d   c   b   a  \n\n");
+        try writer.print("  h   g   f   e   d   c   b   a  \n\n", .{});
     }
 
     const current_fen = try board.getFen(true);
     defer board.allocator.free(current_fen);
-    try diagram_buffer.print(board.allocator, "Fen         : {s}\n", .{current_fen});
-    try diagram_buffer.print(board.allocator, "Hash        : {d}", .{board.key});
+    try writer.print("Fen         : {s}\n", .{current_fen});
+    try writer.print("Hash        : {d}", .{board.key});
 
-    return diagram_buffer.toOwnedSlice(board.allocator);
+    return try board.allocator.dupe(u8, writer.buffered());
 }
 
 // ================ TESTING ================
@@ -238,11 +240,7 @@ test "Converting uci moves to strings" {
 test "Converting strings to uci moves" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Malformed moves
     try expectEqual(0, uciToMove(board, "").move);
@@ -297,11 +295,7 @@ test "Loosely checking uci legality" {
 test "Board diagram creation" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Expected strings from first iteration of the water engine
     const expected_default =

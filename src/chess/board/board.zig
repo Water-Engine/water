@@ -117,6 +117,7 @@ pub const Board = struct {
     ///
     /// The Board pointer itself must be freed separately.
     pub fn deinit(self: *Board) void {
+        defer self.allocator.destroy(self);
         self.previous_states.deinit(self.allocator);
         self.allocator.free(self.original_fen);
     }
@@ -379,7 +380,10 @@ pub const Board = struct {
         }
 
         if (!success) {
-            self.deinit();
+            // Don't call deinit as we don't want to release the pointer to self!
+            self.previous_states.deinit(self.allocator);
+            self.allocator.free(self.original_fen);
+
             self.* = .{
                 .allocator = backup.allocator,
 
@@ -402,7 +406,6 @@ pub const Board = struct {
             };
         }
         backup.deinit();
-        self.allocator.destroy(backup);
 
         return success;
     }
@@ -412,8 +415,9 @@ pub const Board = struct {
     ///
     /// The caller is responsible for freeing the string.
     pub fn getFen(self: *const Board, move_counters: bool) ![]const u8 {
-        var fen_buffer = try std.ArrayList(u8).initCapacity(self.allocator, 100);
-        defer fen_buffer.deinit(self.allocator);
+        var buffer = std.Io.Writer.Allocating.init(self.allocator);
+        defer buffer.deinit();
+        const writer = &buffer.writer;
 
         // Loop through the ranks in reverse order for proper reconstruction from mailbox
         var rank: usize = 7;
@@ -426,33 +430,33 @@ pub const Board = struct {
 
                 if (piece.valid()) {
                     if (free_space != 0) {
-                        try fen_buffer.print(self.allocator, "{d}", .{free_space});
+                        try writer.print("{d}", .{free_space});
                         free_space = 0;
                     }
 
-                    try fen_buffer.append(self.allocator, piece.asChar());
+                    try writer.print("{c}", .{piece.asChar()});
                 } else {
                     free_space += 1;
                 }
             }
 
             if (free_space != 0) {
-                try fen_buffer.print(self.allocator, "{d}", .{free_space});
+                try writer.print("{d}", .{free_space});
             }
 
             if (rank == 0) {
                 break;
             } else {
-                try fen_buffer.append(self.allocator, '/');
+                try writer.print("/", .{});
             }
         }
 
         // Append side to move information
-        try fen_buffer.append(self.allocator, ' ');
-        try fen_buffer.append(self.allocator, self.side_to_move.asChar());
+        try writer.print(" ", .{});
+        try writer.print("{c}", .{self.side_to_move.asChar()});
 
         // Append castling rights
-        try fen_buffer.append(self.allocator, ' ');
+        try writer.print(" ", .{});
         if (self.fischer_random) {
             for ([_]Color{ .white, .black }) |color| {
                 for ([_]CastlingRights.Side{ .king, .queen }) |side| {
@@ -461,33 +465,33 @@ pub const Board = struct {
                         const file_sided = if (color == .white) blk: {
                             break :blk std.ascii.toUpper(file);
                         } else file;
-                        try fen_buffer.append(self.allocator, file_sided);
+                        try writer.print("{c}", .{file_sided});
                     }
                 }
             }
         } else if (self.castling_rights.empty()) {
-            try fen_buffer.append(self.allocator, '-');
+            try writer.print("-", .{});
         } else {
-            try fen_buffer.appendSlice(self.allocator, self.castling_rights.asStr());
+            try writer.print("{s}", .{self.castling_rights.asStr()});
         }
 
         // Append the en passant square
-        try fen_buffer.append(self.allocator, ' ');
+        try writer.print(" ", .{});
         if (self.ep_square.valid()) {
-            try fen_buffer.appendSlice(self.allocator, self.ep_square.asStr());
+            try writer.print("{s}", .{self.ep_square.asStr()});
         } else {
-            try fen_buffer.append(self.allocator, '-');
+            try writer.print("-", .{});
         }
 
         // Append the move counters if requested
         if (move_counters) {
-            try fen_buffer.append(self.allocator, ' ');
-            try fen_buffer.print(self.allocator, "{d}", .{self.halfmoves(u8)});
-            try fen_buffer.append(self.allocator, ' ');
-            try fen_buffer.print(self.allocator, "{d}", .{self.fullmoves(u8)});
+            try writer.print(" ", .{});
+            try writer.print("{d}", .{self.halfmoves(u8)});
+            try writer.print(" ", .{});
+            try writer.print("{d}", .{self.fullmoves(u8)});
         }
 
-        return try fen_buffer.toOwnedSlice(self.allocator);
+        return try self.allocator.dupe(u8, writer.buffered());
     }
 
     /// Attempts to set the board's position from an epd string.
@@ -1273,11 +1277,7 @@ test "Board initialization & copy from starting fen" {
 
     // Uninitialize test objects before proceeding
     parent.deinit();
-    allocator.destroy(parent);
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     try expectEqualSlices(u8, StartingFen, board.original_fen);
     try expect(board.previous_states.items.len == 0);
@@ -1403,11 +1403,7 @@ test "Chess960 board" {
             .fischer_random = true,
         },
     );
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // All that changes here is the castling rights & fen reconstruction
     for (board.castling_rights.rooks) |rf| {
@@ -1436,11 +1432,7 @@ test "Chess960 board" {
     var future_frc = try Board.init(allocator, .{
         .fen = "brknqbnr/pppppppp/8/8/8/8/PPPPPPPP/BRKNQBNR w KQkq - 0 1",
     });
-
-    defer {
-        future_frc.deinit();
-        allocator.destroy(future_frc);
-    }
+    defer future_frc.deinit();
 
     try expect(try future_frc.setFischerRandom(true));
     const frc_fen = try future_frc.getFen(true);
@@ -1464,11 +1456,7 @@ test "Chess960 board" {
 test "Fen reconstruction" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     const fen_moves = try board.getFen(true);
     defer board.allocator.free(fen_moves);
@@ -1488,7 +1476,6 @@ test "EPD handling" {
 
     defer {
         board.deinit();
-        allocator.destroy(board);
         allocator.free(epd);
     }
 
@@ -1526,11 +1513,7 @@ test "EPD handling" {
 test "Illegal fen handling" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Completely garbage input
     try expect(!try board.setFen("fen: []const u8", true));
@@ -1544,11 +1527,7 @@ test "Illegal fen handling" {
 test "Move Making" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // From starting position
     const opening = uci.uciToMove(board, "e2e4");
@@ -1642,11 +1621,7 @@ test "Move Making" {
 test "Null move making" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // From starting position
     try expectEqual(5060803636482931868, board.key);
@@ -1686,11 +1661,7 @@ test "Shallow perft and check alignment" {
     var board = try Board.init(allocator, .{
         .fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
     });
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     const expected_nodes: [4]usize = .{
         48, 2039, 97862, 4085603,
@@ -1704,11 +1675,7 @@ test "Shallow perft and check alignment" {
 test "Repetition tracking" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     try expect(!board.isRepetition(1));
     const knight_move_white_to = Move.make(.g1, .f3, .{});
@@ -1728,11 +1695,7 @@ test "Repetition tracking" {
 test "Check detection" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     try expect(!board.inCheck(.{}));
     try expect(!board.inCheck(.{ .color = .white }));
@@ -1748,11 +1711,7 @@ test "Check detection" {
 test "Non-pawn material calculation" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Starting position
     try expectEqual(7, board.nonPawnMaterial(.white));

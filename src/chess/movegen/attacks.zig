@@ -465,11 +465,7 @@ test "Attackers in a complex position" {
         allocator,
         .{ .fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1" },
     );
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Attackers from fen verified with https://github.com/Disservin/chess-library
     const white_attackers: [64]u64 = .{

@@ -614,11 +614,7 @@ const expectEqualSlices = testing.expectEqualSlices;
 test "Ep move generator" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // From starting position, white shouldn't be able to take ep on rank 6
     const no_moves_starting = epMoves(
@@ -687,11 +683,7 @@ test "Ep move generator" {
 test "Pawn move generation" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // White moves from opening position
     var ml = Movelist{};
@@ -786,11 +778,7 @@ test "King and castling move generation" {
     var board = try Board.init(allocator, .{
         .fen = "1nbqkb1r/Pp3p2/2r2n2/2p1p2P/1PPp2PN/2N1Q2p/1BP1P1B1/R3K2R w KQk - 0 1",
     });
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Basic king moves from position
     try expectEqual(10280, kingMoves(
@@ -855,11 +843,7 @@ test "Bishop move generation" {
     var board = try Board.init(allocator, .{
         .fen = "rnbqkb1r/Pp3p2/5n2/2p5/1P1ppPP1/3PQN2/2P1P1pp/RNB1KB1R b KQkq - 0 1",
     });
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     const bishop_mid_c8 = bishopMoves(
         .c8,
@@ -884,11 +868,7 @@ test "Rook move generation" {
     var board = try Board.init(allocator, .{
         .fen = "rnbqkb1r/Pp3p2/5n2/2p5/1P1ppPP1/3PQN2/2P1P1pp/RNB1KB1R b KQkq - 0 1",
     });
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     const rook_mid_a8 = rookMoves(
         .a8,
@@ -913,11 +893,7 @@ test "Queen move generation" {
     var board = try Board.init(allocator, .{
         .fen = "1nbqkb1r/Pp3p2/2r2n2/2p1p2P/1PPp2PN/4Q3/2P1P1pp/RNB1KB1R w KQk - 0 1",
     });
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     const queen_mid = queenMoves(
         .e3,
@@ -940,11 +916,7 @@ test "PieceGenType compile time computation" {
 test "Generate all legal moves" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
-
-    defer {
-        board.deinit();
-        allocator.destroy(board);
-    }
+    defer board.deinit();
 
     // Legal moves from starting position
     var ml = Movelist{};
