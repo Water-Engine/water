@@ -1,3 +1,5 @@
+pub const version: []const u8 = "0.0.0-dev";
+
 const types = @import("chess/core/types.zig");
 pub const Color = types.Color;
 pub const File = types.File;
@@ -39,6 +41,8 @@ pub const attacks = @import("chess/movegen/attacks.zig");
 pub const movegen = @import("chess/movegen/movegen.zig");
 
 pub const engine = @import("chess/engine/engine.zig");
+pub const type_validators = @import("chess/engine/type_validators.zig");
+pub const deserializer = @import("chess/engine/deserializer.zig");
 
 // ================ TESTING ================
 
@@ -60,4 +64,6 @@ test {
     _ = @import("chess/movegen/generators.zig");
 
     _ = @import("chess/engine/engine.zig");
+    _ = @import("chess/engine/type_validators.zig");
+    _ = @import("chess/engine/deserializer.zig");
 }

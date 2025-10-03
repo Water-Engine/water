@@ -68,7 +68,7 @@ pub fn bench(board: *water.Board, test_case: TestCase) !void {
 
     if (test_case.expected_nodes) |expected| {
         if (nodes != expected) {
-            std.debug.print("Perft error!\n\tExpected: {d}\n\tFound: {d}", .{ expected, nodes });
+            std.log.err("Perft error!\n\tExpected: {d}\n\tFound: {d}", .{ expected, nodes });
             unreachable;
         }
     }
@@ -83,8 +83,7 @@ pub fn bench(board: *water.Board, test_case: TestCase) !void {
     var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
 
     try stdout_writer.interface.print(
-        board.allocator,
-        "depth {d:<2} time {d:<5} nodes {d:<12} nps {d:<9} fen {s:<87}",
+        "depth {d:<2} time {d:<5} nodes {d:<12} nps {d:<9} fen {s:<87}\n",
         .{ test_case.depth, elapsed, nodes, nps, test_case.fen },
     );
 

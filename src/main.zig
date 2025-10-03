@@ -2,6 +2,7 @@ const std = @import("std");
 const water = @import("water");
 
 const search = @import("water/search.zig");
+const commands = @import("water/commands.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -17,7 +18,7 @@ pub fn main() !void {
         stdout,
         .{ allocator, board, stdout },
     );
-    engine.name = "Water";
+    engine.welcome = "Water by the Water Engine developers (see AUTHORS file)";
 
     // The writer must flush after engine deinitializes to prevent a concurrency issue
     defer {

@@ -11,5 +11,6 @@
         "src",
         "LICENSE",
         "README.md",
+        "AUTHORS.md",
     },
 }

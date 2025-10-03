@@ -11,7 +11,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    addHelpModule(b, mod) catch unreachable;
 
     const exe = b.addExecutable(.{
         .name = "water",
@@ -69,45 +68,6 @@ fn addPerftStep(b: *std.Build, module: *std.Build.Module) void {
 
     const perft_step = b.step("perft", "Run perft suite");
     perft_step.dependOn(&run_perft.step);
-}
-
-fn addHelpModule(b: *std.Build, module: *std.Build.Module) !void {
-    const zon_stat = try std.fs.cwd().statFile("build.zig.zon");
-    const zon = try std.fs.cwd().readFileAlloc(
-        b.allocator,
-        "build.zig.zon",
-        zon_stat.size,
-    );
-    defer b.allocator.free(zon);
-
-    var version_str: ?[]const u8 = null;
-    var spliterator = std.mem.splitScalar(u8, zon, '\n');
-    while (spliterator.next()) |next| {
-        if (std.mem.containsAtLeast(u8, next, 1, "version")) {
-            const last_quote = std.mem.lastIndexOfScalar(
-                u8,
-                next,
-                '"',
-            ) orelse break;
-            const second_last_quote = std.mem.lastIndexOfScalar(
-                u8,
-                next[0..last_quote],
-                '"',
-            ) orelse break;
-            version_str = next[second_last_quote + 1 .. last_quote];
-            break;
-        }
-    }
-
-    const parsed_version = if (version_str) |str| blk: {
-        if (str.len == 0) break :blk "0.0.0-dev" else break :blk str;
-    } else "0.0.0-dev";
-    const semver = try std.SemanticVersion.parse(parsed_version);
-
-    var options = std.Build.Step.Options.create(b);
-    options.addOption(std.SemanticVersion, "semver", semver);
-    options.addOption([]const u8, "version", parsed_version);
-    module.addOptions("help", options);
 }
 
 fn addToTestStep(b: *std.Build, module: *std.Build.Module, step: *std.Build.Step) void {
