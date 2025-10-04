@@ -2,7 +2,7 @@ const std = @import("std");
 
 const Color = @import("../core/types.zig").Color;
 
-pub const PieceType = enum(u8) {
+pub const PieceType = enum(u3) {
     pawn = 0,
     knight = 1,
     bishop = 2,

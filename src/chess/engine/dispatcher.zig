@@ -36,17 +36,14 @@ pub fn deserializeFields(
 ) DeserializeError!T {
     defer tokens.reset();
 
-    // Comptime struct initialization - technically overkill but done for strict compliance checking
-    var result = comptime blk: {
-        var result: T = undefined;
-
+    // Verify T's type requirement
+    comptime {
         switch (@typeInfo(T)) {
             .@"struct" => |s| {
                 for (s.fields) |field| {
-                    if (field.default_value_ptr) |default| {
-                        const typed_ptr = @as(*const field.type, @ptrCast(@alignCast(default)));
-                        @field(result, field.name) = typed_ptr.*;
-                    } else @compileError(@typeName(T) ++ " cannot have non-default initialized fields");
+                    if (field.default_value_ptr == null) {
+                        @compileError(@typeName(T) ++ " cannot have non-default initialized fields");
+                    }
                 }
             },
             else => @compileError(@typeName(T) ++ " must be a struct"),
@@ -59,9 +56,8 @@ pub fn deserializeFields(
                 }
             }
         }
-
-        break :blk result;
-    };
+    }
+    var result: T = .{};
 
     const standalones = comptime blk: {
         if (standalone_tokens) |toks| {

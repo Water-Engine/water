@@ -17,11 +17,11 @@ pub const MoveType = enum(u16) {
         switch (@typeInfo(T)) {
             .int, .comptime_int => {
                 return switch (num) {
-                    0 => .normal,
-                    65 => .null_move,
-                    16384 => .promotion,
-                    32768 => .en_passant,
-                    49152 => .castling,
+                    @intFromEnum(MoveType.normal) => .normal,
+                    @intFromEnum(MoveType.null_move) => .null_move,
+                    @intFromEnum(MoveType.promotion) => .promotion,
+                    @intFromEnum(MoveType.en_passant) => .en_passant,
+                    @intFromEnum(MoveType.castling) => .castling,
                     else => .normal,
                 };
             },

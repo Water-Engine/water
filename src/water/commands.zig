@@ -5,114 +5,71 @@ const search = @import("search.zig");
 
 const Engine = water.engine.Engine(search.Search);
 
-pub const PositionCommand = struct {
-    pub const command_name: []const u8 = "position";
-
-    fen: []const u8 = water.board.StartingFen,
-    startpos: ?bool = false,
-
-    moves: ?[]const u8 = null,
-
-    pub fn deserialize(
-        allocator: std.mem.Allocator,
-        tokens: *std.mem.TokenIterator(u8, .any),
-    ) anyerror!PositionCommand {
-        var parsed = try water.dispatcher.deserializeFields(
-            PositionCommand,
-            allocator,
-            tokens,
-            &.{"startpos"},
-            &.{"moves"},
-        );
-
-        // Handle ambiguity with the fen/startpos
-        if (parsed.startpos) |sp| {
-            if (sp) parsed.fen = water.board.StartingFen;
-        } else if (parsed.fen.len == 0) {
-            parsed.fen = water.board.StartingFen;
-        }
-
-        // Collect the moves and return
-        parsed.moves = water.dispatcher.tokensAfter(tokens, "moves");
-        return parsed;
-    }
-
-    pub fn dispatch(
-        self: *const PositionCommand,
-        engine: *Engine,
-    ) anyerror!void {
-        if (!try engine.searcher.board.setFen(self.fen, true)) {
-            return water.ChessError.IllegalFen;
-        }
-
-        if (self.moves) |moves| {
-            var move_tokens = std.mem.tokenizeAny(u8, moves, " ");
-            while (move_tokens.next()) |move_str| {
-                const move = water.uci.uciToMove(engine.searcher.board, move_str);
-
-                // Robustly verify the legality of the move before making the move
-                var movelist = water.movegen.Movelist{};
-                water.movegen.legalmoves(engine.searcher.board, &movelist, .{});
-
-                if (movelist.find(move)) |_| {
-                    engine.searcher.board.makeMove(move, .{});
-                }
-            }
-        }
-    }
-};
-
-pub const DisplayCommand = struct {
-    pub const command_name: []const u8 = "d";
-
-    black_at_top: bool = false,
-
-    pub fn deserialize(
-        allocator: std.mem.Allocator,
-        tokens: *std.mem.TokenIterator(u8, .any),
-    ) anyerror!DisplayCommand {
-        return water.dispatcher.deserializeFields(
-            DisplayCommand,
-            allocator,
-            tokens,
-            &.{"black_at_top"},
-            null,
-        ) catch |err| switch (err) {
-            error.NoKVPairs => return .{},
-            else => return err,
-        };
-    }
-
-    pub fn dispatch(
-        self: *const DisplayCommand,
-        engine: *Engine,
-    ) anyerror!void {
-        _ = self;
-        const diagram = try water.uci.uciBoardDiagram(engine.searcher.board, .{});
-        defer engine.allocator.free(diagram);
-        try engine.writer.print("{s}\n", .{diagram});
-        try engine.writer.flush();
-    }
-};
-
 pub const GoCommand = struct {
     pub const command_name: []const u8 = "go";
+
+    movetime: ?u32 = null,
+
+    wtime: ?u32 = null,
+    btime: ?u32 = null,
+    winc: ?u32 = null,
+    binc: ?u32 = null,
+
+    infinite: bool = false,
 
     pub fn deserialize(
         allocator: std.mem.Allocator,
         tokens: *std.mem.TokenIterator(u8, .any),
     ) anyerror!GoCommand {
-        _ = allocator;
-        _ = tokens;
-        return .{};
+        return water.dispatcher.deserializeFields(
+            GoCommand,
+            allocator,
+            tokens,
+            &.{"infinite"},
+            null,
+        ) catch |err| switch (err) {
+            error.NoKVPairs => return .{
+                .infinite = true,
+            },
+            else => return err,
+        };
+    }
+
+    pub fn chooseThinkTimeNs(self: *const GoCommand, board: *const water.Board) ?i128 {
+        if (self.infinite) {
+            return null;
+        } else if (self.movetime) |mt_ms| {
+            return @intCast(1_000_000 * mt_ms);
+        }
+
+        // If we made it here then handle time fully
+        const wtime_ns: i128 = @intCast(1_000_000 * (self.wtime orelse 0));
+        const btime_ns: i128 = @intCast(1_000_000 * (self.btime orelse 0));
+        const winc_ns: i128 = @intCast(1_000_000 * (self.winc orelse 0));
+        const binc_ns: i128 = @intCast(1_000_000 * (self.binc orelse 0));
+
+        if (std.mem.allEqual(i128, &.{ wtime_ns, btime_ns, winc_ns, binc_ns }, 0)) {
+            return null;
+        }
+
+        const time_us = if (board.side_to_move == .white) wtime_ns else btime_ns;
+        const inc_us = if (board.side_to_move == .white) winc_ns else binc_ns;
+
+        var think_time_ns = @divTrunc(time_us, 40);
+        if (time_us > inc_us * 2) {
+            think_time_ns += @intFromFloat(@as(f128, @floatFromInt(inc_us)) * 0.8);
+        }
+
+        const min_time_ns = @min(50, @as(i128, @intFromFloat(@as(f128, @floatFromInt(inc_us)) * 0.25)));
+        return @max(min_time_ns, think_time_ns);
     }
 
     pub fn dispatch(
         self: *const GoCommand,
         engine: *Engine,
     ) anyerror!void {
-        _ = self;
-        _ = engine;
+        const think_time_ns = self.chooseThinkTimeNs(engine.searcher.governing_board);
+        engine.search(think_time_ns, .{}, .{});
     }
 };
 
@@ -136,3 +93,71 @@ pub const OptCommand = struct {
         _ = engine;
     }
 };
+
+// ================ TESTING ================
+const testing = std.testing;
+const expect = testing.expect;
+const expectEqual = testing.expectEqual;
+
+test "Go think time finding" {
+    const allocator = testing.allocator;
+    var board = try water.Board.init(allocator, .{});
+    defer board.deinit();
+
+    // Normal timed input
+    {
+        const go = GoCommand{
+            .wtime = 20,
+            .btime = 20,
+            .winc = 1,
+            .binc = 1,
+        };
+
+        const time_ns = go.chooseThinkTimeNs(board);
+        try expect(time_ns != null);
+        try expectEqual(1_300_000, time_ns);
+    }
+
+    // Normal timed input with movetime override
+    {
+        const go = GoCommand{
+            .movetime = 10,
+            .wtime = 20,
+            .btime = 20,
+            .winc = 1,
+            .binc = 1,
+        };
+
+        const time_ns = go.chooseThinkTimeNs(board);
+        try expect(time_ns != null);
+        try expectEqual(10_000_000, time_ns);
+    }
+
+    // Normal + movetime timed input with infinite override
+    {
+        const go = GoCommand{
+            .movetime = 10,
+            .wtime = 20,
+            .btime = 20,
+            .winc = 1,
+            .binc = 1,
+            .infinite = true,
+        };
+
+        const time_ns = go.chooseThinkTimeNs(board);
+        try expect(time_ns == null);
+    }
+
+    // Input with all zeros
+    {
+        const go = GoCommand{
+            .wtime = 0,
+            .btime = 0,
+            .winc = 0,
+            .binc = 0,
+        };
+
+        const time_ns = go.chooseThinkTimeNs(board);
+        try expect(time_ns == null);
+    }
+}

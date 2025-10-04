@@ -7,20 +7,25 @@ const board_ = @import("../board/board.zig");
 pub const TestSearcher = struct {
     allocator: std.mem.Allocator,
 
-    board: *board_.Board,
+    governing_board: *board_.Board,
+    search_board: *board_.Board,
+    should_stop: std.atomic.Value(bool),
 
     pub fn init(a: std.mem.Allocator, b: *board_.Board) anyerror!*TestSearcher {
         const searcher = try a.create(TestSearcher);
         searcher.* = .{
             .allocator = a,
-            .board = b,
+            .governing_board = b,
+            .search_board = try b.clone(a),
+            .should_stop = std.atomic.Value(bool).init(true),
         };
 
         return searcher;
     }
 
     pub fn deinit(self: *TestSearcher) void {
-        _ = self;
+        defer self.allocator.destroy(self);
+        self.search_board.deinit();
     }
 
     pub fn search(self: *TestSearcher) anyerror!void {

@@ -32,6 +32,11 @@ pub fn main() !void {
 
     try engine.launch(
         stdin,
-        &.{ commands.PositionCommand, commands.GoCommand, commands.OptCommand, commands.DisplayCommand },
+        .{ .go_command = commands.GoCommand, .opt_command = commands.OptCommand },
     );
+}
+
+test {
+    _ = @import("water/commands.zig");
+    _ = @import("water/search.zig");
 }

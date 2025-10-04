@@ -3,20 +3,34 @@ const std = @import("std");
 const board_ = @import("../board/board.zig");
 const Board = board_.Board;
 
+const move = @import("../core/move.zig");
+const Move = move.Move;
+
 const tv = @import("type_validators.zig");
 const dispatcher = @import("dispatcher.zig");
+const default_commands = @import("default_commands.zig");
 
 /// Creates a uci compatible engine with the provided searcher.
 ///
 /// The Searcher must be a struct that abides to this contract:
 /// - A function `init` which takes any arguments along with a *Board and must return `anyerror!*Searcher`
-/// - A function 'deinit' which takes any arguments but must return `void`
+/// - A function `deinit` which takes any arguments but must return `void`
 /// - A function `search` which takes any arguments and returns `void`
-/// - A field named `board` which is of type `*Board`
+/// - An atomic field named `should_stop` of type `std.atomic.Value(bool)`
+/// - A field named `governing_board` which is of type `*Board`
+/// - A field named `search_board` which is of type `*Board`
+///
+/// The searcher's `search_board` is used for searcher and access is not thread safe.
+/// The searcher's `governing_board` is the board at the start of the search.
+///
+/// The engine is responsible for telling the searcher when to stop, but determining alloted time must be handled externally.
+///
+/// The searcher should free its `search_board`, but the `search_board` should be handled externally.
 ///
 /// Any Searcher that violates this contract results in a compilation error.
 pub fn Engine(comptime Searcher: type) type {
     const SearcherBoardFieldTypeExpected = *Board;
+    const SearcherShouldStopFieldTypeExpected = std.atomic.Value(bool);
 
     const SearcherInitFnExpected = anyerror!*Searcher;
     const SearcherDeinitFnExpected = void;
@@ -32,9 +46,23 @@ pub fn Engine(comptime Searcher: type) type {
                 // Validate the required fields
                 tv.validateField(
                     Searcher,
-                    "board",
+                    "governing_board",
                     SearcherBoardFieldTypeExpected,
-                    "Searcher must have field 'board' of type '" ++ @typeName(SearcherBoardFieldTypeExpected) ++ "'",
+                    "Searcher must have field 'governing_board' of type '" ++ @typeName(SearcherBoardFieldTypeExpected) ++ "'",
+                );
+
+                tv.validateField(
+                    Searcher,
+                    "search_board",
+                    SearcherBoardFieldTypeExpected,
+                    "Searcher must have field 'search_board' of type '" ++ @typeName(SearcherBoardFieldTypeExpected) ++ "'",
+                );
+
+                tv.validateField(
+                    Searcher,
+                    "should_stop",
+                    SearcherShouldStopFieldTypeExpected,
+                    "Searcher must have field 'should_stop' of type '" ++ @typeName(SearcherShouldStopFieldTypeExpected) ++ "'",
                 );
 
                 // Validate the contracted function's types
@@ -80,7 +108,12 @@ pub fn Engine(comptime Searcher: type) type {
 
         searcher: *Searcher,
         search_thread: ?std.Thread = null,
+
+        search_start_time_ns: ?i128 = null,
+        alloted_search_time_ns: ?i128 = null,
+
         welcome: ?[]const u8 = null,
+        last_played: ?Move = null,
 
         writer: *std.Io.Writer,
 
@@ -107,12 +140,12 @@ pub fn Engine(comptime Searcher: type) type {
         /// Deinitializes the engine, fully freeing all constituent resources.
         ///
         /// The `search_deinit_args` are forwarded to the Searcher's `deinit` function.
-        /// The function automatically handles the first argument (*Searcher) for the `deinit` call.
+        /// The function automatically forwards the first argument (*Searcher) for the `deinit` call.
         pub fn deinit(self: *Self, search_deinit_args: anytype) void {
-            // Defer the deallocation of key resources
-            defer {
-                self.allocator.destroy(self.searcher);
-                self.allocator.destroy(self);
+            defer self.allocator.destroy(self);
+
+            if (self.search_thread) |search_thread| {
+                search_thread.join();
             }
 
             // Free all other resources safely
@@ -121,10 +154,6 @@ pub fn Engine(comptime Searcher: type) type {
                 Searcher.deinit,
                 .{self.searcher} ++ search_deinit_args,
             );
-
-            if (self.search_thread) |search_thread| {
-                search_thread.join();
-            }
         }
 
         /// Initiates the search, forwarding any provided args in `search_args`.
@@ -133,28 +162,63 @@ pub fn Engine(comptime Searcher: type) type {
         /// The function automatically handles the first argument (*Searcher) for the `search` call.
         /// This can be disabled through the `options` arg.
         ///
+        /// Ensure the alloted search time is in nanoseconds. Making it null corresponds to infinite thinking time.
+        ///
         /// If a search is currently in progress, waits for the thread to wrap up.
-        pub fn search(self: *Self, search_args: anytype, comptime options: struct {
+        pub fn search(self: *Self, search_time_ns: ?i128, search_args: anytype, comptime options: struct {
             forward_ptr: bool = true,
         }) void {
-            if (self.search_thread) |search_thread| {
-                search_thread.join();
-            }
+            // Stop any current searching
+            self.notifyStopSearch();
+
+            // Reload the searcher's search_board
+            self.searcher.search_board.deinit();
+            self.searcher.search_board = self.searcher.governing_board.clone(self.allocator) catch unreachable;
 
             self.search_thread = std.Thread.spawn(
                 .{},
                 Searcher.search,
                 if (options.forward_ptr) .{self.searcher} ++ search_args else search_args,
             ) catch unreachable;
+
+            self.search_start_time_ns = std.time.nanoTimestamp();
+            self.alloted_search_time_ns = search_time_ns;
+        }
+
+        fn notifyStopSearch(self: *Self) void {
+            self.searcher.should_stop.store(true, .release);
+            self.alloted_search_time_ns = null;
+            self.search_start_time_ns = null;
+
+            if (self.search_thread) |search_thread| {
+                search_thread.join();
+            }
+            self.search_thread = null;
         }
 
         /// Starts the engines UCI compatible event loop. The provided commands are deserialized every input read.
         ///
-        /// The 'quit' command is implemented for you. Cleanup of resources is not a responsibility of this function.
+        /// Due to the simplicity of the 'position' and 'display' (d) commands, they are provided as defaults.
+        ///
+        /// The 'quit' and 'stop' commands are handled internally. Cleanup of resources is not a responsibility of this function.
         ///
         /// The reader is used for handling user input and should almost always be `stdin`.
-        pub fn launch(self: *Self, reader: *std.Io.Reader, comptime commands: []const type) !void {
-            const Dispatcher = dispatcher.Dispatcher(commands, Searcher);
+        pub fn launch(self: *Self, reader: *std.Io.Reader, comptime commands: struct {
+            position_command: type = default_commands.PositionCommand(Searcher),
+            display_command: type = default_commands.DisplayCommand(Searcher),
+            go_command: type,
+            opt_command: type,
+            other_commands: []const type = &.{},
+        }) !void {
+            // zig fmt: off
+            const command_list = comptime commands.other_commands
+                ++ .{commands.position_command}
+                ++ .{commands.display_command}
+                ++ .{commands.go_command}
+                ++ .{commands.opt_command};
+            // zig fmt: on
+
+            const Dispatcher = dispatcher.Dispatcher(command_list, Searcher);
             if (self.welcome) |msg| {
                 try self.writer.print("{s}\n", .{msg});
                 try self.writer.flush();
@@ -167,14 +231,29 @@ pub fn Engine(comptime Searcher: type) type {
                     else => continue,
                 };
 
+                // Check to see if the searcher should be notified
+                if (self.search_start_time_ns) |start_ns| {
+                    if (self.alloted_search_time_ns) |alloted_ns| {
+                        const now = std.time.nanoTimestamp();
+                        if (now - start_ns > alloted_ns) {
+                            self.notifyStopSearch();
+                        }
+                    }
+                }
+
                 // Handle the carriage return if present
                 if (line.len > 0 and line[line.len - 1] == '\r') {
                     line = line[0 .. line.len - 1];
                 }
 
-                // Manually handle the quit command since resource responsibility is not for the engine
-                if (line.len == 5 and std.mem.startsWith(u8, line, "quit")) {
-                    break;
+                // Manually handle the quit and stop commands as they are constants
+                if (line.len == 4) {
+                    if (std.mem.startsWith(u8, line, "quit")) {
+                        break;
+                    } else if (std.mem.startsWith(u8, line, "stop")) {
+                        self.notifyStopSearch();
+                        continue;
+                    }
                 }
 
                 var tokens = std.mem.tokenizeAny(u8, line, " ");
@@ -213,5 +292,5 @@ test "Basic engine creation" {
     );
     defer e.deinit(.{});
 
-    e.search(.{}, .{});
+    e.search(null, .{}, .{});
 }
