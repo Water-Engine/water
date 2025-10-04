@@ -9,6 +9,7 @@ const Bitboard = bitboard.Bitboard;
 // ================ ERRORS ================
 
 pub const ChessError = error{
+    IllegalFen,
     IllegalFenState,
     IllegalMove,
 };

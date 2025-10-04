@@ -79,7 +79,7 @@ fn addToTestStep(b: *std.Build, module: *std.Build.Module, step: *std.Build.Step
 }
 
 fn addLintStep(b: *std.Build) void {
-    const lint_files = b.addSystemCommand(&[_][]const u8{
+    const lint_files = b.addSystemCommand(&.{
         "zig", "fmt", "--check", "src",
     });
 
@@ -91,7 +91,7 @@ fn addLintStep(b: *std.Build) void {
 }
 
 fn addFmtStep(b: *std.Build) void {
-    const fmt_files = b.addSystemCommand(&[_][]const u8{
+    const fmt_files = b.addSystemCommand(&.{
         "zig", "fmt", "src",
     });
 
@@ -103,7 +103,7 @@ fn addFmtStep(b: *std.Build) void {
 }
 
 fn addClocStep(b: *std.Build) void {
-    const cloc_src = b.addSystemCommand(&[_][]const u8{
+    const cloc_src = b.addSystemCommand(&.{
         "cloc",
         "build.zig",
         "src",

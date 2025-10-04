@@ -64,7 +64,7 @@ pub fn epMoves(
     var ep_bb = attacks.pawn(color.opposite(), ep).andBB(pawns_lr);
     const enemy_queen_rook = board.piecesMany(
         color.opposite(),
-        &[_]PieceType{ .rook, .queen },
+        &.{ .rook, .queen },
     );
 
     // Two pawns can potentially take an ep square in a given position
@@ -906,7 +906,7 @@ test "Queen move generation" {
 }
 
 test "PieceGenType compile time computation" {
-    const pawns = comptime PieceGenType.pts2bb(&[_]PieceType{.pawn});
+    const pawns = comptime PieceGenType.pts2bb(&.{.pawn});
     try expectEqual(@intFromEnum(PieceGenType.pawn), pawns.bits);
 
     const all_types = comptime PieceGenType.pts2bb(&AllPieces);

@@ -1,5 +1,10 @@
 const std = @import("std");
 
+const engine_ = @import("engine.zig");
+const tv = @import("type_validators.zig");
+
+const board_ = @import("../board/board.zig");
+
 pub const DeserializeError = error{
     NoKVPairs,
     InvalidFieldType,
@@ -12,10 +17,10 @@ pub const DeserializeError = error{
 
 /// Deserializes key-value arguments from a UCI string into a struct T. Assumes input as:
 ///
-/// <label> [key1] [val1] [key2] [val2] [standalone] etc...
+/// <label> [key1] [val1] [standalone] [key2] [val2] etc... [sentinel] [rest]
 ///
 /// The token iterator is reset to its default state upon returning.
-/// The assigned values in the returned type have lifetimes matching the token iterator, when necessary.
+/// The assigned values in the returned type have lifetimes matching the token iterator, when applicable.
 /// The keys in the given type should have the names matching the expected tokens.
 ///
 /// Standalone tokens are processed without consuming a value. They are only compatible with bool fields.
@@ -27,6 +32,7 @@ pub fn deserializeFields(
     allocator: std.mem.Allocator,
     tokens: *std.mem.TokenIterator(u8, .any),
     comptime standalone_tokens: ?[]const []const u8,
+    comptime kv_ignores: ?[]const []const u8,
 ) DeserializeError!T {
     defer tokens.reset();
 
@@ -60,7 +66,7 @@ pub fn deserializeFields(
     const standalones = comptime blk: {
         if (standalone_tokens) |toks| {
             break :blk toks;
-        } else break :blk &[_][]const u8{};
+        } else break :blk &.{};
     };
 
     const result_fields = comptime @typeInfo(T).@"struct".fields;
@@ -71,7 +77,7 @@ pub fn deserializeFields(
         return error.NoKVPairs;
     }
 
-    while (tokens.next()) |key| {
+    outer: while (tokens.next()) |key| {
         // Check for standalone before polling the iterator again for a value
         var is_standalone = false;
         inline for (standalones) |tok| {
@@ -98,6 +104,12 @@ pub fn deserializeFields(
         // We already handle the case where only the label is present, so just break on malformed input
         const value = tokens.next() orelse break;
         inline for (result_fields) |field| {
+            if (kv_ignores) |ignores| {
+                inline for (ignores) |ignore| {
+                    if (std.mem.eql(u8, ignore, field.name)) continue :outer;
+                }
+            }
+
             if (std.mem.eql(u8, key, field.name)) {
                 const FieldType = if (@typeInfo(field.type) == .optional) @typeInfo(field.type).optional.child else field.type;
                 switch (@typeInfo(FieldType)) {
@@ -143,35 +155,71 @@ pub fn deserializeFields(
     return result;
 }
 
+/// Returns a string containing all of the tokens after the given keyword.
+///
+/// The token iterator is returned in a reset state.
+/// The returned string has a lifetime matching the token iterator.
+///
+/// The string returned is owned by the caller and must be freed.
+pub fn tokensAfter(
+    tokens: *std.mem.TokenIterator(u8, .any),
+    keyword: []const u8,
+) ?[]const u8 {
+    defer tokens.reset();
+    while (tokens.next()) |next| {
+        if (std.mem.eql(u8, keyword, next)) {
+            break;
+        }
+    } else return null;
+
+    return tokens.rest();
+}
+
+/// Creates a dispatcher equipped to dispatch functionality among the Commands.
+///
+/// All Commands must fulfil the contract enforced by `validateCommand`.
+pub fn Dispatcher(comptime commands: []const type, comptime Searcher: type) type {
+    inline for (commands) |Cmd| {
+        tv.validateCommand(Cmd, Searcher);
+    }
+
+    return struct {
+        /// Dispatches the token input to the matching Command.
+        pub fn dispatch(
+            tokens: *std.mem.TokenIterator(u8, .any),
+            engine: *engine_.Engine(Searcher),
+        ) anyerror!void {
+            const command_name = tokens.peek() orelse return error.NoCommandName;
+            inline for (commands) |Cmd| {
+                if (std.mem.eql(u8, command_name, Cmd.command_name)) {
+                    const payload = try @call(.auto, Cmd.deserialize, .{ engine.allocator, tokens });
+                    try payload.dispatch(engine);
+                    return;
+                }
+            } else return error.NoMatchingCommand;
+        }
+    };
+}
+
 // ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 const expectEqualSlices = testing.expectEqualSlices;
 
-const TestCommand = struct {
-    const command_name: []const u8 = "go";
-
-    fsize: f64 = 0.0,
-    tsize: ?f16 = 0.0,
-
-    btime: ?u64 = null,
-    wtime: ?u64 = null,
-    binc: ?u64 = null,
-    winc: ?u64 = null,
-    infinite: bool = false,
-
-    msize: i42 = -1,
-
-    name: []const u8 = "test",
-    crunched: bool = false,
-};
+const test_objs = @import("test_objs.zig");
 
 test "Basic field deserialize use" {
     const allocator = testing.allocator;
 
     var tokens = std.mem.tokenizeAny(u8, "buffer: []const T", " ");
-    const result = try deserializeFields(TestCommand, allocator, &tokens, null);
+    const result = try deserializeFields(
+        test_objs.TestCommand(test_objs.TestSearcher),
+        allocator,
+        &tokens,
+        null,
+        null,
+    );
 
     try expectEqual(0.0, result.fsize);
     try expectEqual(0.0, result.tsize);
@@ -188,8 +236,18 @@ test "Basic field deserialize use" {
 test "Actual field deserialize use" {
     const allocator = testing.allocator;
 
-    var tokens = std.mem.tokenizeAny(u8, "go wtime 10 crunched btime 9 winc 1 msize -67 binc 2 name john fsize 100.2 tsize -3.0", " ");
-    const result = try deserializeFields(TestCommand, allocator, &tokens, &[_][]const u8{"crunched"});
+    var tokens = std.mem.tokenizeAny(
+        u8,
+        "go wtime 10 crunched btime 9 winc 1 msize -67 binc 2 name john fsize 100.2 tsize -3.0",
+        " ",
+    );
+    const result = try deserializeFields(
+        test_objs.TestCommand(test_objs.TestSearcher),
+        allocator,
+        &tokens,
+        &.{"crunched"},
+        null,
+    );
 
     try expectEqual(10, result.wtime);
     try expectEqual(9, result.btime);
@@ -214,10 +272,11 @@ test "Runtime deserialization errors" {
         try testing.expectError(
             error.NoKVPairs,
             deserializeFields(
-                TestCommand,
+                test_objs.TestCommand(test_objs.TestSearcher),
                 allocator,
                 &tokens,
-                &[_][]const u8{"crunched"},
+                &.{"crunched"},
+                null,
             ),
         );
     }
@@ -228,10 +287,11 @@ test "Runtime deserialization errors" {
         try testing.expectError(
             error.IntegerParseError,
             deserializeFields(
-                TestCommand,
+                test_objs.TestCommand(test_objs.TestSearcher),
                 allocator,
                 &tokens,
-                &[_][]const u8{"crunched"},
+                &.{"crunched"},
+                null,
             ),
         );
     }
@@ -242,10 +302,11 @@ test "Runtime deserialization errors" {
         try testing.expectError(
             error.FloatParseError,
             deserializeFields(
-                TestCommand,
+                test_objs.TestCommand(test_objs.TestSearcher),
                 allocator,
                 &tokens,
-                &[_][]const u8{"crunched"},
+                &.{"crunched"},
+                null,
             ),
         );
     }
@@ -256,10 +317,11 @@ test "Runtime deserialization errors" {
         try testing.expectError(
             error.BoolParseError,
             deserializeFields(
-                TestCommand,
+                test_objs.TestCommand(test_objs.TestSearcher),
                 allocator,
                 &tokens,
-                &[_][]const u8{"crunched"},
+                &.{"crunched"},
+                null,
             ),
         );
     }
@@ -270,17 +332,68 @@ test "Runtime deserialization errors" {
         var tokens = std.mem.tokenizeAny(u8, "go label 123", " ");
         try testing.expectError(
             error.InvalidFieldType,
-            deserializeFields(BadStruct, allocator, &tokens, null),
+            deserializeFields(
+                BadStruct,
+                allocator,
+                &tokens,
+                null,
+                null,
+            ),
         );
     }
 
     // InvalidFieldType: use []i32 instead of []u8
-    const BadArray = struct { arr: []i32 = &[_]i32{} };
+    const BadArray = struct { arr: []i32 = &.{} };
     {
         var tokens = std.mem.tokenizeAny(u8, "go arr 123", " ");
         try testing.expectError(
             error.InvalidFieldType,
-            deserializeFields(BadArray, allocator, &tokens, null),
+            deserializeFields(
+                BadArray,
+                allocator,
+                &tokens,
+                null,
+                null,
+            ),
         );
     }
+}
+
+test "Tokens after" {
+    var tokens_missing = std.mem.tokenizeAny(u8, "go arr 123 a123 223 09 asdw arr", " ");
+    const after_missing = tokensAfter(&tokens_missing, "moves");
+    try expect(after_missing == null);
+
+    var tokens_containing = std.mem.tokenizeAny(u8, "go arr 123 a123 223 09 asdw arr", " ");
+    const after_containing = tokensAfter(&tokens_containing, "arr");
+    try expect(after_containing != null);
+    try expectEqualSlices(u8, after_containing.?, "123 a123 223 09 asdw arr");
+}
+
+test "Dispatcher usage" {
+    const allocator = testing.allocator;
+    const D = Dispatcher(
+        &.{ test_objs.CommandOne(test_objs.TestSearcher), test_objs.CommandTwo(test_objs.TestSearcher) },
+        test_objs.TestSearcher,
+    );
+
+    var one_tokens = std.mem.tokenizeAny(u8, "one label 123", " ");
+
+    var test_buffer = std.Io.Writer.Allocating.init(allocator);
+    defer test_buffer.deinit();
+    const writer = &test_buffer.writer;
+
+    var board = try board_.Board.init(allocator, .{});
+    defer board.deinit();
+
+    const instance = engine_.Engine(test_objs.TestSearcher);
+    const e = try instance.init(
+        allocator,
+        writer,
+        .{ allocator, board },
+    );
+    defer e.deinit(.{});
+
+    try D.dispatch(&one_tokens, e);
+    try expectEqualSlices(u8, "Hello from command one!", writer.buffered());
 }

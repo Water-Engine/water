@@ -5,6 +5,7 @@ pub const Color = types.Color;
 pub const File = types.File;
 pub const Rank = types.Rank;
 pub const Square = types.Square;
+pub const ChessError = types.ChessError;
 
 const bitboard = @import("chess/core/bitboard.zig");
 pub const Bitboard = bitboard.Bitboard;
@@ -23,7 +24,7 @@ const move = @import("chess/core/move.zig");
 pub const Move = move.Move;
 pub const MoveType = move.MoveType;
 
-const board = @import("chess/board/board.zig");
+pub const board = @import("chess/board/board.zig");
 pub const Board = board.Board;
 
 pub const arbiter = @import("chess/board/arbiter.zig");
@@ -42,7 +43,7 @@ pub const movegen = @import("chess/movegen/movegen.zig");
 
 pub const engine = @import("chess/engine/engine.zig");
 pub const type_validators = @import("chess/engine/type_validators.zig");
-pub const deserializer = @import("chess/engine/deserializer.zig");
+pub const dispatcher = @import("chess/engine/dispatcher.zig");
 
 // ================ TESTING ================
 
@@ -65,5 +66,5 @@ test {
 
     _ = @import("chess/engine/engine.zig");
     _ = @import("chess/engine/type_validators.zig");
-    _ = @import("chess/engine/deserializer.zig");
+    _ = @import("chess/engine/dispatcher.zig");
 }

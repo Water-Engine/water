@@ -196,7 +196,7 @@ pub fn pinMask(
 
     const opponent_pt_queen = board.piecesMany(
         color.opposite(),
-        &[_]PieceType{ pt, .queen },
+        &.{ pt, .queen },
     );
 
     var pt_attacks = attacks.slider(

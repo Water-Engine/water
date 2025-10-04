@@ -30,5 +30,8 @@ pub fn main() !void {
     var stdin_reader = std.fs.File.stdin().reader(&stdin_buffer);
     const stdin = &stdin_reader.interface;
 
-    try engine.launch(stdin);
+    try engine.launch(
+        stdin,
+        &.{ commands.PositionCommand, commands.GoCommand, commands.OptCommand, commands.DisplayCommand },
+    );
 }

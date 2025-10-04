@@ -312,11 +312,11 @@ pub fn isAttacked(board: *const Board, color: Color, square: Square) bool {
     ).nonzero()) {
         return true;
     } else if (bishop(square, board.occ()).andBB(
-        board.piecesMany(color, &[_]PieceType{ .bishop, .queen }),
+        board.piecesMany(color, &.{ .bishop, .queen }),
     ).andBB(board.us(color)).nonzero()) {
         return true;
     } else if (rook(square, board.occ()).andBB(
-        board.piecesMany(color, &[_]PieceType{ .rook, .queen }),
+        board.piecesMany(color, &.{ .rook, .queen }),
     ).andBB(board.us(color)).nonzero()) {
         return true;
     }

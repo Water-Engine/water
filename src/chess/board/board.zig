@@ -1090,10 +1090,10 @@ pub const Board = struct {
         const sniper = struct {
             pub fn sniper(board: *const Board, king_sq_: Square, occ_: Bitboard) Bitboard {
                 const b_atks = attacks.bishop(king_sq_, occ_).andBB(
-                    board.piecesMany(board.side_to_move, &[_]PieceType{ .bishop, .queen }),
+                    board.piecesMany(board.side_to_move, &.{ .bishop, .queen }),
                 );
                 const r_atks = attacks.rook(king_sq_, occ_).andBB(
-                    board.piecesMany(board.side_to_move, &[_]PieceType{ .rook, .queen }),
+                    board.piecesMany(board.side_to_move, &.{ .rook, .queen }),
                 );
 
                 return b_atks.orBB(r_atks);
@@ -1176,10 +1176,12 @@ pub const Board = struct {
     /// Determines the number of non-pawn and non-king pieces for the given color.
     pub fn nonPawnMaterial(self: *const Board, color: Color) usize {
         const material = self.us(color).xorBB(
-            self.piecesMany(color, &[_]PieceType{ .pawn, .king }),
+            self.piecesMany(color, &.{ .pawn, .king }),
         );
         return material.count();
     }
+
+    // TODO: Robust fen validation
 };
 
 // ================ TESTING ================

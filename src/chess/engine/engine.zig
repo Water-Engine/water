@@ -4,11 +4,12 @@ const board_ = @import("../board/board.zig");
 const Board = board_.Board;
 
 const tv = @import("type_validators.zig");
+const dispatcher = @import("dispatcher.zig");
 
 /// Creates a uci compatible engine with the provided searcher.
 ///
 /// The Searcher must be a struct that abides to this contract:
-/// - A function `init` which takes any arguments but must return `anyerror!*Searcher`
+/// - A function `init` which takes any arguments along with a *Board and must return `anyerror!*Searcher`
 /// - A function 'deinit' which takes any arguments but must return `void`
 /// - A function `search` which takes any arguments and returns `void`
 /// - A field named `board` which is of type `*Board`
@@ -36,7 +37,7 @@ pub fn Engine(comptime Searcher: type) type {
                     "Searcher must have field 'board' of type '" ++ @typeName(SearcherBoardFieldTypeExpected) ++ "'",
                 );
 
-                // Validate the contracted function's return types
+                // Validate the contracted function's types
                 tv.validateReturnType(
                     blk: {
                         if (!@hasDecl(Searcher, "init")) @compileError("Searcher must have decl 'init'");
@@ -44,6 +45,12 @@ pub fn Engine(comptime Searcher: type) type {
                     },
                     SearcherInitFnExpected,
                     "Searcher decl 'init' must be a function with return type '" ++ @typeName(SearcherInitFnExpected) ++ "'",
+                );
+
+                tv.validateParameterContains(
+                    @TypeOf(Searcher.init),
+                    *Board,
+                    "Searcher decl 'init' must be a function with at least parameter type '*Board'",
                 );
 
                 tv.validateReturnType(
@@ -82,7 +89,11 @@ pub fn Engine(comptime Searcher: type) type {
         /// Initializes the engine and allocates all its resources.
         ///
         /// The `search_init_args` are forwarded to the Searcher's `init` function.
-        pub fn init(allocator: std.mem.Allocator, writer: *std.Io.Writer, search_init_args: anytype) !*Self {
+        pub fn init(
+            allocator: std.mem.Allocator,
+            writer: *std.Io.Writer,
+            search_init_args: anytype,
+        ) !*Self {
             const engine = try allocator.create(Self);
             engine.* = .{
                 .allocator = allocator,
@@ -137,10 +148,13 @@ pub fn Engine(comptime Searcher: type) type {
             ) catch unreachable;
         }
 
-        /// Starts the engines UCI compatible event loop.
+        /// Starts the engines UCI compatible event loop. The provided commands are deserialized every input read.
+        ///
+        /// The 'quit' command is implemented for you. Cleanup of resources is not a responsibility of this function.
         ///
         /// The reader is used for handling user input and should almost always be `stdin`.
-        pub fn launch(self: *Self, reader: *std.Io.Reader) !void {
+        pub fn launch(self: *Self, reader: *std.Io.Reader, comptime commands: []const type) !void {
+            const Dispatcher = dispatcher.Dispatcher(commands, Searcher);
             if (self.welcome) |msg| {
                 try self.writer.print("{s}\n", .{msg});
                 try self.writer.flush();
@@ -148,14 +162,26 @@ pub fn Engine(comptime Searcher: type) type {
 
             // Start the main loop, only exiting with an error if not doing so would result in unrecoverable state
             while (true) {
-                const line = reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
+                var line = reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
                     error.EndOfStream, error.ReadFailed => break,
                     else => continue,
                 };
+
+                // Handle the carriage return if present
+                if (line.len > 0 and line[line.len - 1] == '\r') {
+                    line = line[0 .. line.len - 1];
+                }
+
+                // Manually handle the quit command since resource responsibility is not for the engine
+                if (line.len == 5 and std.mem.startsWith(u8, line, "quit")) {
+                    break;
+                }
+
                 var tokens = std.mem.tokenizeAny(u8, line, " ");
-                _ = tokens.next();
-                try self.writer.flush();
-                try self.writer.print("TODO: {s}\n", .{line});
+                Dispatcher.dispatch(&tokens, self) catch |err| switch (err) {
+                    error.TemporaryAllocationError => break,
+                    else => continue,
+                };
             }
         }
     };
@@ -167,6 +193,8 @@ const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 const expectEqualSlices = testing.expectEqualSlices;
 
+const test_objs = @import("test_objs.zig");
+
 test "Basic engine creation" {
     const allocator = testing.allocator;
 
@@ -177,32 +205,7 @@ test "Basic engine creation" {
     var board = try Board.init(allocator, .{});
     defer board.deinit();
 
-    const TestSearcher = struct {
-        const Self = @This();
-        allocator: std.mem.Allocator,
-
-        board: *Board,
-
-        pub fn init(a: std.mem.Allocator, b: *Board) anyerror!*Self {
-            const searcher = try a.create(Self);
-            searcher.* = .{
-                .allocator = a,
-                .board = b,
-            };
-
-            return searcher;
-        }
-
-        pub fn deinit(self: *Self) void {
-            _ = self;
-        }
-
-        pub fn search(self: *Self) anyerror!void {
-            _ = self;
-        }
-    };
-
-    const instance = Engine(TestSearcher);
+    const instance = Engine(test_objs.TestSearcher);
     const e = try instance.init(
         allocator,
         writer,
