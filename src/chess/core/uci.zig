@@ -28,7 +28,7 @@ pub fn moveToUci(allocator: std.mem.Allocator, move: Move, fischer_random: bool)
     var to = move.to();
 
     if (!fischer_random and move.typeOf(MoveType) == .castling) {
-        to = Square.make(from.rank(), if (to.gt(from)) .fg else .fc);
+        to = Square.make(from.rank(), if (to.order(from) == .gt) .fg else .fc);
     }
 
     var buffer = std.Io.Writer.Allocating.init(allocator);
@@ -67,13 +67,13 @@ pub fn uciToMove(board: *const Board, uci: []const u8) Move {
         }
     } else {
         if (pt_source == .king and distance.ChebyshevDist[target.index()][source.index()] == 2) {
-            const corrected_target = Square.make(source.rank(), if (target.gt(source)) .fh else .fa);
+            const corrected_target = Square.make(source.rank(), if (target.order(source) == .gt) .fh else .fa);
             return Move.make(source, corrected_target, .{ .move_type = .castling });
         }
     }
 
     // En passant case
-    if (pt_source == .pawn and target.eq(board.ep_square)) {
+    if (pt_source == .pawn and target.order(board.ep_square) == .eq) {
         return Move.make(source, target, .{ .move_type = .en_passant });
     }
 
@@ -154,7 +154,7 @@ pub fn uciBoardDiagram(board: *const Board, options: struct {
 
             if (!square.valid()) continue;
 
-            const highlight = highlight_move_square.eq(square);
+            const highlight = highlight_move_square.order(square) == .eq;
             const piece = board.at(Piece, square);
             const piece_char = if (piece.valid()) piece.asChar() else ' ';
 

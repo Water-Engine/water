@@ -109,9 +109,9 @@ pub const CastlingRights = struct {
         comptime T: type,
         square: T,
         pred: T,
-        greater_than_fn: *const fn (T, T) bool,
+        order_fn: *const fn (T, T) std.math.Order,
     ) Side {
-        return if (greater_than_fn(square, pred)) .king else .queen;
+        return if (order_fn(square, pred) == .gt) .king else .queen;
     }
 };
 
@@ -170,14 +170,14 @@ test "CastlingRights" {
     try expect(cr.empty());
 
     // Test closestSide helper
-    const greater = struct {
-        fn cmp(lhs: u8, rhs: u8) bool {
-            return lhs > rhs;
+    const order = struct {
+        fn order(lhs: u8, rhs: u8) std.math.Order {
+            return std.math.order(lhs, rhs);
         }
-    }.cmp;
+    }.order;
 
-    const s1 = CastlingRights.closestSide(u8, 7, 4, greater);
-    const s2 = CastlingRights.closestSide(u8, 3, 5, greater);
+    const s1 = CastlingRights.closestSide(u8, 7, 4, order);
+    const s2 = CastlingRights.closestSide(u8, 3, 5, order);
     try expectEqual(CastlingRights.Side.king, s1);
     try expectEqual(CastlingRights.Side.queen, s2);
 

@@ -88,28 +88,11 @@ pub const PieceType = enum(u8) {
 
     // ================ COMPARISON ================
 
-    pub fn eq(self: *const PieceType, other: PieceType) bool {
-        return self.asInt(i32) == other.asInt(i32);
-    }
+    pub fn order(lhs: PieceType, rhs: PieceType) std.math.Order {
+        const lhs_val = lhs.asInt(i32);
+        const rhs_val = rhs.asInt(i32);
 
-    pub fn neq(self: *const PieceType, other: PieceType) bool {
-        return !self.eq(other);
-    }
-
-    pub fn lt(self: *const PieceType, other: PieceType) bool {
-        return self.asInt(i32) < other.asInt(i32);
-    }
-
-    pub fn gt(self: *const PieceType, other: PieceType) bool {
-        return self.asInt(i32) > other.asInt(i32);
-    }
-
-    pub fn lteq(self: *const PieceType, other: PieceType) bool {
-        return self.asInt(i32) <= other.asInt(i32);
-    }
-
-    pub fn gteq(self: *const PieceType, other: PieceType) bool {
-        return self.asInt(i32) >= other.asInt(i32);
+        return std.math.order(lhs_val, rhs_val);
     }
 };
 
@@ -221,40 +204,25 @@ pub const Piece = enum(u8) {
 
     // ================ COMPARISON ================
 
-    pub fn eq(self: *const Piece, other: Piece) bool {
-        return self.asInt(i32) == other.asInt(i32);
-    }
+    pub fn order(lhs: Piece, rhs: Piece) std.math.Order {
+        const lhs_val = lhs.asInt(i32);
+        const rhs_val = rhs.asInt(i32);
 
-    pub fn neq(self: *const Piece, other: Piece) bool {
-        return self.asInt(i32) != other.asInt(i32);
-    }
-
-    pub fn lt(self: *const Piece, other: Piece) bool {
-        return self.asInt(i32) < other.asInt(i32);
-    }
-
-    pub fn gt(self: *const Piece, other: Piece) bool {
-        return self.asInt(i32) > other.asInt(i32);
-    }
-
-    pub fn lteq(self: *const Piece, other: Piece) bool {
-        return self.asInt(i32) <= other.asInt(i32);
-    }
-
-    pub fn gteq(self: *const Piece, other: Piece) bool {
-        return self.asInt(i32) >= other.asInt(i32);
+        return std.math.order(lhs_val, rhs_val);
     }
 
     // ================ MISC UTILS ================
 
     pub fn asType(self: *const Piece) PieceType {
         if (self.* == .none) return .none;
-        return PieceType.fromInt(i32, if (self.lteq(.white_king)) self.asInt(i32) else self.asInt(i32) - 6);
+        const ord = self.order(.white_king);
+        return PieceType.fromInt(i32, if (ord == .lt or ord == .eq) self.asInt(i32) else self.asInt(i32) - 6);
     }
 
     pub fn color(self: *const Piece) Color {
         if (self.* == .none) return .none;
-        return if (self.lteq(.white_king)) .white else .black;
+        const ord = self.order(.white_king);
+        return if (ord == .lt or ord == .eq) .white else .black;
     }
 };
 
@@ -289,10 +257,10 @@ test "PieceType" {
     try expectEqual('-', PieceType.none.asChar());
 
     // ================ COMPARISONS =================
-    try expect(PieceType.pawn.eq(.pawn));
-    try expect(!PieceType.pawn.eq(.knight));
-    try expect(PieceType.pawn.neq(.knight));
-    try expect(!PieceType.pawn.neq(.pawn));
+    try expect(PieceType.pawn.order(.pawn) == .eq);
+    try expect(PieceType.pawn.order(.knight) != .eq);
+    try expect(PieceType.pawn.order(.knight) == .lt);
+    try expect(PieceType.rook.order(.pawn) == .gt);
 }
 
 test "Piece" {
@@ -325,14 +293,10 @@ test "Piece" {
     try expectEqual('-', Piece.none.asChar());
 
     // ================ COMPARISONS =================
-    try expect(Piece.white_pawn.eq(.white_pawn));
-    try expect(!Piece.white_pawn.eq(.white_knight));
-    try expect(Piece.white_pawn.neq(.white_knight));
-    try expect(!Piece.white_pawn.neq(.white_pawn));
-    try expect(Piece.white_pawn.lt(.white_knight));
-    try expect(Piece.black_pawn.gt(.white_king));
-    try expect(Piece.white_pawn.lteq(.white_pawn));
-    try expect(Piece.black_queen.gteq(.black_pawn));
+    try expect(Piece.white_pawn.order(.white_pawn) == .eq);
+    try expect(Piece.white_pawn.order(.white_knight) != .eq);
+    try expect(Piece.white_pawn.order(.white_knight) == .lt);
+    try expect(Piece.black_pawn.order(.white_king) == .gt);
 
     // ================ UTILITIES =================
     try expectEqual(PieceType.pawn, Piece.white_pawn.asType());

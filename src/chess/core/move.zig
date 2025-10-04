@@ -65,7 +65,12 @@ pub const Move = struct {
     ) Move {
         const move_type = options.move_type;
         const pt = options.promotion_type;
-        std.debug.assert(pt.gteq(.knight) and pt.lteq(.queen));
+        std.debug.assert(blk: {
+            const knight_ord = pt.order(.knight);
+            const queen_ord = pt.order(.queen);
+
+            break :blk (knight_ord == .gt or knight_ord == .eq) and (queen_ord == .lt or queen_ord == .eq);
+        });
 
         const promotion_type = pt.asInt(u16) - PieceType.knight.asInt(u16);
 
@@ -107,56 +112,27 @@ pub const Move = struct {
         return PieceType.fromInt(u16, ((self.move >> @truncate(12)) & 3) + PieceType.knight.asInt(u16));
     }
 
-    // ================ MOVE COMPARISON ================
+    // ================ COMPARISON ================
 
-    pub fn eqMove(self: *const Move, other: Move) bool {
-        return self.move == other.move;
+    pub fn order(lhs: Move, rhs: Move, comptime by: enum { mv, sc }) std.math.Order {
+        return switch (by) {
+            .mv => lhs.orderByMove(rhs),
+            .sc => lhs.orderByScore(rhs),
+        };
     }
 
-    pub fn neqMove(self: *const Move, other: Move) bool {
-        return !self.eqMove(other);
+    pub fn orderByMove(lhs: Move, rhs: Move) std.math.Order {
+        const lhs_val = lhs.move;
+        const rhs_val = rhs.move;
+
+        return std.math.order(lhs_val, rhs_val);
     }
 
-    pub fn ltMove(self: *const Move, other: Move) bool {
-        return self.move < other.move;
-    }
+    pub fn orderByScore(lhs: Move, rhs: Move) std.math.Order {
+        const lhs_val = lhs.score;
+        const rhs_val = rhs.score;
 
-    pub fn gtMove(self: *const Move, other: Move) bool {
-        return self.move > other.move;
-    }
-
-    pub fn lteqMove(self: *const Move, other: Move) bool {
-        return self.move <= other.move;
-    }
-
-    pub fn gteqMove(self: *const Move, other: Move) bool {
-        return self.move >= other.move;
-    }
-
-    // ================ SCORE COMPARISON ================
-
-    pub fn eqScore(self: *const Move, other: Move) bool {
-        return self.score == other.score;
-    }
-
-    pub fn neqScore(self: *const Move, other: Move) bool {
-        return !self.eqScore(other);
-    }
-
-    pub fn ltScore(self: *const Move, other: Move) bool {
-        return self.score < other.score;
-    }
-
-    pub fn gtScore(self: *const Move, other: Move) bool {
-        return self.score > other.score;
-    }
-
-    pub fn lteqScore(self: *const Move, other: Move) bool {
-        return self.score <= other.score;
-    }
-
-    pub fn gteqScore(self: *const Move, other: Move) bool {
-        return self.score >= other.score;
+        return std.math.order(lhs_val, rhs_val);
     }
 };
 
@@ -205,25 +181,21 @@ test "Move" {
     const m2 = Move.fromMove(200);
     const m3 = Move.fromMove(100);
 
-    try expect(m1.eqMove(m3));
-    try expect(m1.neqMove(m2));
-    try expect(m1.ltMove(m2));
-    try expect(m2.gtMove(m1));
-    try expect(m1.lteqMove(m3));
-    try expect(m2.gteqMove(m1));
+    try expect(m1.orderByMove(m3) == .eq);
+    try expect(m1.orderByMove(m2) != .eq);
+    try expect(m1.orderByMove(m2) == .lt);
+    try expect(m2.orderByMove(m1) == .gt);
 
     // ================ Score comparison ================
     var s1 = Move.fromMove(10);
-    var s2 = Move.fromMove(20);
     s1.score = 50;
+    var s2 = Move.fromMove(20);
     s2.score = 100;
+    var s3 = Move.fromMove(30);
+    s3.score = 50;
 
-    try expect(s1.neqScore(s2));
-    try expect(s1.ltScore(s2));
-    try expect(s2.gtScore(s1));
-    try expect(s1.lteqScore(s2));
-    try expect(s2.gteqScore(s1));
-
-    s2.score = 50;
-    try expect(s1.eqScore(s2));
+    try expect(s1.orderByScore(s3) == .eq);
+    try expect(s1.orderByScore(s2) != .eq);
+    try expect(s1.orderByScore(s2) == .lt);
+    try expect(s2.orderByScore(s1) == .gt);
 }

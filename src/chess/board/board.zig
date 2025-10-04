@@ -262,7 +262,14 @@ pub const Board = struct {
                 const start = if (king_side) king_sq.next() else king_sq.prev();
 
                 var sq = start;
-                while (if (king_side) sq.lteq(sq_corner) else sq.gteq(sq_corner)) : (if (king_side) {
+                while (blk: {
+                    const ord = sq.order(sq_corner);
+                    if (king_side) {
+                        break :blk ord == .lt or ord == .eq;
+                    } else {
+                        break :blk ord == .gt or ord == .eq;
+                    }
+                }) : (if (king_side) {
                     _ = sq.inc();
                 } else {
                     _ = sq.dec();
@@ -275,13 +282,6 @@ pub const Board = struct {
                 return .none;
             }
         }.find_rook;
-
-        // The file API uses a const pointer, so we need to wrap it
-        const file_gt = struct {
-            fn gt(lhs: File, rhs: File) bool {
-                return lhs.gt(rhs);
-            }
-        }.gt;
 
         // Set all castling rights
         for (castle) |char| {
@@ -314,7 +314,7 @@ pub const Board = struct {
             } else {
                 const file = File.fromChar(char);
                 if (!file.valid()) success = false;
-                const side = CastlingRights.closestSide(File, file, king_sq.file(), file_gt);
+                const side = CastlingRights.closestSide(File, file, king_sq.file(), File.order);
                 self.castling_rights.set(color, side, file);
             }
         }
@@ -709,7 +709,7 @@ pub const Board = struct {
     pub fn makeMove(self: *Board, move: Move, comptime options: struct {
         exact: bool = false,
     }) void {
-        std.debug.assert(self.at(Piece, move.from()).lt(.black_pawn) == (self.side_to_move == .white));
+        std.debug.assert((self.at(Piece, move.from()).order(.black_pawn) == .lt) == (self.side_to_move == .white));
 
         const capture = self.at(Piece, move.to()) != .none and move.typeOf(MoveType) != .castling;
         const captured = self.at(Piece, move.to());
@@ -729,12 +729,6 @@ pub const Board = struct {
         if (self.ep_square.valid()) self.key ^= Zobrist.enPassant(self.ep_square.file());
         self.ep_square = .none;
 
-        const sq_gt = struct {
-            pub fn gt(s1: Square, s2: Square) bool {
-                return s1.gt(s2);
-            }
-        }.gt;
-
         // Handle direct captures (excludes EP)
         if (capture) {
             self.removePiece(captured, move.to());
@@ -749,7 +743,7 @@ pub const Board = struct {
                     Square,
                     move.to(),
                     king_sq,
-                    sq_gt,
+                    Square.order,
                 );
 
                 if (self.castling_rights.rookFile(
@@ -774,7 +768,7 @@ pub const Board = struct {
                 Square,
                 move.from(),
                 king_sq,
-                sq_gt,
+                Square.order,
             );
 
             if (self.castling_rights.rookFile(self.side_to_move, file) == move.from().file()) {
@@ -827,7 +821,7 @@ pub const Board = struct {
             std.debug.assert(self.at(PieceType, move.from()) == .king);
             std.debug.assert(self.at(PieceType, move.to()) == .rook);
 
-            const side: CastlingRights.Side = if (move.to().gt(move.from())) .king else .queen;
+            const side: CastlingRights.Side = if (move.to().order(move.from()) == .gt) .king else .queen;
             const rook_to = Square.castlingRookTo(side, self.side_to_move);
             const king_to = Square.castlingKingTo(side, self.side_to_move);
 
@@ -894,7 +888,7 @@ pub const Board = struct {
             self.plies -= 1;
 
             if (move.typeOf(MoveType) == .castling) {
-                const king_side = move.to().gt(move.from());
+                const king_side = move.to().order(move.from()) == .gt;
                 const rook_from_sq = Square.make(
                     move.from().rank(),
                     if (king_side) .ff else .fd,
@@ -1160,7 +1154,7 @@ pub const Board = struct {
             },
             .castling => blk: {
                 const rook_to = Square.castlingRookTo(
-                    if (to.gt(from)) .king else .queen,
+                    if (to.order(from) == .gt) .king else .queen,
                     self.side_to_move,
                 );
                 const relevant_attacks = attacks.rook(

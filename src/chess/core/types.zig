@@ -238,28 +238,11 @@ pub const File = enum(u8) {
 
     // ================ COMPARISON ================
 
-    pub fn eq(self: *const File, other: File) bool {
-        return self.asInt(i32) == other.asInt(i32);
-    }
+    pub fn order(lhs: File, rhs: File) std.math.Order {
+        const lhs_val = lhs.asInt(i32);
+        const rhs_val = rhs.asInt(i32);
 
-    pub fn neq(self: *const File, other: File) bool {
-        return !self.eq(other);
-    }
-
-    pub fn lt(self: *const File, other: File) bool {
-        return self.asInt(i32) < other.asInt(i32);
-    }
-
-    pub fn gt(self: *const File, other: File) bool {
-        return self.asInt(i32) > other.asInt(i32);
-    }
-
-    pub fn lteq(self: *const File, other: File) bool {
-        return self.asInt(i32) <= other.asInt(i32);
-    }
-
-    pub fn gteq(self: *const File, other: File) bool {
-        return self.asInt(i32) >= other.asInt(i32);
+        return std.math.order(lhs_val, rhs_val);
     }
 
     // ================ INCREMENTING & DECREMENTING ================
@@ -414,28 +397,11 @@ pub const Rank = enum(u8) {
 
     // ================ COMPARISON ================
 
-    pub fn eq(self: *const Rank, other: Rank) bool {
-        return self.asInt(i32) == other.asInt(i32);
-    }
+    pub fn order(lhs: Rank, rhs: Rank) std.math.Order {
+        const lhs_val = lhs.asInt(i32);
+        const rhs_val = rhs.asInt(i32);
 
-    pub fn neq(self: *const Rank, other: Rank) bool {
-        return !self.eq(other);
-    }
-
-    pub fn lt(self: *const Rank, other: Rank) bool {
-        return self.asInt(i32) < other.asInt(i32);
-    }
-
-    pub fn gt(self: *const Rank, other: Rank) bool {
-        return self.asInt(i32) > other.asInt(i32);
-    }
-
-    pub fn lteq(self: *const Rank, other: Rank) bool {
-        return self.asInt(i32) <= other.asInt(i32);
-    }
-
-    pub fn gteq(self: *const Rank, other: Rank) bool {
-        return self.asInt(i32) >= other.asInt(i32);
+        return std.math.order(lhs_val, rhs_val);
     }
 
     // ================ INCREMENTING & DECREMENTING ================
@@ -629,28 +595,11 @@ pub const Square = enum(u8) {
 
     // ================ COMPARISON ================
 
-    pub fn eq(self: *const Square, other: Square) bool {
-        return self.asInt(i32) == other.asInt(i32);
-    }
+    pub fn order(lhs: Square, rhs: Square) std.math.Order {
+        const lhs_val = lhs.asInt(i32);
+        const rhs_val = rhs.asInt(i32);
 
-    pub fn neq(self: *const Square, other: Square) bool {
-        return !self.eq(other);
-    }
-
-    pub fn lt(self: *const Square, other: Square) bool {
-        return self.asInt(i32) < other.asInt(i32);
-    }
-
-    pub fn gt(self: *const Square, other: Square) bool {
-        return self.asInt(i32) > other.asInt(i32);
-    }
-
-    pub fn lteq(self: *const Square, other: Square) bool {
-        return self.asInt(i32) <= other.asInt(i32);
-    }
-
-    pub fn gteq(self: *const Square, other: Square) bool {
-        return self.asInt(i32) >= other.asInt(i32);
+        return std.math.order(lhs_val, rhs_val);
     }
 
     // ================ INCREMENTING & DECREMENTING ================
@@ -849,12 +798,10 @@ test "File" {
 
     // ================ COMPARISON ================
 
-    try expect(fa.eq(.fa));
-    try expect(fa.neq(fb));
-    try expect(fa.lt(fb));
-    try expect(fb.gt(fa));
-    try expect(fa.lteq(fb));
-    try expect(fb.gteq(fa));
+    try expect(fa.order(.fa) == .eq);
+    try expect(fa.order(fb) != .eq);
+    try expect(fa.order(fb) == .lt);
+    try expect(fb.order(fa) == .gt);
 
     try expectEqual(fb, fa.next());
     try expectEqual(.none, fh.next());
@@ -925,12 +872,10 @@ test "Rank" {
 
     // ================ COMPARISON ================
 
-    try expect(r1.eq(.r1));
-    try expect(r1.neq(r2));
-    try expect(r1.lt(r2));
-    try expect(r2.gt(r1));
-    try expect(r1.lteq(r2));
-    try expect(r2.gteq(r1));
+    try expect(r1.order(.r1) == .eq);
+    try expect(r1.order(r2) != .eq);
+    try expect(r1.order(r2) == .lt);
+    try expect(r2.order(r1) == .gt);
 
     try expectEqual(r2, r1.next());
     try expectEqual(.none, r8.next());
@@ -1010,12 +955,10 @@ test "Square" {
 
     // ================ COMPARISON ================
 
-    try expect(a1.eq(.a1));
-    try expect(a1.neq(h8));
-    try expect(a1.lt(h8));
-    try expect(h8.gt(a1));
-    try expect(a1.lteq(a1));
-    try expect(h8.gteq(a1));
+    try expect(a1.order(.a1) == .eq);
+    try expect(a1.order(h8) != .eq);
+    try expect(a1.order(h8) == .lt);
+    try expect(h8.order(a1) == .gt);
 
     // ================ INCREMENTING & DECREMENTING ================
 
