@@ -1,8 +1,8 @@
 const std = @import("std");
 const water = @import("water");
 
-const max_search_depth = 200;
 const max_search_ply = 128;
+const condvar_interval = 512;
 
 pub const Search = struct {
     allocator: std.mem.Allocator,
@@ -12,7 +12,7 @@ pub const Search = struct {
     search_board: *water.Board,
     should_stop: std.atomic.Value(bool) = .init(false),
 
-    depth: i32 = 0,
+    iteration: i32 = 0,
     ply: usize = 0,
     last_score: i32 = 0,
 
@@ -47,24 +47,14 @@ pub const Search = struct {
     pub fn search(self: *Search) anyerror!void {
         self.should_stop.store(false, .release);
 
-        self.depth = 1;
+        self.iteration = 0;
         self.ply = 0;
         while (true) {
-            // Aspiration window
-            const probe = self.negamax(
-                self.last_score - 20,
-                self.last_score + 20,
-                self.depth,
-            ) catch break;
-            if (@abs(self.last_score - probe) >= 20) {
-                _ = self.negamax(-32_000, 32_000, self.depth) catch break;
-            }
-            self.root_best = self.search_best;
+            for (0..condvar_interval) |_| {}
 
-            // Check if we should stop
-            if (self.should_stop.load(.acquire) or self.depth > max_search_depth) {
+            if (self.should_stop.load(.acquire)) {
                 break;
-            } else self.depth += 1;
+            } else self.iteration += condvar_interval;
         }
 
         const bm = try water.uci.moveToUci(
@@ -77,21 +67,4 @@ pub const Search = struct {
         try self.writer.print("bestmove {s}\n", .{bm});
         try self.writer.flush();
     }
-
-    fn negamax(self: *Search, alpha: i32, beta: i32, depth: i32) !i32 {
-        if (self.should_stop.load(.acquire) and self.depth > 1) {
-            return error.OutOfTime;
-        }
-
-        _ = alpha;
-        _ = beta;
-        _ = depth;
-
-        unreachable;
-    }
 };
-
-// ================ TESTING ================
-const testing = std.testing;
-const expect = testing.expect;
-const expectEqual = testing.expectEqual;
