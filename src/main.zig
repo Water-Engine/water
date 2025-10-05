@@ -39,4 +39,8 @@ pub fn main() !void {
 test {
     _ = @import("water/commands.zig");
     _ = @import("water/search.zig");
+
+    _ = @import("water/evaluation/orderer.zig");
+    _ = @import("water/evaluation/see.zig");
+    _ = @import("water/evaluation/tt.zig");
 }

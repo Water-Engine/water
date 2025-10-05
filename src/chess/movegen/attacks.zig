@@ -260,6 +260,21 @@ pub fn slider(comptime pt: PieceType, square: Square, occupied: Bitboard) Bitboa
     };
 }
 
+/// Returns the attacks for the given piece (and color, for pawns) from the given square.
+///
+/// This is equivalent to dispatching the individual attack functions in a conditional.
+pub fn attacks(pt: PieceType, color: Color, square: Square, occupied: Bitboard) Bitboard {
+    return switch (pt) {
+        .rook => rook(square, occupied),
+        .bishop => bishop(square, occupied),
+        .queen => queen(square, occupied),
+        .pawn => pawn(color, square),
+        .king => king(square),
+        .knight => knight(square),
+        .none => unreachable,
+    };
+}
+
 /// Shifts the given bitboard in the given direction
 pub fn shift(comptime D: Square.Direction, bb: Bitboard) Bitboard {
     return switch (D) {
@@ -275,24 +290,32 @@ pub fn shift(comptime D: Square.Direction, bb: Bitboard) Bitboard {
 }
 
 /// Returns the origin squares of pieces of a given color attacking a target square.
-pub fn attackers(board: *const Board, color: Color, square: Square) Bitboard {
+///
+/// Passing a bitboard for occupied overrides the board's occupied status.
+pub fn attackers(board: *const Board, color: Color, square: Square, options: struct {
+    occupied: ?Bitboard = null,
+    include_king: bool = true,
+}) Bitboard {
     const queens = board.pieces(color, .queen);
-    const occupied = board.occ();
+    const occ = options.occupied orelse board.occ();
 
     // Principle: if we can attack PieceType from square, they can attack us back
     var atks = pawn(color.opposite(), square).andBB(
         board.pieces(color, .pawn),
     );
     _ = atks.orAssign(knight(square).andBB(board.pieces(color, .knight)));
-    _ = atks.orAssign(bishop(square, occupied).andBB(
+    _ = atks.orAssign(bishop(square, occ).andBB(
         board.pieces(color, .bishop).orBB(queens),
     ));
-    _ = atks.orAssign(rook(square, occupied).andBB(
+    _ = atks.orAssign(rook(square, occ).andBB(
         board.pieces(color, .rook).orBB(queens),
     ));
-    _ = atks.orAssign(king(square).andBB(board.pieces(color, .king)));
 
-    return atks.andBB(occupied);
+    if (options.include_king) {
+        _ = atks.orAssign(king(square).andBB(board.pieces(color, .king)));
+    }
+
+    return atks.andBB(occ);
 }
 
 /// Checks if the given color is attacking the square on the board.
@@ -492,6 +515,7 @@ test "Attackers in a complex position" {
             board,
             .white,
             Square.fromInt(usize, i),
+            .{},
         );
         try expectEqual(white_attackers[i], atks.bits);
     }
@@ -538,6 +562,7 @@ test "Attackers in a complex position" {
             board,
             .black,
             Square.fromInt(usize, i),
+            .{},
         );
         try expectEqual(black_attackers[i], atks.bits);
     }

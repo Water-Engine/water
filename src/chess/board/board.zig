@@ -1175,6 +1175,30 @@ pub const Board = struct {
         return material.count();
     }
 
+    /// Returns a bitboard containing all of the sliding pieces with the given movement type.
+    ///
+    /// Passing `Color.none` returns all relevant sliders independent of color.
+    pub fn sliders(self: *const Board, comptime movement: enum { diag, ortho }, color: Color) Bitboard {
+        return blk: switch (color) {
+            .white, .black => {
+                const generic = self.pieces(
+                    color,
+                    switch (movement) {
+                        .diag => .bishop,
+                        .ortho => .rook,
+                    },
+                );
+                const queens = self.pieces(color, .queen);
+                break :blk generic.orBB(queens);
+            },
+            .none => {
+                const white = self.sliders(movement, .white);
+                const black = self.sliders(movement, .black);
+                break :blk white.orBB(black);
+            },
+        };
+    }
+
     // TODO: Robust fen validation
 };
 

@@ -2,6 +2,7 @@ const std = @import("std");
 const water = @import("water");
 
 const max_search_depth = 200;
+const max_search_ply = 128;
 
 pub const Search = struct {
     allocator: std.mem.Allocator,
@@ -12,10 +13,14 @@ pub const Search = struct {
     should_stop: std.atomic.Value(bool) = .init(false),
 
     depth: i32 = 0,
+    ply: usize = 0,
     last_score: i32 = 0,
 
     root_best: water.Move = .init(),
     search_best: water.Move = .init(),
+
+    history: [2][64][64]i32 = std.mem.zeroes([2][64][64]i32),
+    killers: [max_search_ply][2]water.Move = @splat(@splat(water.Move.init())),
 
     pub fn init(allocator: std.mem.Allocator, board: *water.Board, writer: *std.Io.Writer) anyerror!*Search {
         const searcher = try allocator.create(Search);
@@ -34,18 +39,25 @@ pub const Search = struct {
         self.search_board.deinit();
     }
 
+    pub fn resetHeuristics(self: *Search) void {
+        self.history = std.mem.zeroes([2][64][64]i32);
+        self.killers = @splat(@splat(water.Move.init()));
+    }
+
     pub fn search(self: *Search) anyerror!void {
         self.should_stop.store(false, .release);
 
         self.depth = 1;
+        self.ply = 0;
         while (true) {
             // Aspiration window
-            if (@abs(self.last_score - negamax(
+            const probe = self.negamax(
                 self.last_score - 20,
                 self.last_score + 20,
                 self.depth,
-            ) catch break) >= 20) {
-                _ = negamax(-32_000, 32_000, self.depth) catch break;
+            ) catch break;
+            if (@abs(self.last_score - probe) >= 20) {
+                _ = self.negamax(-32_000, 32_000, self.depth) catch break;
             }
             self.root_best = self.search_best;
 
@@ -78,3 +90,8 @@ pub const Search = struct {
         unreachable;
     }
 };
+
+// ================ TESTING ================
+const testing = std.testing;
+const expect = testing.expect;
+const expectEqual = testing.expectEqual;

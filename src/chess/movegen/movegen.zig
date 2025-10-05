@@ -83,7 +83,7 @@ pub const Movelist = struct {
     ///
     /// The length must be compile time known, for non-comptime slices, use:
     ///
-    /// `ml.items()` or `ml.moves[0..ml.size]` where ml is the Movelist.
+    /// `ml.items()` (immutable) or `ml.moves[0..ml.size]` (mutable) where ml is the Movelist.
     pub fn slice(self: *const Movelist, comptime N: usize) *const [N]Move {
         std.debug.assert(N <= self.size);
         return self.moves[0..N];
