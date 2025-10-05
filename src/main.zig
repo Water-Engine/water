@@ -1,7 +1,7 @@
 const std = @import("std");
 const water = @import("water");
 
-const search = @import("water/search.zig");
+const search = @import("water/search/search.zig");
 const commands = @import("water/commands.zig");
 
 pub fn main() !void {
@@ -38,7 +38,7 @@ pub fn main() !void {
 
 test {
     _ = @import("water/commands.zig");
-    _ = @import("water/search.zig");
+    _ = @import("water/search/search.zig");
 
     _ = @import("water/evaluation/orderer.zig");
     _ = @import("water/evaluation/see.zig");

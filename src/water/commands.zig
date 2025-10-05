@@ -1,7 +1,7 @@
 const std = @import("std");
 const water = @import("water");
 
-const search = @import("search.zig");
+const search = @import("search/search.zig");
 
 const Engine = water.engine.Engine(search.Search);
 
