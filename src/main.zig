@@ -1,8 +1,8 @@
 const std = @import("std");
 const water = @import("water");
 
-const search = @import("water/search/search.zig");
-const commands = @import("water/commands.zig");
+const search = @import("avalanche/search/search.zig");
+const commands = @import("avalanche/commands.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -37,12 +37,12 @@ pub fn main() !void {
 }
 
 test {
-    _ = @import("water/commands.zig");
+    _ = @import("avalanche/commands.zig");
 
-    _ = @import("water/search/search.zig");
-    _ = @import("water/search/mcts.zig");
+    _ = @import("avalanche/search/search.zig");
+    _ = @import("avalanche/search/mcts.zig");
 
-    _ = @import("water/evaluation/orderer.zig");
-    _ = @import("water/evaluation/see.zig");
-    _ = @import("water/evaluation/tt.zig");
+    _ = @import("avalanche/evaluation/orderer.zig");
+    _ = @import("avalanche/evaluation/see.zig");
+    _ = @import("avalanche/evaluation/tt.zig");
 }

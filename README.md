@@ -1,9 +1,19 @@
 # water [![Zig](https://img.shields.io/badge/zig-0.15.1-orange)](https://ziglang.org/) [![License](https://img.shields.io/github/license/Water-Engine/water)](LICENSE) [![LOC](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Water-Engine/water/loc/.github/loc_badge.json)](https://github.com/Water-Engine/water/actions/workflows/loc.yml) [![Last commit](https://img.shields.io/github/last-commit/Water-Engine/water)](https://github.com/Water-Engine/water) [![Formatting](https://github.com/Water-Engine/water/actions/workflows/format.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/format.yml) [![CI](https://github.com/Water-Engine/water/actions/workflows/ci.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/ci.yml)
-A zero-dependency chess library & engine written in Zig.
+
+<p align="center">
+  <img src="/.github/resources/logo.png" alt="water logo" width="250"/>
+</p>
+
+<p align="center">
+  A zero-dependency chess library written in Zig.
+</p>
 
 # Goals
-While this project is still a major WIP, the end-goal is a zero-dependency library and dual-mode engine:
-- A fully documented and performant chess library, making Chess Engine programming more accessible for the Zig community
+Water aims to provide a performant chess engine library allowing users to easily architect chess engines by providing a core library and search management scheme.
+
+While the water engine itself is still in the works, the library is quite sophisticated. To prove this, the library was used to rewrite [Avalanche](https://github.com/SnowballSH/Avalanche). I've included its license as the implementation is similar enough that it would be disingenuous for us to take credit for their teams hard work. 
+
+Eventually, the water engine itself will be crafted using this library, with the goals of making:
 - An iterative search engine with Alpha-Beta Pruning, Quiescence, etc.
 - A neural network-powered engine using Monte Carlo Tree Search (MCTS)
 
@@ -32,7 +42,7 @@ Contributors are always welcome! As this project progresses and the engine impro
 
 # Credits
 Water could not be where it is today without the formative work done by experienced developers in the past. Core references used during development include:
-- [chess-library](https://github.com/Disservin/chess-library) inspired the rewrite to zig and served as a core pillar for ideas and verifying behavior in the core library.
+- [chess-library](https://github.com/Disservin/chess-library) inspired the of rewrite to zig and served as a core pillar for ideas and verifying behavior in the core library.
 - The [Avalanche](https://github.com/SnowballSH/Avalanche) chess engine which is dubbed 'the first and strongest UCI chess engine written in zig' for providing a huge source of motivation for improvement.
 - The [Aurora](https://github.com/kjljixx/Aurora-Chess-Engine) chess engine which previously implemented a similar hybrid evaluation approach
 - The legendary [Stockfish](https://github.com/official-stockfish/Stockfish) engine - used for verifying certain tests on the fly

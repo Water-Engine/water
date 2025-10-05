@@ -1,8 +1,6 @@
 const std = @import("std");
 const water = @import("water");
 
-const mcts = @import("mcts.zig");
-
 const max_search_ply = 128;
 
 pub const Search = struct {
@@ -13,12 +11,14 @@ pub const Search = struct {
     search_board: *water.Board,
     should_stop: std.atomic.Value(bool) = .init(false),
 
-    iteration: i32 = 0,
     ply: usize = 0,
     last_score: i32 = 0,
 
     root_best: water.Move = .init(),
     search_best: water.Move = .init(),
+
+    history: [2][64][64]i32 = std.mem.zeroes([2][64][64]i32),
+    killers: [max_search_ply][2]water.Move = @splat(@splat(water.Move.init())),
 
     pub fn init(allocator: std.mem.Allocator, board: *water.Board, writer: *std.Io.Writer) anyerror!*Search {
         const searcher = try allocator.create(Search);
@@ -37,49 +37,26 @@ pub const Search = struct {
         self.search_board.deinit();
     }
 
+    pub fn resetHeuristics(self: *Search) void {
+        self.history = std.mem.zeroes([2][64][64]i32);
+        self.killers = @splat(@splat(water.Move.init()));
+    }
+
     pub fn search(self: *Search) anyerror!void {
         self.should_stop.store(false, .release);
 
+        self.iteration = 0;
         self.ply = 0;
-
-        var arena = std.heap.ArenaAllocator.init(self.allocator);
-        defer arena.deinit();
-        const allocator = arena.allocator();
-
-        var search_tree = try mcts.MCTSTree.init(allocator, self.search_board);
         while (true) {
-            const should_stop = self.should_stop.load(.acquire);
-            var traversal_board = try self.search_board.clone(allocator);
-            defer traversal_board.deinit();
-
-            // 1. SELECTION: Traverse the tree and update the board state
-            var node = search_tree.root;
-            while (node.untried_moves.size == 0 and node.children.items.len > 0) {
-                node = node.bestChildUCT();
-                traversal_board.makeMove(node.antecedent.move, .{});
-            }
-
-            // 2. EXPANSION: Expand from the selected node if it's not terminal
-            if (!node.terminal) {
-                const expanded_node = try node.expand(allocator, traversal_board);
-                node = expanded_node;
-                traversal_board.makeMove(node.antecedent.move, .{});
-            }
-
-            // 3. SIMULATION (ROLLOUT): Run from the correct board state
-            const result = try node.rollout(allocator, traversal_board);
-
-            // 4. BACKPROPAGATION
-            node.backpropagate(result);
-
-            if (should_stop) {
+            try self.writer.print("Im thinking it", .{});
+            if (self.should_stop.load(.acquire)) {
                 break;
             }
         }
 
         const bm = try water.uci.moveToUci(
             self.allocator,
-            search_tree.probeBest(),
+            self.root_best,
             self.governing_board.fischer_random,
         );
         defer self.allocator.free(bm);
