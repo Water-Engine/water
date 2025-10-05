@@ -108,6 +108,7 @@ pub fn Engine(comptime Searcher: type) type {
 
         searcher: *Searcher,
         search_thread: ?std.Thread = null,
+        search_timer_thread: ?std.Thread = null,
 
         search_start_time_ns: ?i128 = null,
         alloted_search_time_ns: ?i128 = null,
@@ -183,8 +184,37 @@ pub fn Engine(comptime Searcher: type) type {
 
             self.search_start_time_ns = std.time.nanoTimestamp();
             self.alloted_search_time_ns = search_time_ns;
+            if (search_time_ns) |limit_ns| {
+                self.search_timer_thread = std.Thread.spawn(
+                    .{},
+                    timerThread,
+                    .{ self, limit_ns },
+                ) catch unreachable;
+            }
         }
 
+        /// Kicks off the timer thread with the given nanosecond time limit.
+        fn timerThread(self: *Self, limit_ns: i128) void {
+            const start = self.search_start_time_ns orelse return;
+            const sleep_interval_ns = 1_000_000_000 / 20;
+            var now: i128 = start;
+
+            while (true) {
+                std.Thread.sleep(@intCast(sleep_interval_ns));
+                now = std.time.nanoTimestamp();
+                if (now - start >= limit_ns) {
+                    self.searcher.should_stop.store(true, .release);
+                    break;
+                }
+
+                // If another search began, stop timer
+                if (self.alloted_search_time_ns == null) break;
+            }
+        }
+
+        /// Tells the search thread that it should stop.
+        /// 
+        /// Also halts the search timer.
         fn notifyStopSearch(self: *Self) void {
             self.searcher.should_stop.store(true, .release);
             self.alloted_search_time_ns = null;
@@ -192,8 +222,13 @@ pub fn Engine(comptime Searcher: type) type {
 
             if (self.search_thread) |search_thread| {
                 search_thread.join();
+                self.search_thread = null;
             }
-            self.search_thread = null;
+
+            if (self.search_timer_thread) |timer| {
+                timer.join();
+                self.search_timer_thread = null;
+            }
         }
 
         /// Starts the engines UCI compatible event loop. The provided commands are deserialized every input read.
@@ -230,16 +265,6 @@ pub fn Engine(comptime Searcher: type) type {
                     error.EndOfStream, error.ReadFailed => break,
                     else => continue,
                 };
-
-                // Check to see if the searcher should be notified
-                if (self.search_start_time_ns) |start_ns| {
-                    if (self.alloted_search_time_ns) |alloted_ns| {
-                        const now = std.time.nanoTimestamp();
-                        if (now - start_ns > alloted_ns) {
-                            self.notifyStopSearch();
-                        }
-                    }
-                }
 
                 // Handle the carriage return if present
                 if (line.len > 0 and line[line.len - 1] == '\r') {
