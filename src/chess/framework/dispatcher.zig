@@ -17,7 +17,7 @@ pub const DeserializeError = error{
 
 /// Deserializes key-value arguments from a UCI string into a struct T. Assumes input as:
 ///
-/// <label> [key1] [val1] [standalone] [key2] [val2] etc... [sentinel] [rest]
+/// <label> [key1] [val1] [standalone] [key2] [val2] etc...
 ///
 /// The token iterator is reset to its default state upon returning.
 /// The assigned values in the returned type have lifetimes matching the token iterator, when applicable.
