@@ -201,13 +201,14 @@ pub const Searcher = struct {
             const total_nodes: usize = self.nodes;
 
             if (!self.silent_output) {
-                const elapsed = self.timer.read() / std.time.ns_per_ms;
+                const elapsed_ms = @max(1, self.timer.read() / std.time.ns_per_ms);
+                const elapsed_s = @max(1, elapsed_ms / std.time.ms_per_s);
                 try self.writer.print("info depth {d} seldepth {d} nodes {d} time {d} nps {d} score ", .{
                     tdepth,
                     self.seldepth,
                     total_nodes,
-                    elapsed,
-                    @divTrunc(@as(u64, @intCast(total_nodes)), elapsed),
+                    elapsed_ms,
+                    @divTrunc(@as(u64, @intCast(total_nodes)), elapsed_s),
                 });
 
                 // Print the mate score if close enough

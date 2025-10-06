@@ -4,7 +4,7 @@ const water = @import("water");
 pub const megabytes: usize = 1 << 20;
 pub const kilobytes: usize = 1 << 10;
 
-pub const default_tt_size: usize = 16 * megabytes / @sizeOf(TTEntry);
+pub const default_tt_size: usize = (8 * megabytes) / @sizeOf(TTEntry);
 
 pub var lock_global_tt = false;
 pub var global_tt: TranspositionTable = undefined;
@@ -40,7 +40,7 @@ pub const TranspositionTable = struct {
     ///
     /// Passing null for `size_mb` forces a default size `default_tt_size`.
     pub fn init(allocator: std.mem.Allocator, size_mb: ?usize) !TranspositionTable {
-        const desired_size = if (size_mb) |mb| mb * megabytes / @sizeOf(TTEntry) else default_tt_size;
+        const desired_size = if (size_mb) |mb| (mb * megabytes) / @sizeOf(TTEntry) else default_tt_size;
         var tt = TranspositionTable{
             .allocator = allocator,
             .data = try std.ArrayList(i128).initCapacity(allocator, desired_size),

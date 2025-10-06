@@ -12,7 +12,7 @@ pub fn main() !void {
     const tt_allocator = tt_arena.allocator();
 
     search.reloadQLMR();
-    tt.global_tt = try tt.TranspositionTable.init(tt_allocator, 2);
+    tt.global_tt = try tt.TranspositionTable.init(tt_allocator, null);
 
     var board = try water.Board.init(allocator, .{});
     defer board.deinit();

@@ -274,6 +274,7 @@ pub fn Engine(comptime Searcher: type) type {
                 // Manually handle the quit and stop commands as they are constants
                 if (line.len == 4) {
                     if (std.mem.startsWith(u8, line, "quit")) {
+                        self.notifyStopSearch();
                         break;
                     } else if (std.mem.startsWith(u8, line, "stop")) {
                         self.notifyStopSearch();

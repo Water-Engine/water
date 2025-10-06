@@ -486,7 +486,7 @@ pub fn quiescence(
     // Check for material draw and ply overflow
     if (water.arbiter.insufficientMaterial(searcher.search_board)) {
         return 0;
-    } else if (searcher.ply == searcher_.max_ply) {
+    } else if (searcher.ply >= searcher_.max_ply) {
         return evaluator.evaluate(searcher.search_board, false);
     }
 
@@ -529,7 +529,7 @@ pub fn quiescence(
             return -evaluator.mate_score + @as(i32, @intCast(searcher.ply));
         }
     } else {
-        water.movegen.legalmoves(searcher.search_board, &movelist, .{ .gen_type = .quiet });
+        water.movegen.legalmoves(searcher.search_board, &movelist, .{ .gen_type = .capture });
     }
     orderer.orderMoves(searcher, &movelist, hashmove, false);
 
