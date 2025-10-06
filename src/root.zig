@@ -12,7 +12,7 @@ pub const Bitboard = bitboard.Bitboard;
 
 const distance = @import("chess/core/distance.zig");
 pub const ManhattanDist = distance.ManhattanDist;
-pub const CenterManhattanDist = distance.CenterManhattan;
+pub const CenterManhattanDist = distance.CenterManhattanDist;
 pub const ChebyshevDist = distance.ChebyshevDist;
 pub const ValueDist = distance.ValueDist;
 
@@ -41,9 +41,9 @@ pub const uci = @import("chess/core/uci.zig");
 pub const attacks = @import("chess/movegen/attacks.zig");
 pub const movegen = @import("chess/movegen/movegen.zig");
 
-pub const engine = @import("chess/engine/engine.zig");
-pub const type_validators = @import("chess/engine/type_validators.zig");
-pub const dispatcher = @import("chess/engine/dispatcher.zig");
+pub const engine = @import("chess/framework/engine.zig");
+pub const type_validators = @import("chess/framework/type_validators.zig");
+pub const dispatcher = @import("chess/framework/dispatcher.zig");
 
 // ================ TESTING ================
 
@@ -64,7 +64,7 @@ test {
     _ = @import("chess/movegen/movegen.zig");
     _ = @import("chess/movegen/generators.zig");
 
-    _ = @import("chess/engine/engine.zig");
-    _ = @import("chess/engine/type_validators.zig");
-    _ = @import("chess/engine/dispatcher.zig");
+    _ = @import("chess/framework/engine.zig");
+    _ = @import("chess/framework/type_validators.zig");
+    _ = @import("chess/framework/dispatcher.zig");
 }

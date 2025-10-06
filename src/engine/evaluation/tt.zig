@@ -6,6 +6,9 @@ pub const kilobytes: usize = 1 << 10;
 
 pub const default_tt_size: usize = 16 * megabytes / @sizeOf(TTEntry);
 
+pub var lock_global_tt = false;
+pub var global_tt: TranspositionTable = undefined;
+
 pub const Bound = enum(u2) {
     none,
     exact, // PV Nodes
@@ -22,9 +25,9 @@ pub const TTEntry = packed struct {
     age: u6,
 };
 
-/// A high performance transposition table courtesy of: https://github.com/SnowballSH/Avalanche
+/// A high performance transposition table courtesy.
 ///
-/// The TT is thread safe by design.
+/// The TT is thread safe by design courtesy of https://github.com/SnowballSH/Avalanche
 pub const TranspositionTable = struct {
     allocator: std.mem.Allocator,
 
@@ -65,22 +68,22 @@ pub const TranspositionTable = struct {
     }
 
     /// Clears all stored pointers in the table.
-    pub inline fn clear(self: *TranspositionTable) void {
+    pub fn clear(self: *TranspositionTable) void {
         for (self.data.items) |*ptr| {
             ptr.* = 0;
         }
     }
 
     /// Increments the internal age of the table.
-    pub inline fn incAge(self: *TranspositionTable) void {
+    pub fn incAge(self: *TranspositionTable) void {
         self.age +%= 1;
     }
 
-    pub inline fn index(self: *TranspositionTable, hash: u64) u64 {
+    pub fn index(self: *TranspositionTable, hash: u64) u64 {
         return @intCast(@as(u128, @intCast(hash)) * @as(u128, @intCast(self.size)) >> 64);
     }
 
-    pub inline fn set(self: *TranspositionTable, entry: TTEntry) void {
+    pub fn set(self: *TranspositionTable, entry: TTEntry) void {
         const p = &self.data.items[self.index(entry.hash)];
         const p_val: TTEntry = @as(*TTEntry, @ptrCast(p)).*;
 
@@ -110,7 +113,7 @@ pub const TranspositionTable = struct {
     }
 
     /// Performs the builtin prefetch operation, if supported.
-    pub inline fn prefetch(self: *TranspositionTable, hash: u64) void {
+    pub fn prefetch(self: *TranspositionTable, hash: u64) void {
         @prefetch(&self.data.items[self.index(hash)], .{
             .rw = .read,
             .locality = 1,
@@ -119,7 +122,7 @@ pub const TranspositionTable = struct {
     }
 
     /// Tries to retrieve the given hash from the table.
-    pub inline fn get(self: *TranspositionTable, hash: u64) ?TTEntry {
+    pub fn get(self: *TranspositionTable, hash: u64) ?TTEntry {
         const entry: *TTEntry = @ptrCast(&self.data.items[self.index(hash)]);
         if (entry.flag != Bound.none and entry.hash == hash) {
             return entry.*;

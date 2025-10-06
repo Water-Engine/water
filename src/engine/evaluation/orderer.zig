@@ -1,7 +1,7 @@
 const std = @import("std");
 const water = @import("water");
 
-const search = @import("../search/search.zig");
+const searcher_ = @import("../search/searcher.zig");
 const see = @import("see.zig");
 
 const mvvlva: [6][6]i32 = .{
@@ -14,24 +14,27 @@ const mvvlva: [6][6]i32 = .{
 };
 
 const hash_bonus: i32 = 6_000_000;
-const winning_capture: i32 = 1_000_000;
-const losing_capture: i32 = 0;
-const quiet: i32 = 0;
-const killer_one: i32 = 900_000;
-const killer_two: i32 = 800_000;
-const counter_move: i32 = 600_000;
-const queen_promotion: i32 = 1_000_000;
-const knight_promotion: i32 = 650_000;
+const winning_capture_bonus: i32 = 1_000_000;
+const losing_capture_bonus: i32 = 0;
+const quiet_bonus: i32 = 0;
+const killer_one_bonus: i32 = 900_000;
+const killer_two_bonus: i32 = 800_000;
+const counter_move_bonus: i32 = 600_000;
+const queen_promotion_bonus: i32 = 1_000_000;
+const knight_promotion_bonus: i32 = 650_000;
 
 /// Order moves heuristically.
 ///
 /// The search board is used for state information.
 ///
 /// The Movelist is updated in-place and is sorted in descending order based on score.
+///
+/// Heavily inspired by https://github.com/SnowballSH/Avalanche
 pub fn orderMoves(
-    searcher: *const search.Search,
+    searcher: *const searcher_.Searcher,
     movelist: *water.movegen.Movelist,
-    hash_move: water.Move,
+    hash_move: ?water.Move,
+    comptime is_null: bool,
 ) void {
     for (movelist.moves[0..movelist.size]) |*move| {
         const board = searcher.search_board;
@@ -40,17 +43,17 @@ pub fn orderMoves(
         // Award a promotion bonus for queens and rooks only (discourage less mobility)
         if (move.typeOf(water.MoveType) == .promotion) {
             if (move.promotionType() == .queen) {
-                score += queen_promotion;
+                score += queen_promotion_bonus;
             } else if (move.promotionType() == .knight) {
-                score += knight_promotion;
+                score += knight_promotion_bonus;
             }
         }
 
-        if (move.orderByMove(hash_move) == .eq) {
+        if (hash_move != null and move.orderByMove(hash_move.?) == .eq) {
             score += hash_bonus;
         } else if (board.isCapture(move.*)) {
             if (board.at(water.Piece, move.to()) == .none) {
-                score += winning_capture + mvvlva[0][0];
+                score += winning_capture_bonus + mvvlva[0][0];
             } else {
                 const from_pt_idx = board.at(water.PieceType, move.to()).index();
                 std.debug.assert(from_pt_idx < mvvlva.len);
@@ -59,21 +62,44 @@ pub fn orderMoves(
                 score += mvvlva[to_pt_idx][from_pt_idx];
 
                 const see_relevant = see.seeThreshold(board, move.*, -90);
-                score += if (see_relevant) winning_capture else losing_capture;
+                score += if (see_relevant) winning_capture_bonus else losing_capture_bonus;
             }
         } else {
+            var last = if (searcher.ply > 0) searcher.history.moves[searcher.ply - 1] else water.Move.init();
+            std.debug.assert(last.from().valid() and last.to().valid());
             if (searcher.killers[searcher.ply][0].orderByMove(move.*) == .eq) {
-                score += killer_one;
+                score += killer_one_bonus;
             } else if (searcher.killers[searcher.ply][1].orderByMove(move.*) == .eq) {
-                score += killer_two;
+                score += killer_two_bonus;
+            } else if (searcher.ply >= 1 and searcher.counter_moves[
+                board.side_to_move.asInt(usize)
+            ][last.from().index()][last.to().index()].orderByMove(move.*) == .eq) {
+                score += counter_move_bonus;
             } else {
                 const from = move.from();
                 std.debug.assert(from.valid());
                 const to = move.to();
                 std.debug.assert(to.valid());
 
-                score += quiet;
-                score += searcher.history[board.side_to_move.index()][from.index()][to.index()];
+                score += quiet_bonus;
+                score += searcher.history.heuristic[board.side_to_move.index()][from.index()][to.index()];
+
+                if (!is_null and searcher.ply >= 1) {
+                    for ([_]usize{ 0, 1, 3 }) |plies_ago| {
+                        const divider: i32 = 1;
+                        if (searcher.ply >= plies_ago + 1) {
+                            const prev = searcher.history.moves[searcher.ply - plies_ago - 1];
+                            if (!prev.valid()) continue;
+
+                            const moved_piece = searcher.history.moved_pieces[searcher.ply - plies_ago - 1];
+                            std.debug.assert(moved_piece.valid() and prev.from().valid() and prev.to().valid());
+                            score += @divTrunc(
+                                searcher.continuation[moved_piece.index()][prev.to().index()][move.from().index()][move.to().index()],
+                                divider,
+                            );
+                        }
+                    }
+                }
             }
         }
 
@@ -106,14 +132,14 @@ test "Basic unbiased move ordering" {
     var discarding = std.Io.Writer.Discarding.init(&buffer);
     const writer = &discarding.writer;
 
-    const searcher = try search.Search.init(allocator, board, writer);
+    const searcher = try searcher_.Searcher.init(allocator, board, writer);
     defer searcher.deinit();
 
     var movelist = water.movegen.Movelist{};
     water.movegen.legalmoves(searcher.search_board, &movelist, .{});
 
     // Order the moves and verify that the scores are sorted in descending order
-    orderMoves(searcher, &movelist, water.Move.init());
+    orderMoves(searcher, &movelist, water.Move.init(), false);
     for (0..movelist.size - 1) |i| {
         const lhs = movelist.moves[i];
         const rhs = movelist.moves[i + 1];

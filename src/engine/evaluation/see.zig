@@ -1,7 +1,7 @@
 const std = @import("std");
 const water = @import("water");
 
-const see_weight: [6]i32 = .{ 93, 308, 346, 521, 994, 20000 };
+pub const see_weight: [6]i32 = .{ 93, 308, 346, 521, 994, 20000 };
 
 /// Perform a classical static exchange evaluation with the board's state and given move.
 ///

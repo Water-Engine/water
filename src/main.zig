@@ -1,11 +1,19 @@
 const std = @import("std");
 const water = @import("water");
 
-const search = @import("avalanche/search/search.zig");
-const commands = @import("avalanche/commands.zig");
+const tt = @import("engine/evaluation/tt.zig");
+const search = @import("engine/search/searcher.zig");
+const commands = @import("engine/commands.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
+    var tt_arena = std.heap.ArenaAllocator.init(allocator);
+    defer tt_arena.deinit();
+    const tt_allocator = tt_arena.allocator();
+
+    search.reloadQLMR();
+    tt.global_tt = try tt.TranspositionTable.init(tt_allocator, tt.default_tt_size);
+
     var board = try water.Board.init(allocator, .{});
     defer board.deinit();
 
@@ -13,7 +21,7 @@ pub fn main() !void {
     var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
     const stdout = &stdout_writer.interface;
 
-    const engine = try water.engine.Engine(search.Search).init(
+    const engine = try water.engine.Engine(search.Searcher).init(
         allocator,
         stdout,
         .{ allocator, board, stdout },
@@ -37,12 +45,14 @@ pub fn main() !void {
 }
 
 test {
-    _ = @import("avalanche/commands.zig");
+    _ = @import("engine/commands.zig");
 
-    _ = @import("avalanche/search/search.zig");
-    _ = @import("avalanche/search/mcts.zig");
+    _ = @import("engine/search/searcher.zig");
+    _ = @import("engine/search/parameters.zig");
 
-    _ = @import("avalanche/evaluation/orderer.zig");
-    _ = @import("avalanche/evaluation/see.zig");
-    _ = @import("avalanche/evaluation/tt.zig");
+    _ = @import("engine/evaluation/evaluator.zig");
+    _ = @import("engine/evaluation/orderer.zig");
+    _ = @import("engine/evaluation/pst.zig");
+    _ = @import("engine/evaluation/see.zig");
+    _ = @import("engine/evaluation/tt.zig");
 }

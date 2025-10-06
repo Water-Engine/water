@@ -1,9 +1,9 @@
 const std = @import("std");
 const water = @import("water");
 
-const search = @import("search/search.zig");
+const searcher = @import("search/searcher.zig");
 
-const Engine = water.engine.Engine(search.Search);
+const Engine = water.engine.Engine(searcher.Searcher);
 
 pub const GoCommand = struct {
     pub const command_name: []const u8 = "go";
@@ -16,6 +16,7 @@ pub const GoCommand = struct {
     binc: ?u32 = null,
 
     infinite: bool = false,
+    depth: ?usize = null,
 
     pub fn deserialize(
         allocator: std.mem.Allocator,
@@ -36,7 +37,7 @@ pub const GoCommand = struct {
     }
 
     pub fn chooseThinkTimeNs(self: *const GoCommand, board: *const water.Board) ?i128 {
-        if (self.infinite) {
+        if (self.infinite or self.depth != null) {
             return null;
         } else if (self.movetime) |mt_ms| {
             return @intCast(1_000_000 * mt_ms);
@@ -69,7 +70,11 @@ pub const GoCommand = struct {
         engine: *Engine,
     ) anyerror!void {
         const think_time_ns = self.chooseThinkTimeNs(engine.searcher.governing_board);
-        engine.search(think_time_ns, .{}, .{});
+        if (engine.searcher.governing_board.side_to_move.isWhite()) {
+            engine.search(think_time_ns, .{ think_time_ns, water.Color.white, self.depth }, .{});
+        } else if (engine.searcher.governing_board.side_to_move.isBlack()) {
+            engine.search(think_time_ns, .{ think_time_ns, water.Color.black, self.depth }, .{});
+        } else unreachable;
     }
 };
 

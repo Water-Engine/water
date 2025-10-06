@@ -213,7 +213,7 @@ pub fn Engine(comptime Searcher: type) type {
         }
 
         /// Tells the search thread that it should stop.
-        /// 
+        ///
         /// Also halts the search timer.
         fn notifyStopSearch(self: *Self) void {
             self.searcher.should_stop.store(true, .release);
