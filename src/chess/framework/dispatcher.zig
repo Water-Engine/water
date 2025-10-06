@@ -155,8 +155,6 @@ pub fn deserializeFields(
 ///
 /// The token iterator is returned in a reset state.
 /// The returned string has a lifetime matching the token iterator.
-///
-/// The string returned is owned by the caller and must be freed.
 pub fn tokensAfter(
     tokens: *std.mem.TokenIterator(u8, .any),
     keyword: []const u8,
