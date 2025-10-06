@@ -141,8 +141,8 @@ pub const Searcher = struct {
             self.seldepth = 0;
 
             var alpha = -evaluator.mate_score;
-            var beta = -evaluator.mate_score;
-            var delta = -evaluator.mate_score;
+            var beta = evaluator.mate_score;
+            var delta = evaluator.mate_score;
 
             var depth = tdepth;
 
