@@ -70,11 +70,7 @@ pub const GoCommand = struct {
         engine: *Engine,
     ) anyerror!void {
         const think_time_ns = self.chooseThinkTimeNs(engine.searcher.governing_board);
-        if (engine.searcher.governing_board.side_to_move.isWhite()) {
-            engine.search(think_time_ns, .{ think_time_ns, water.Color.white, self.depth }, .{});
-        } else if (engine.searcher.governing_board.side_to_move.isBlack()) {
-            engine.search(think_time_ns, .{ think_time_ns, water.Color.black, self.depth }, .{});
-        } else unreachable;
+        engine.search(think_time_ns, .{ think_time_ns, self.depth }, .{});
     }
 };
 

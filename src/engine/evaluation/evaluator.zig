@@ -127,13 +127,11 @@ pub fn distance(board: *const water.Board, comptime white_winning: bool) i32 {
     return score;
 }
 
-/// Performs a static evaluation for the color on the given board.
+/// Performs a static evaluation for the stm on the given board.
 ///
 /// Passing `Color.none` results in a compile error.
-pub fn evaluate(board: *const water.Board, comptime color: water.Color, comptime use_nnue: bool) i32 {
-    if (color == .none) {
-        @compileError("Cannot evaluate board with 'Color.none'");
-    }
+pub fn evaluate(board: *const water.Board, comptime use_nnue: bool) i32 {
+    const color = board.side_to_move;
 
     // TODO: Integrate NNUE evaluation
     _ = use_nnue;
@@ -246,16 +244,19 @@ test "Board evaluation" {
     var board = try water.Board.init(allocator, .{});
     defer board.deinit();
 
-    try expectEqual(0, evaluate(board, .white));
-    try expectEqual(0, evaluate(board, .black));
+    try expectEqual(0, evaluate(board, false));
+    try expect(try board.setFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1", true));
+    try expectEqual(0, evaluate(board, false));
 
     try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ", true));
-    try expectEqual(49, evaluate(board, .white));
-    try expectEqual(-49, evaluate(board, .black));
+    try expectEqual(49, evaluate(board, false));
+    try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - ", true));
+    try expectEqual(-49, evaluate(board, false));
 
     try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80", true));
-    try expectEqual(100, evaluate(board, .white));
-    try expectEqual(-100, evaluate(board, .black));
+    try expectEqual(100, evaluate(board, false));
+    try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 b - - 20 80", true));
+    try expectEqual(-100, evaluate(board, false));
 }
 
 test "Weak draw detection" {

@@ -13,15 +13,15 @@ const mvvlva: [6][6]i32 = .{
     .{ 705, 704, 703, 702, 701, 700 },
 };
 
-const hash_bonus: i32 = 6_000_000;
-const winning_capture_bonus: i32 = 1_000_000;
-const losing_capture_bonus: i32 = 0;
-const quiet_bonus: i32 = 0;
-const killer_one_bonus: i32 = 900_000;
-const killer_two_bonus: i32 = 800_000;
-const counter_move_bonus: i32 = 600_000;
-const queen_promotion_bonus: i32 = 1_000_000;
-const knight_promotion_bonus: i32 = 650_000;
+pub const hash_bonus: i32 = 6_000_000;
+pub const winning_capture_bonus: i32 = 1_000_000;
+pub const losing_capture_bonus: i32 = 0;
+pub const quiet_bonus: i32 = 0;
+pub const killer_one_bonus: i32 = 900_000;
+pub const killer_two_bonus: i32 = 800_000;
+pub const counter_move_bonus: i32 = 600_000;
+pub const queen_promotion_bonus: i32 = 1_000_000;
+pub const knight_promotion_bonus: i32 = 650_000;
 
 /// Order moves heuristically.
 ///

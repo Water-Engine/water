@@ -119,7 +119,7 @@ pub const Searcher = struct {
         self.pv_size = @splat(0);
     }
 
-    pub fn search(self: *Searcher, alloted_time_ns: ?i128, comptime color: water.Color, max_depth: ?usize) anyerror!void {
+    pub fn search(self: *Searcher, alloted_time_ns: ?i128, max_depth: ?usize) anyerror!void {
         self.should_stop.store(false, .release);
         self.resetHeuristics(false);
 
@@ -164,7 +164,6 @@ pub const Searcher = struct {
                     alpha,
                     beta,
                     .{
-                        .color = color,
                         .is_null = false,
                         .cutnode = false,
                         .node = .root,
