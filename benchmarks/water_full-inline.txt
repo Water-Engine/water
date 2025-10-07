@@ -1,0 +1,4 @@
+CPU: 13th Gen Intel(R) Core(TM) i9-13900H
+Performed: October 7th 2025
+Iterations/FEN: 5
+Conditions: Library wide aggressive inlining and branch mitigation

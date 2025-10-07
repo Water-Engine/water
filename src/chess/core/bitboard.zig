@@ -11,150 +11,150 @@ pub const Bitboard = struct {
 
     // ================ INITIALIZATION ================
 
-    pub fn init() Bitboard {
+    pub inline fn init() Bitboard {
         return .{ .bits = 0 };
     }
 
-    pub fn fromRank(rank: Rank) Bitboard {
-        return if (rank.valid()) .{ .bits = rank.mask() } else .{ .bits = 0 };
+    pub inline fn fromRank(rank: Rank) Bitboard {
+        std.debug.assert(rank.valid());
+        return .{ .bits = rank.mask() };
     }
 
-    pub fn fromFile(file: File) Bitboard {
-        return if (file.valid()) .{ .bits = file.mask() } else .{ .bits = 0 };
+    pub inline fn fromFile(file: File) Bitboard {
+        std.debug.assert(file.valid());
+        return .{ .bits = file.mask() };
     }
 
-    pub fn fromSquare(square: Square) Bitboard {
-        return if (square.valid()) .{ .bits = @as(u64, 1) << @truncate(square.index()) } else .{ .bits = 0 };
+    pub inline fn fromSquare(square: Square) Bitboard {
+        std.debug.assert(square.valid());
+        return .{ .bits = @as(u64, 1) << @truncate(square.index()) };
     }
 
-    pub fn fromInt(comptime T: type, num: T) Bitboard {
+    pub inline fn fromInt(comptime T: type, num: T) Bitboard {
         switch (@typeInfo(T)) {
-            .int, .comptime_int => {
-                return if (num < 0 or num > std.math.maxInt(u64)) blk: {
-                    break :blk .{ .bits = 0 };
-                } else blk: {
-                    break :blk .{ .bits = @intCast(num) };
-                };
+            .int => |i| {
+                std.debug.assert(i.signedness == .unsigned);
+                return .{ .bits = @intCast(num) };
             },
-            else => @compileError("T must be an integer type"),
+            else => @compileError("T must be a known integer type"),
         }
     }
 
     // ================ BIT MANIPULATION ================
 
-    pub fn msb(self: *const Bitboard) Square {
-        const least: u6 = @truncate(@clz(self.bits));
-        return Square.fromInt(u6, 63 ^ least);
+    pub inline fn msb(self: *const Bitboard) Square {
+        const most: u6 = @truncate(@clz(self.bits));
+        return Square.fromInt(u6, 63 ^ most);
     }
 
-    pub fn lsb(self: *const Bitboard) Square {
+    pub inline fn lsb(self: *const Bitboard) Square {
         const least: u6 = @truncate(@ctz(self.bits));
         return Square.fromInt(u6, least);
     }
 
-    pub fn popLsb(self: *Bitboard) Square {
+    pub inline fn popLsb(self: *Bitboard) Square {
         defer self.bits &= (self.bits - 1);
         return self.lsb();
     }
 
-    pub fn set(self: *Bitboard, index: usize) Bitboard {
+    pub inline fn set(self: *Bitboard, index: usize) Bitboard {
         std.debug.assert(index < 64);
         self.bits |= (@as(u64, 1) << @truncate(index));
         return self.*;
     }
 
-    pub fn remove(self: *Bitboard, index: usize) Bitboard {
+    pub inline fn remove(self: *Bitboard, index: usize) Bitboard {
         std.debug.assert(index < 64);
         self.bits &= ~(@as(u64, 1) << @truncate(index));
         return self.*;
     }
 
-    pub fn contains(self: *const Bitboard, index: usize) bool {
+    pub inline fn contains(self: *const Bitboard, index: usize) bool {
         std.debug.assert(index < 64);
         return (self.bits & (@as(u64, 1) << @truncate(index))) != 0;
     }
 
-    pub fn clear(self: *Bitboard) void {
+    pub inline fn clear(self: *Bitboard) void {
         self.bits = 0;
     }
 
-    pub fn shl(self: *const Bitboard, rhs: u64) Bitboard {
+    pub inline fn shl(self: *const Bitboard, rhs: u64) Bitboard {
         return .{ .bits = self.bits << @truncate(rhs) };
     }
 
-    pub fn shlInPlace(self: *Bitboard, rhs: u64) void {
+    pub inline fn shlInPlace(self: *Bitboard, rhs: u64) void {
         self.bits = self.bits << @truncate(rhs);
     }
 
-    pub fn shr(self: *const Bitboard, rhs: u64) Bitboard {
+    pub inline fn shr(self: *const Bitboard, rhs: u64) Bitboard {
         return .{ .bits = self.bits >> @truncate(rhs) };
     }
 
-    pub fn shrInPlace(self: *Bitboard, rhs: u64) void {
+    pub inline fn shrInPlace(self: *Bitboard, rhs: u64) void {
         self.bits = self.bits >> @truncate(rhs);
     }
 
     // ================= OPS WITH U64 =================
 
-    pub fn andU64(self: *const Bitboard, rhs: u64) Bitboard {
+    pub inline fn andU64(self: *const Bitboard, rhs: u64) Bitboard {
         return .{ .bits = self.bits & rhs };
     }
 
-    pub fn orU64(self: *const Bitboard, rhs: u64) Bitboard {
+    pub inline fn orU64(self: *const Bitboard, rhs: u64) Bitboard {
         return .{ .bits = self.bits | rhs };
     }
 
-    pub fn xorU64(self: *const Bitboard, rhs: u64) Bitboard {
+    pub inline fn xorU64(self: *const Bitboard, rhs: u64) Bitboard {
         return .{ .bits = self.bits ^ rhs };
     }
 
-    pub fn eqU64(self: *const Bitboard, rhs: u64) bool {
+    pub inline fn eqU64(self: *const Bitboard, rhs: u64) bool {
         return self.bits == rhs;
     }
 
-    pub fn neqU64(self: *const Bitboard, rhs: u64) bool {
+    pub inline fn neqU64(self: *const Bitboard, rhs: u64) bool {
         return self.bits != rhs;
     }
 
     // ================= OPS WITH BITBOARD =================
 
-    pub fn andBB(self: *const Bitboard, rhs: Bitboard) Bitboard {
+    pub inline fn andBB(self: *const Bitboard, rhs: Bitboard) Bitboard {
         return .{ .bits = self.bits & rhs.bits };
     }
 
-    pub fn orBB(self: *const Bitboard, rhs: Bitboard) Bitboard {
+    pub inline fn orBB(self: *const Bitboard, rhs: Bitboard) Bitboard {
         return .{ .bits = self.bits | rhs.bits };
     }
 
-    pub fn xorBB(self: *const Bitboard, rhs: Bitboard) Bitboard {
+    pub inline fn xorBB(self: *const Bitboard, rhs: Bitboard) Bitboard {
         return .{ .bits = self.bits ^ rhs.bits };
     }
 
-    pub fn eqBB(self: *const Bitboard, rhs: Bitboard) bool {
+    pub inline fn eqBB(self: *const Bitboard, rhs: Bitboard) bool {
         return self.bits == rhs.bits;
     }
 
-    pub fn neqBB(self: *const Bitboard, rhs: Bitboard) bool {
+    pub inline fn neqBB(self: *const Bitboard, rhs: Bitboard) bool {
         return self.bits != rhs.bits;
     }
 
-    pub fn not(self: *const Bitboard) Bitboard {
+    pub inline fn not(self: *const Bitboard) Bitboard {
         return .{ .bits = ~self.bits };
     }
 
     // ================= IN-PLACE OPS =================
 
-    pub fn andAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
+    pub inline fn andAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
         self.bits &= rhs.bits;
         return self;
     }
 
-    pub fn orAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
+    pub inline fn orAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
         self.bits |= rhs.bits;
         return self;
     }
 
-    pub fn xorAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
+    pub inline fn xorAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
         self.bits ^= rhs.bits;
         return self;
     }
@@ -183,29 +183,29 @@ pub const Bitboard = struct {
         return out;
     }
 
-    pub fn count(self: *const Bitboard) usize {
+    pub inline fn count(self: *const Bitboard) usize {
         return @popCount(self.bits);
     }
 
-    pub fn empty(self: *const Bitboard) bool {
+    pub inline fn empty(self: *const Bitboard) bool {
         return self.count() == 0;
     }
 
-    pub fn nonzero(self: *const Bitboard) bool {
+    pub inline fn nonzero(self: *const Bitboard) bool {
         return !self.empty();
     }
 
     // ================= WRAPPING ARITHMETIC =================
 
-    pub fn addU64Wrapped(self: *const Bitboard, rhs: u64) Bitboard {
+    pub inline fn addU64Wrapped(self: *const Bitboard, rhs: u64) Bitboard {
         return .{ .bits = self.bits +% rhs };
     }
 
-    pub fn subU64Wrapped(self: *const Bitboard, rhs: u64) Bitboard {
+    pub inline fn subU64Wrapped(self: *const Bitboard, rhs: u64) Bitboard {
         return .{ .bits = self.bits -% rhs };
     }
 
-    pub fn mulU64Wrapped(self: *const Bitboard, rhs: u64) Bitboard {
+    pub inline fn mulU64Wrapped(self: *const Bitboard, rhs: u64) Bitboard {
         return .{ .bits = self.bits *% rhs };
     }
 };

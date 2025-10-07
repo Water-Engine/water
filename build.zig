@@ -26,8 +26,15 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
 
+    const ephemeral = b.option(
+        bool,
+        "ephemeral",
+        "When enabled, performance targets are installed",
+    ) orelse true;
+
     addRunStep(b, exe);
-    addPerftStep(b, mod);
+    addPerftStep(b, mod, ephemeral);
+    addBenchStep(b, mod, ephemeral);
 
     addFmtStep(b);
     addLintStep(b);
@@ -50,7 +57,7 @@ fn addRunStep(b: *std.Build, exe: *std.Build.Step.Compile) void {
     run_step.dependOn(&run_cmd.step);
 }
 
-fn addPerftStep(b: *std.Build, module: *std.Build.Module) void {
+fn addPerftStep(b: *std.Build, module: *std.Build.Module, ephemeral: bool) void {
     const perft_exe = b.addExecutable(.{
         .name = "perft",
         .root_module = b.createModule(.{
@@ -63,11 +70,39 @@ fn addPerftStep(b: *std.Build, module: *std.Build.Module) void {
         }),
     });
 
+    if (!ephemeral) {
+        b.installArtifact(perft_exe);
+    }
+
     const run_perft = b.addRunArtifact(perft_exe);
     run_perft.step.dependOn(b.getInstallStep());
 
     const perft_step = b.step("perft", "Run perft suite");
     perft_step.dependOn(&run_perft.step);
+}
+
+fn addBenchStep(b: *std.Build, module: *std.Build.Module, ephemeral: bool) void {
+    const bench_exe = b.addExecutable(.{
+        .name = "bench",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/chess/bench.zig"),
+            .target = module.resolved_target,
+            .optimize = module.optimize,
+            .imports = &.{
+                .{ .name = "water", .module = module },
+            },
+        }),
+    });
+
+    if (!ephemeral) {
+        b.installArtifact(bench_exe);
+    }
+
+    const run_bench = b.addRunArtifact(bench_exe);
+    run_bench.step.dependOn(b.getInstallStep());
+
+    const bench_step = b.step("bench", "Run benchmarking suite");
+    bench_step.dependOn(&run_bench.step);
 }
 
 fn addToTestStep(b: *std.Build, module: *std.Build.Module, step: *std.Build.Step) void {
