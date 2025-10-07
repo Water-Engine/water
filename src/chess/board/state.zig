@@ -19,13 +19,13 @@ pub const CheckType = enum {
     none,
 
     /// Returns true if the check type is not none.
-    pub fn check(self: *const CheckType) bool {
+    pub inline fn check(self: *const CheckType) bool {
         return self.* != .none;
     }
 };
 
 /// Random Numbers for Zobrist Hashing that are also Polyglot Compatible
-const ZobristArray: [781]u64 = .{
+const zobrist_randoms: [781]u64 = .{
     0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
     0x75834465489C0C89, 0x3290AC3A203001BF, 0x0FBBAD1F61042279, 0xE83A908FF2FB60CA,
     0x0D7E765D58755C10, 0x1A083822CEAFE02D, 0x9605D5F0E25EC3B0, 0xD021FF5CD13A2ED5,
@@ -224,11 +224,11 @@ const ZobristArray: [781]u64 = .{
     0xF8D626AAAF278509,
 };
 
-const MapHashPiece: [12]usize = .{
+const map_hash_piece: [12]usize = .{
     1, 3, 5, 7, 9, 11, 0, 2, 4, 6, 8, 10,
 };
 
-const CastlingKeys: [16]u64 = blk: {
+const castling_keys: [16]u64 = blk: {
     var array: [16]u64 = undefined;
 
     for (0..16) |i| {
@@ -246,7 +246,7 @@ fn generateCastlingKey(index: usize) u64 {
 
     for (0..random_count) |i| {
         if (index & (@as(u64, 1) << @truncate(i)) != 0) {
-            key ^= ZobristArray[random_offset + i];
+            key ^= zobrist_randoms[random_offset + i];
         }
     }
 
@@ -254,28 +254,28 @@ fn generateCastlingKey(index: usize) u64 {
 }
 
 pub const Zobrist = struct {
-    pub fn piece(p: Piece, s: Square) u64 {
+    pub inline fn piece(p: Piece, s: Square) u64 {
         std.debug.assert(p.index() < 12);
-        return ZobristArray[64 * MapHashPiece[p.index()] + s.index()];
+        return zobrist_randoms[64 * map_hash_piece[p.index()] + s.index()];
     }
 
-    pub fn enPassant(f: File) u64 {
+    pub inline fn enPassant(f: File) u64 {
         std.debug.assert(f.index() < 8);
-        return ZobristArray[772 + f.index()];
+        return zobrist_randoms[772 + f.index()];
     }
 
-    pub fn castling(c: usize) u64 {
+    pub inline fn castling(c: usize) u64 {
         std.debug.assert(c >= 0 and c < 16);
-        return CastlingKeys[c];
+        return castling_keys[c];
     }
 
-    pub fn castlingIdx(idx: usize) u64 {
+    pub inline fn castlingIdx(idx: usize) u64 {
         std.debug.assert(idx >= 0 and idx < 4);
-        return ZobristArray[768 + idx];
+        return zobrist_randoms[768 + idx];
     }
 
-    pub fn sideToMove() u64 {
-        return ZobristArray[780];
+    pub inline fn sideToMove() u64 {
+        return zobrist_randoms[780];
     }
 
     /// Generate the zobrist key for a board, very expensive.
@@ -348,7 +348,7 @@ test "Board hashing" {
     defer board.deinit();
 
     // Expected Values from https://github.com/Disservin/chess-library
-    _ = try board.setFen(board_.StartingFen, true);
+    _ = try board.setFen(board_.starting_fen, true);
     try expectEqual(5060803636482931868, Zobrist.fromBoard(board));
 
     _ = try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -", true);

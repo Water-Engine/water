@@ -86,18 +86,18 @@ pub fn orderMoves(
                 score += searcher.history.heuristic[board.side_to_move.index()][from.index()][to.index()];
 
                 if (!is_null and searcher.ply >= 1) {
-                    for ([_]usize{ 0, 1, 3 }) |plies_ago| {
+                    inline for ([_]usize{ 0, 1, 3 }) |plies_ago| {
                         const divider: i32 = 1;
                         if (searcher.ply >= plies_ago + 1) {
                             const prev = searcher.history.moves[searcher.ply - plies_ago - 1];
-                            if (!prev.valid()) continue;
-
-                            const moved_piece = searcher.history.moved_pieces[searcher.ply - plies_ago - 1];
-                            std.debug.assert(moved_piece.valid() and prev.from().valid() and prev.to().valid());
-                            score += @divTrunc(
-                                searcher.continuation[moved_piece.index()][prev.to().index()][move.from().index()][move.to().index()],
-                                divider,
-                            );
+                            if (prev.valid()) {
+                                const moved_piece = searcher.history.moved_pieces[searcher.ply - plies_ago - 1];
+                                std.debug.assert(moved_piece.valid() and prev.from().valid() and prev.to().valid());
+                                score += @divTrunc(
+                                    searcher.continuation[moved_piece.index()][prev.to().index()][move.from().index()][move.to().index()],
+                                    divider,
+                                );
+                            }
                         }
                     }
                 }

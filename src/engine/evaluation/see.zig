@@ -40,10 +40,12 @@ pub fn seeBase(board: *const water.Board, move: water.Move) i32 {
         for (piece_type..ending + 1) |pt_idx| {
             last_piece_pts = see_weight[pt_idx];
             const pt = water.PieceType.fromInt(usize, pt_idx);
-            piece_bb = (if (pt == .pawn) blk: {
-                break :blk water.attacks.pawn(them_color.opposite(), to);
-            } else blk: {
-                break :blk water.attacks.attacks(pt, .none, to, blockers);
+            piece_bb = (blk: {
+                if (pt == .pawn) {
+                    break :blk water.attacks.pawn(them_color.opposite(), to);
+                } else {
+                    break :blk water.attacks.attacks(pt, .none, to, blockers);
+                }
             }).andBB(defenders).andBB(board.pieces(.none, pt));
             if (piece_bb.nonzero()) {
                 _ = blockers.andAssign(water.Bitboard.fromSquare(piece_bb.lsb()).not());

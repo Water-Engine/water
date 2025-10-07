@@ -31,7 +31,6 @@ const movegen = @import("movegen.zig");
 const Movelist = movegen.Movelist;
 
 pub const MovegenType = enum { all, capture, quiet };
-pub const AllPieces: [6]PieceType = [_]PieceType{ .pawn, .knight, .bishop, .rook, .queen, .king };
 
 /// Generates the (up to) two possible moves that could capture en passant.
 ///
@@ -324,7 +323,7 @@ pub fn castleMoves(
 
         // Check for attacks on the king's path
         const king_to = Square.castlingKingTo(side, options.color);
-        if (distance.SquaresBetween[square.index()][king_to.index()].andBB(seen).nonzero()) {
+        if (distance.squares_between[square.index()][king_to.index()].andBB(seen).nonzero()) {
             continue;
         }
 
@@ -348,32 +347,38 @@ pub fn castleMoves(
 
 /// Returns a bitboard containing all possible moves a bishop on the given square can move to.
 pub fn bishopMoves(square: Square, pin_d: Bitboard, occ_all: Bitboard) Bitboard {
-    return if (pin_d.andBB(Bitboard.fromSquare(square)).nonzero()) blk: {
-        break :blk attacks.bishop(square, occ_all).andBB(pin_d);
-    } else blk: {
-        break :blk attacks.bishop(square, occ_all);
+    return blk: {
+        if (pin_d.andBB(Bitboard.fromSquare(square)).nonzero()) {
+            break :blk attacks.bishop(square, occ_all).andBB(pin_d);
+        } else {
+            break :blk attacks.bishop(square, occ_all);
+        }
     };
 }
 
 /// Returns a bitboard containing all possible moves a rook on the given square can move to.
 pub fn rookMoves(square: Square, pin_hv: Bitboard, occ_all: Bitboard) Bitboard {
-    return if (pin_hv.andBB(Bitboard.fromSquare(square)).nonzero()) blk: {
-        break :blk attacks.rook(square, occ_all).andBB(pin_hv);
-    } else blk: {
-        break :blk attacks.rook(square, occ_all);
+    return blk: {
+        if (pin_hv.andBB(Bitboard.fromSquare(square)).nonzero()) {
+            break :blk attacks.rook(square, occ_all).andBB(pin_hv);
+        } else {
+            break :blk attacks.rook(square, occ_all);
+        }
     };
 }
 
 /// Returns a bitboard containing all possible moves a queen on the given square can move to.
 pub fn queenMoves(square: Square, pin_d: Bitboard, pin_hv: Bitboard, occ_all: Bitboard) Bitboard {
-    return if (pin_d.andBB(Bitboard.fromSquare(square)).nonzero()) blk: {
-        break :blk attacks.bishop(square, occ_all).andBB(pin_d);
-    } else if (pin_hv.andBB(Bitboard.fromSquare(square)).nonzero()) blk: {
-        break :blk attacks.rook(square, occ_all).andBB(pin_hv);
-    } else blk: {
-        break :blk attacks.rook(square, occ_all).orBB(
-            attacks.bishop(square, occ_all),
-        );
+    return blk: {
+        if (pin_d.andBB(Bitboard.fromSquare(square)).nonzero()) {
+            break :blk attacks.bishop(square, occ_all).andBB(pin_d);
+        } else if (pin_hv.andBB(Bitboard.fromSquare(square)).nonzero()) {
+            break :blk attacks.rook(square, occ_all).andBB(pin_hv);
+        } else {
+            break :blk attacks.rook(square, occ_all).orBB(
+                attacks.bishop(square, occ_all),
+            );
+        }
     };
 }
 
@@ -449,42 +454,25 @@ pub fn all(
         occ_us,
     );
 
-    var moveable_square = if (comptime options.gen_type == .all) blk: {
-        break :blk opp_empty;
-    } else if (comptime options.gen_type == .capture) blk: {
-        break :blk occ_opp;
-    } else occ_all.not();
-
-    const addMovesFromMask = struct {
-        /// Adds moves to the movelist for each square in the mask.
-        ///
-        /// The args to the function should assume to be starting at index 1.
-        pub fn addMovesFromMask(
-            ml: *Movelist,
-            mask: Bitboard,
-            comptime function: anytype,
-            args: anytype,
-        ) void {
-            var mask_copy = mask;
-            while (mask_copy.nonzero()) {
-                const from = mask_copy.popLsb();
-                var generated: Bitboard = @call(.auto, function, .{from} ++ args);
-                while (generated.nonzero()) {
-                    const to = generated.popLsb();
-                    ml.add(Move.make(from, to, .{}));
-                }
-            }
+    var moveable_square = blk: {
+        if (comptime options.gen_type == .all) {
+            break :blk opp_empty;
+        } else if (comptime options.gen_type == .capture) {
+            break :blk occ_opp;
+        } else {
+            break :blk occ_all.not();
         }
-    }.addMovesFromMask;
+    };
 
     if (comptime pieces.andU64(@intFromEnum(PieceGenType.king)).nonzero()) {
         const seen = movegen.seenSquares(options.color.opposite(), board, opp_empty);
 
-        addMovesFromMask(movelist, Bitboard.fromSquare(king_sq), struct {
-            pub fn afn(square: Square, seen_: Bitboard, moveable_square_: Bitboard) Bitboard {
-                return kingMoves(square, seen_, moveable_square_);
-            }
-        }.afn, .{ seen, moveable_square });
+        addMovesFromMask(
+            movelist,
+            Bitboard.fromSquare(king_sq),
+            kingMoveGenerator,
+            .{ seen, moveable_square },
+        );
 
         if (options.gen_type != .capture and checks == 0) {
             var moves_bb = castleMoves(
@@ -526,11 +514,12 @@ pub fn all(
             .knight,
         ).andBB(pin_d.orBB(pin_hv).not());
 
-        addMovesFromMask(movelist, knights_mask, struct {
-            pub fn afn(square: Square, moveable_square_: Bitboard) Bitboard {
-                return knightMoves(square).andBB(moveable_square_);
-            }
-        }.afn, .{moveable_square});
+        addMovesFromMask(
+            movelist,
+            knights_mask,
+            knightMoveGenerator,
+            .{moveable_square},
+        );
     }
 
     if (comptime pieces.andU64(@intFromEnum(PieceGenType.bishop)).nonzero()) {
@@ -540,20 +529,12 @@ pub fn all(
             .bishop,
         ).andBB(pin_hv.not());
 
-        addMovesFromMask(movelist, bishops_mask, struct {
-            pub fn afn(
-                square: Square,
-                pin_d_: Bitboard,
-                occ_all_: Bitboard,
-                moveable_square_: Bitboard,
-            ) Bitboard {
-                return bishopMoves(
-                    square,
-                    pin_d_,
-                    occ_all_,
-                ).andBB(moveable_square_);
-            }
-        }.afn, .{ pin_d, occ_all, moveable_square });
+        addMovesFromMask(
+            movelist,
+            bishops_mask,
+            bishopMoveGenerator,
+            .{ pin_d, occ_all, moveable_square },
+        );
     }
 
     if (comptime pieces.andU64(@intFromEnum(PieceGenType.rook)).nonzero()) {
@@ -563,20 +544,12 @@ pub fn all(
             .rook,
         ).andBB(pin_d.not());
 
-        addMovesFromMask(movelist, rooks_mask, struct {
-            pub fn afn(
-                square: Square,
-                pin_hv_: Bitboard,
-                occ_all_: Bitboard,
-                moveable_square_: Bitboard,
-            ) Bitboard {
-                return rookMoves(
-                    square,
-                    pin_hv_,
-                    occ_all_,
-                ).andBB(moveable_square_);
-            }
-        }.afn, .{ pin_hv, occ_all, moveable_square });
+        addMovesFromMask(
+            movelist,
+            rooks_mask,
+            rookMoveGenerator,
+            .{ pin_hv, occ_all, moveable_square },
+        );
     }
 
     if (comptime pieces.andU64(@intFromEnum(PieceGenType.queen)).nonzero()) {
@@ -586,23 +559,84 @@ pub fn all(
             .queen,
         ).andBB(pin_d.andBB(pin_hv).not());
 
-        addMovesFromMask(movelist, queens_mask, struct {
-            pub fn afn(
-                square: Square,
-                pin_d_: Bitboard,
-                pin_hv_: Bitboard,
-                occ_all_: Bitboard,
-                moveable_square_: Bitboard,
-            ) Bitboard {
-                return queenMoves(
-                    square,
-                    pin_d_,
-                    pin_hv_,
-                    occ_all_,
-                ).andBB(moveable_square_);
-            }
-        }.afn, .{ pin_d, pin_hv, occ_all, moveable_square });
+        addMovesFromMask(
+            movelist,
+            queens_mask,
+            queenMoveGenerator,
+            .{ pin_d, pin_hv, occ_all, moveable_square },
+        );
     }
+}
+
+// ================ PIECE SPECIFIC GENERATORS ================
+
+/// Adds moves to the movelist for each square in the mask.
+///
+/// The args to the function should assume to be starting at index 1.
+fn addMovesFromMask(
+    ml: *Movelist,
+    mask: Bitboard,
+    comptime function: anytype,
+    args: anytype,
+) void {
+    var mask_copy = mask;
+    while (mask_copy.nonzero()) {
+        const from = mask_copy.popLsb();
+        var generated: Bitboard = @call(.auto, function, .{from} ++ args);
+        while (generated.nonzero()) {
+            const to = generated.popLsb();
+            ml.add(Move.make(from, to, .{}));
+        }
+    }
+}
+
+fn kingMoveGenerator(square: Square, seen: Bitboard, moveable_square: Bitboard) Bitboard {
+    return kingMoves(square, seen, moveable_square);
+}
+
+fn knightMoveGenerator(square: Square, moveable_square: Bitboard) Bitboard {
+    return knightMoves(square).andBB(moveable_square);
+}
+
+fn bishopMoveGenerator(
+    square: Square,
+    pin_d: Bitboard,
+    occ_all: Bitboard,
+    moveable_square: Bitboard,
+) Bitboard {
+    return bishopMoves(
+        square,
+        pin_d,
+        occ_all,
+    ).andBB(moveable_square);
+}
+
+fn rookMoveGenerator(
+    square: Square,
+    pin_hv: Bitboard,
+    occ_all: Bitboard,
+    moveable_square: Bitboard,
+) Bitboard {
+    return rookMoves(
+        square,
+        pin_hv,
+        occ_all,
+    ).andBB(moveable_square);
+}
+
+fn queenMoveGenerator(
+    square: Square,
+    pin_d: Bitboard,
+    pin_hv: Bitboard,
+    occ_all: Bitboard,
+    moveable_square: Bitboard,
+) Bitboard {
+    return queenMoves(
+        square,
+        pin_d,
+        pin_hv,
+        occ_all,
+    ).andBB(moveable_square);
 }
 
 // ================ TESTING ================
@@ -909,7 +943,7 @@ test "PieceGenType compile time computation" {
     const pawns = comptime PieceGenType.pts2bb(&.{.pawn});
     try expectEqual(@intFromEnum(PieceGenType.pawn), pawns.bits);
 
-    const all_types = comptime PieceGenType.pts2bb(&AllPieces);
+    const all_types = comptime PieceGenType.pts2bb(&PieceType.all);
     try expectEqual(63, all_types.bits);
 }
 
@@ -926,7 +960,7 @@ test "Generate all legal moves" {
         .{
             .color = .white,
             .gen_type = .all,
-            .pieces = &AllPieces,
+            .pieces = &PieceType.all,
         },
     );
     try expectEqual(20, ml.size);
@@ -949,7 +983,7 @@ test "Generate all legal moves" {
         .{
             .color = .white,
             .gen_type = .all,
-            .pieces = &AllPieces,
+            .pieces = &PieceType.all,
         },
     );
     try expectEqual(48, ml.size);
@@ -974,7 +1008,7 @@ test "Generate all legal moves" {
         .{
             .color = .white,
             .gen_type = .quiet,
-            .pieces = &AllPieces,
+            .pieces = &PieceType.all,
         },
     );
     try expectEqual(40, ml.size);
@@ -998,7 +1032,7 @@ test "Generate all legal moves" {
         .{
             .color = .black,
             .gen_type = .capture,
-            .pieces = &AllPieces,
+            .pieces = &PieceType.all,
         },
     );
     try expectEqual(7, ml.size);
@@ -1020,7 +1054,7 @@ test "Generate all legal moves" {
         .{
             .color = .black,
             .gen_type = .all,
-            .pieces = &AllPieces,
+            .pieces = &PieceType.all,
         },
     );
     try expectEqual(17, ml.size);

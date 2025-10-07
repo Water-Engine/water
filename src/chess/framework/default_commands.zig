@@ -16,7 +16,7 @@ pub fn PositionCommand(comptime Searcher: type) type {
         const Self = @This();
         pub const command_name: []const u8 = "position";
 
-        fen: []const u8 = board_.StartingFen,
+        fen: []const u8 = board_.starting_fen,
         startpos: ?bool = false,
 
         moves: ?[]const u8 = null,
@@ -35,9 +35,9 @@ pub fn PositionCommand(comptime Searcher: type) type {
 
             // Handle ambiguity with the fen/startpos
             if (parsed.startpos) |sp| {
-                if (sp) parsed.fen = board_.StartingFen;
+                if (sp) parsed.fen = board_.starting_fen;
             } else if (parsed.fen.len == 0) {
-                parsed.fen = board_.StartingFen;
+                parsed.fen = board_.starting_fen;
             }
 
             // Collect the moves and return

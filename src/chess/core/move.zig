@@ -41,7 +41,7 @@ pub const Move = struct {
     move: u16,
     score: i32 = 0,
 
-    // ================ INITIALIZATION ================
+    // ================ INITIALIZATION - NO INLINE!!! ================
 
     pub fn init() Move {
         return .{ .move = 0 };
@@ -86,24 +86,24 @@ pub const Move = struct {
 
     // ================ UTILITIES ================
 
-    pub fn from(self: *const Move) Square {
+    pub inline fn from(self: *const Move) Square {
         return Square.fromInt(u16, (self.move >> @truncate(6)) & 0x3F);
     }
 
-    pub fn to(self: *const Move) Square {
+    pub inline fn to(self: *const Move) Square {
         return Square.fromInt(u16, self.move & 0x3F);
     }
 
     /// Returns the type of the move as an int or MoveType.
     pub fn typeOf(self: *const Move, comptime T: type) T {
-        if (T == MoveType) {
+        if (comptime T == MoveType) {
             const bits = self.move & (@as(u16, 3) << @truncate(14));
             return MoveType.fromInt(u16, bits);
-        }
-
-        switch (@typeInfo(T)) {
-            .int, .comptime_int => return self.move & (@as(T, 3) << @truncate(14)),
-            else => @compileError("T must be a MoveType or an integer type"),
+        } else {
+            return switch (@typeInfo(T)) {
+                .int, .comptime_int => self.move & (@as(T, 3) << @truncate(14)),
+                else => @compileError("T must be a MoveType or an integer type"),
+            };
         }
     }
 

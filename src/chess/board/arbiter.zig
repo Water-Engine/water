@@ -40,9 +40,9 @@ pub fn halfmove(board: *const Board, precomputed_movelist: ?*const movegen.Movel
 
     // We can return an actual result, determine legal moves available
     var movelist = movegen.Movelist{};
-    const moves = if (precomputed_movelist) |pml| pml.* else blk: {
+    const moves = precomputed_movelist orelse blk: {
         movegen.legalmoves(board, &movelist, .{});
-        break :blk movelist;
+        break :blk &movelist;
     };
 
     return if (moves.empty() and board.inCheck(.{})) blk: {
@@ -108,8 +108,14 @@ pub fn insufficientMaterial(board: *const Board) bool {
 ///
 /// Passing a precomputed movelist will greatly improve performance.
 pub fn gameOver(board: *const Board, precomputed_movelist: ?*const movegen.Movelist) ?Result {
-    // check for each draw type
-    if (halfmove(board, precomputed_movelist)) |hm_draw| {
+    var movelist = movegen.Movelist{};
+    const moves = precomputed_movelist orelse blk: {
+        movegen.legalmoves(board, &movelist, .{});
+        break :blk &movelist;
+    };
+
+    // Check for each draw type first
+    if (halfmove(board, moves)) |hm_draw| {
         return hm_draw;
     } else if (insufficientMaterial(board)) {
         return .{
@@ -124,12 +130,6 @@ pub fn gameOver(board: *const Board, precomputed_movelist: ?*const movegen.Movel
     }
 
     // Determine if the position is a checkmate or stalemate
-    var movelist = movegen.Movelist{};
-    const moves = if (precomputed_movelist) |pml| pml.* else blk: {
-        movegen.legalmoves(board, &movelist, .{});
-        break :blk movelist;
-    };
-
     if (moves.empty()) {
         return if (board.inCheck(.{})) .{
             .result = .win,

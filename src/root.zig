@@ -11,10 +11,11 @@ const bitboard = @import("chess/core/bitboard.zig");
 pub const Bitboard = bitboard.Bitboard;
 
 const distance = @import("chess/core/distance.zig");
-pub const ManhattanDist = distance.ManhattanDist;
-pub const CenterManhattanDist = distance.CenterManhattanDist;
-pub const ChebyshevDist = distance.ChebyshevDist;
-pub const ValueDist = distance.ValueDist;
+pub const manhattan_distance = distance.manhattan_distance;
+pub const center_manhattan_distance = distance.center_manhattan_distance;
+pub const chebyshev_distance = distance.chebyshev_distance;
+pub const absolute_distance = distance.absolute_distance;
+pub const squares_between = distance.squares_between;
 
 const piece = @import("chess/core/piece.zig");
 pub const PieceType = piece.PieceType;

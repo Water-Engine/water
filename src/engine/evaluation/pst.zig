@@ -165,7 +165,7 @@ pub const PeSTOEval = struct {
 
 /// Gathers data related to PeSTO's evaluation function.
 ///
-/// Using SIMD here loses performance. See benchmark at bottom of this file.
+/// Using SIMD here loses performance. See benchmark at bottom of containing file.
 /// Average performance of this function is 20ns.
 ///
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function

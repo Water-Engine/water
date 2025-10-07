@@ -75,15 +75,15 @@ pub const TranspositionTable = struct {
     }
 
     /// Increments the internal age of the table.
-    pub fn incAge(self: *TranspositionTable) void {
+    pub inline fn incAge(self: *TranspositionTable) void {
         self.age +%= 1;
     }
 
-    pub fn index(self: *TranspositionTable, hash: u64) u64 {
+    pub inline fn index(self: *TranspositionTable, hash: u64) u64 {
         return @intCast(@as(u128, @intCast(hash)) * @as(u128, @intCast(self.size)) >> 64);
     }
 
-    pub fn set(self: *TranspositionTable, entry: TTEntry) void {
+    pub inline fn set(self: *TranspositionTable, entry: TTEntry) void {
         const p = &self.data.items[self.index(entry.hash)];
         const p_val: TTEntry = @as(*TTEntry, @ptrCast(p)).*;
 
@@ -113,7 +113,7 @@ pub const TranspositionTable = struct {
     }
 
     /// Performs the builtin prefetch operation, if supported.
-    pub fn prefetch(self: *TranspositionTable, hash: u64) void {
+    pub inline fn prefetch(self: *TranspositionTable, hash: u64) void {
         @prefetch(&self.data.items[self.index(hash)], .{
             .rw = .read,
             .locality = 1,
@@ -122,7 +122,7 @@ pub const TranspositionTable = struct {
     }
 
     /// Tries to retrieve the given hash from the table.
-    pub fn get(self: *TranspositionTable, hash: u64) ?TTEntry {
+    pub inline fn get(self: *TranspositionTable, hash: u64) ?TTEntry {
         const entry: *TTEntry = @ptrCast(&self.data.items[self.index(hash)]);
         if (entry.flag != Bound.none and entry.hash == hash) {
             return entry.*;

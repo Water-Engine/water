@@ -32,7 +32,7 @@ const movegen = @import("../movegen/movegen.zig");
 
 const uci = @import("../core/uci.zig");
 
-pub const StartingFen: []const u8 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+pub const starting_fen: []const u8 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 /// Splits a string at the given delimiter, with the output array size `N`.
 ///
@@ -99,7 +99,7 @@ pub const Board = struct {
     ///
     /// Copies the provided fen and manages the dupe.
     pub fn init(allocator: std.mem.Allocator, options: struct {
-        fen: []const u8 = StartingFen,
+        fen: []const u8 = starting_fen,
         fischer_random: bool = false,
     }) !*Board {
         const b = try allocator.create(Board);
@@ -183,6 +183,35 @@ pub const Board = struct {
         return success;
     }
 
+    /// In chess 960, we may need to determine rights based off of files
+    inline fn find_rook(board: *const Board, side: CastlingRights.Side, color: Color) File {
+        const king_side = side == .king;
+        const king_sq = board.kingSq(color);
+        const square: Square = if (king_side) .h1 else .a1;
+        const sq_corner = square.flipRelative(color);
+        const start = if (king_side) king_sq.next() else king_sq.prev();
+
+        var sq = start;
+        while (blk: {
+            const ord = sq.order(sq_corner);
+            if (king_side) {
+                break :blk ord == .lt or ord == .eq;
+            } else {
+                break :blk ord == .gt or ord == .eq;
+            }
+        }) : (if (king_side) {
+            _ = sq.inc();
+        } else {
+            _ = sq.dec();
+        }) {
+            if (board.at(PieceType, sq) == .rook and board.at(Piece, sq).color() == color) {
+                return sq.file();
+            }
+        }
+
+        return .none;
+    }
+
     /// Attempts to set the board fen position, reallocating the board original fen representation if requested.
     ///
     /// Returns `true` if the fen was set successfully. Unsuccessful setting does not mutate the Board.
@@ -200,12 +229,12 @@ pub const Board = struct {
 
         // Fully parse and deconstruct input
         const split_fen: [6]?[]const u8 = splitString(6, trimmed, ' ');
-        const pos: []const u8 = if (split_fen[0]) |first| first else "";
-        const stm: []const u8 = if (split_fen[1]) |first| first else "w";
-        const castle: []const u8 = if (split_fen[2]) |first| first else "-";
-        const ep: []const u8 = if (split_fen[3]) |first| first else "-";
-        const hmc: []const u8 = if (split_fen[4]) |first| first else "0";
-        const fmc: []const u8 = if (split_fen[5]) |first| first else "1";
+        const pos: []const u8 = split_fen[0] orelse "";
+        const stm: []const u8 = split_fen[1] orelse "w";
+        const castle: []const u8 = split_fen[2] orelse "-";
+        const ep: []const u8 = split_fen[3] orelse "-";
+        const hmc: []const u8 = split_fen[4] orelse "0";
+        const fmc: []const u8 = split_fen[5] orelse "1";
 
         if (pos.len == 0) success = false;
         if (!std.mem.eql(u8, stm, "w") and !std.mem.eql(u8, stm, "b")) success = false;
@@ -251,37 +280,6 @@ pub const Board = struct {
                 square_idx += 1;
             }
         }
-
-        // In chess 960, we may need to determine rights based off of files
-        const find_rook = struct {
-            fn find_rook(board: *const Board, side: CastlingRights.Side, color: Color) File {
-                const king_side = side == .king;
-                const king_sq = board.kingSq(color);
-                const square: Square = if (king_side) .h1 else .a1;
-                const sq_corner = square.flipRelative(color);
-                const start = if (king_side) king_sq.next() else king_sq.prev();
-
-                var sq = start;
-                while (blk: {
-                    const ord = sq.order(sq_corner);
-                    if (king_side) {
-                        break :blk ord == .lt or ord == .eq;
-                    } else {
-                        break :blk ord == .gt or ord == .eq;
-                    }
-                }) : (if (king_side) {
-                    _ = sq.inc();
-                } else {
-                    _ = sq.dec();
-                }) {
-                    if (board.at(PieceType, sq) == .rook and board.at(Piece, sq).color() == color) {
-                        return sq.file();
-                    }
-                }
-
-                return .none;
-            }
-        }.find_rook;
 
         // Set all castling rights
         for (castle) |char| {
@@ -353,8 +351,8 @@ pub const Board = struct {
                 const king_to = Square.castlingKingTo(side, color);
                 const rook_to = Square.castlingRookTo(side, color);
 
-                const rook_distance_bb = distance.SquaresBetween[rook_from.index()][rook_to.index()];
-                const king_distance_bb = distance.SquaresBetween[king_from.index()][king_to.index()];
+                const rook_distance_bb = distance.squares_between[rook_from.index()][rook_to.index()];
+                const king_distance_bb = distance.squares_between[king_from.index()][king_to.index()];
                 const distance_between_bbs = rook_distance_bb.orBB(king_distance_bb);
 
                 const king_from_bb = Bitboard.fromSquare(king_from);
@@ -458,8 +456,8 @@ pub const Board = struct {
         // Append castling rights
         try writer.print(" ", .{});
         if (self.fischer_random) {
-            for ([_]Color{ .white, .black }) |color| {
-                for ([_]CastlingRights.Side{ .king, .queen }) |side| {
+            inline for ([_]Color{ .white, .black }) |color| {
+                inline for ([_]CastlingRights.Side{ .king, .queen }) |side| {
                     if (self.castling_rights.hasSide(color, side)) {
                         const file = self.castling_rights.rookFile(color, side).asChar();
                         const file_sided = if (color == .white) blk: {
@@ -554,21 +552,23 @@ pub const Board = struct {
     /// Returns the specified piece bitboard, use `Color.none` for side agnostic bitboard.
     ///
     /// Asserts that the provided piece type is valid.
-    pub fn pieces(self: *const Board, color: Color, piece_type: PieceType) Bitboard {
+    pub inline fn pieces(self: *const Board, color: Color, piece_type: PieceType) Bitboard {
         std.debug.assert(piece_type.valid());
-        return if (color == .none) blk: {
-            break :blk self.pieces_bbs[piece_type.index()];
-        } else blk: {
-            break :blk self.pieces_bbs[piece_type.index()].andBB(self.occ_bbs[color.index()]);
+        return blk: {
+            if (color == .none) {
+                break :blk self.pieces_bbs[piece_type.index()];
+            } else {
+                break :blk self.pieces_bbs[piece_type.index()].andBB(self.occ_bbs[color.index()]);
+            }
         };
     }
 
     /// Returns the specified combined piece bitboards, use `Color.none` for side agnostic bitboard.
     ///
     /// Asserts that the provided piece types are valid.
-    pub fn piecesMany(self: *const Board, color: Color, piece_types: []const PieceType) Bitboard {
+    pub inline fn piecesMany(self: *const Board, color: Color, comptime piece_types: []const PieceType) Bitboard {
         var result = Bitboard.init();
-        for (piece_types) |pt| {
+        inline for (piece_types) |pt| {
             _ = result.orAssign(self.pieces(color, pt));
         }
 
@@ -576,12 +576,12 @@ pub const Board = struct {
     }
 
     /// Returns the Piece or PieceType at the given square.
-    pub fn at(self: *const Board, comptime T: type, square: Square) T {
+    pub inline fn at(self: *const Board, comptime T: type, square: Square) T {
         if (T != Piece and T != PieceType) @compileError("T must be of type Piece or PieceType");
         std.debug.assert(square.valid());
 
         const piece_at = self.mailbox[square.index()];
-        return if (T == PieceType) piece_at.asType() else piece_at;
+        return if (comptime T == PieceType) piece_at.asType() else piece_at;
     }
 
     /// Raw piece set without respect for rules.
@@ -641,7 +641,7 @@ pub const Board = struct {
     /// Returns the square of the king of the current color.
     ///
     /// Asserts that there is a king for the given color.
-    pub fn kingSq(self: *const Board, color: Color) Square {
+    pub inline fn kingSq(self: *const Board, color: Color) Square {
         std.debug.assert(color.valid() and self.pieces(color, .king).bits != 0);
         return self.pieces(color, .king).lsb();
     }
@@ -657,7 +657,7 @@ pub const Board = struct {
     /// Checks if a move is a capture, including en passant.
     ///
     /// Moves are naively checked meaning legality is not considered.
-    pub fn isCapture(self: *const Board, move: Move) bool {
+    pub inline fn isCapture(self: *const Board, move: Move) bool {
         const valid_at = self.at(Piece, move.to()).valid();
         const valid_type = move.typeOf(MoveType) == .castling or move.typeOf(MoveType) == .en_passant;
         return valid_at and valid_type;
@@ -666,20 +666,20 @@ pub const Board = struct {
     /// Get the occupancy bitboard for the color.
     ///
     /// Asserts that the color is a valid color
-    pub fn us(self: *const Board, color: Color) Bitboard {
+    pub inline fn us(self: *const Board, color: Color) Bitboard {
         std.debug.assert(color.valid());
         return self.occ_bbs[color.index()];
     }
 
     /// Get the occupancy bitboard for the opposite color.
-    pub fn them(self: *const Board, color: Color) Bitboard {
+    pub inline fn them(self: *const Board, color: Color) Bitboard {
         return self.us(color.opposite());
     }
 
     /// Get the occupancy bitboard for both colors.
     ///
     /// Faster than calling all() or us(Color::WHITE) | us(Color::BLACK). Less indirection.
-    pub fn occ(self: *const Board) Bitboard {
+    pub inline fn occ(self: *const Board) Bitboard {
         return self.occ_bbs[0].orBB(self.occ_bbs[1]);
     }
 
@@ -782,7 +782,7 @@ pub const Board = struct {
             self.halfmove_clock = 0;
 
             // A distance of 16 means a double push
-            if (distance.ValueDist[move.to().index()][move.from().index()] == 16) {
+            if (distance.absolute_distance[move.to().index()][move.from().index()] == 16) {
                 const ep_mask = attacks.pawn(self.side_to_move, move.to().ep());
 
                 // Add en passant only if enemy pawns are attacking the square
@@ -1063,7 +1063,7 @@ pub const Board = struct {
     /// Determines if the given color is in check.
     ///
     /// If the color is null, uses the side to move.
-    pub fn inCheck(self: *const Board, comptime options: struct {
+    pub inline fn inCheck(self: *const Board, comptime options: struct {
         color: ?Color = null,
     }) bool {
         const color = if (options.color) |c| c else self.side_to_move;
@@ -1078,21 +1078,21 @@ pub const Board = struct {
         return attacks.isAttacked(self, color.opposite(), try self.kingSqNAssert(color));
     }
 
+    /// Returns the sniper bb for the current position.
+    inline fn sniper(self: *const Board, king_sq: Square, occ_bb: Bitboard) Bitboard {
+        const b_atks = attacks.bishop(king_sq, occ_bb).andBB(
+            self.piecesMany(self.side_to_move, &.{ .bishop, .queen }),
+        );
+        const r_atks = attacks.rook(king_sq, occ_bb).andBB(
+            self.piecesMany(self.side_to_move, &.{ .rook, .queen }),
+        );
+
+        return b_atks.orBB(r_atks);
+    }
+
     /// Check if the move gives a check.
     pub fn givesCheck(self: *const Board, move: Move) state.CheckType {
         std.debug.assert(self.at(Piece, move.from()).color() == self.side_to_move);
-        const sniper = struct {
-            pub fn sniper(board: *const Board, king_sq_: Square, occ_: Bitboard) Bitboard {
-                const b_atks = attacks.bishop(king_sq_, occ_).andBB(
-                    board.piecesMany(board.side_to_move, &.{ .bishop, .queen }),
-                );
-                const r_atks = attacks.rook(king_sq_, occ_).andBB(
-                    board.piecesMany(board.side_to_move, &.{ .rook, .queen }),
-                );
-
-                return b_atks.orBB(r_atks);
-            }
-        }.sniper;
 
         const from = move.from();
         const to = move.to();
@@ -1116,19 +1116,19 @@ pub const Board = struct {
 
         // Check for a discovered check
         const relevant_occ = self.occ().xorBB(from_bb);
-        var sniper_bb = sniper(self, king_sq, relevant_occ);
+        var sniper_bb = self.sniper(king_sq, relevant_occ);
         while (sniper_bb.nonzero()) {
             const index = sniper_bb.popLsb();
-            const relevant_between = distance.SquaresBetween[king_sq.index()][index.index()].andBB(to_bb);
+            const relevant_between = distance.squares_between[king_sq.index()][index.index()].andBB(to_bb);
             return if (relevant_between.empty() or move.typeOf(MoveType) == .castling) blk: {
                 break :blk .discovery;
             } else .none;
         }
 
         // Handle all move types now
-        return switch (move.typeOf(MoveType)) {
+        return blk: switch (move.typeOf(MoveType)) {
             .normal => .none,
-            .promotion => blk: {
+            .promotion => {
                 const promoting_attacks = switch (move.promotionType()) {
                     .knight => attacks.knight(to),
                     .bishop => attacks.bishop(to, relevant_occ),
@@ -1142,17 +1142,16 @@ pub const Board = struct {
                 );
                 break :blk if (relevant_attacks.nonzero()) .direct else .none;
             },
-            .en_passant => blk: {
+            .en_passant => {
                 const capture_sq = Square.make(from.rank(), to.file());
-                sniper_bb = sniper(
-                    self,
+                sniper_bb = self.sniper(
                     king_sq,
                     relevant_occ.xorBB(Bitboard.fromSquare(capture_sq)).orBB(to_bb),
                 );
 
                 break :blk if (sniper_bb.nonzero()) .discovery else .none;
             },
-            .castling => blk: {
+            .castling => {
                 const rook_to = Square.castlingRookTo(
                     if (to.order(from) == .gt) .king else .queen,
                     self.side_to_move,
@@ -1168,7 +1167,7 @@ pub const Board = struct {
     }
 
     /// Determines the number of non-pawn and non-king pieces for the given color.
-    pub fn nonPawnMaterial(self: *const Board, color: Color) usize {
+    pub inline fn nonPawnMaterial(self: *const Board, color: Color) usize {
         const material = self.us(color).xorBB(
             self.piecesMany(color, &.{ .pawn, .king }),
         );
@@ -1183,7 +1182,7 @@ pub const Board = struct {
             .white, .black => {
                 const generic = self.pieces(
                     color,
-                    switch (movement) {
+                    comptime switch (movement) {
                         .diag => .bishop,
                         .ortho => .rook,
                     },
@@ -1215,7 +1214,7 @@ test "String splitter" {
         "KQkq",
         "-",
     };
-    const split_smaller = splitString(4, StartingFen, ' ');
+    const split_smaller = splitString(4, starting_fen, ' ');
 
     try expect(expected_smaller.len == split_smaller.len);
     for (expected_smaller, split_smaller) |es, ss| {
@@ -1230,7 +1229,7 @@ test "String splitter" {
         "0",
         "1",
     };
-    const split_exact = splitString(6, StartingFen, ' ');
+    const split_exact = splitString(6, starting_fen, ' ');
 
     try expect(expected_exact.len == split_exact.len);
     for (expected_exact, split_exact) |ee, se| {
@@ -1247,7 +1246,7 @@ test "String splitter" {
         null,
         null,
     };
-    const split_larger = splitString(8, StartingFen, ' ');
+    const split_larger = splitString(8, starting_fen, ' ');
 
     try expect(expected_larger.len == split_larger.len);
     for (expected_larger, split_larger) |el, sl| {
@@ -1282,7 +1281,7 @@ test "entryAfter helper" {
 test "Board initialization & copy from starting fen" {
     const allocator = testing.allocator;
     var parent = try Board.init(allocator, .{});
-    try expectEqualSlices(u8, StartingFen, parent.original_fen);
+    try expectEqualSlices(u8, starting_fen, parent.original_fen);
     var board = try parent.clone(allocator);
 
     parent.previous_states.appendAssumeCapacity(.{
@@ -1299,7 +1298,7 @@ test "Board initialization & copy from starting fen" {
     parent.deinit();
     defer board.deinit();
 
-    try expectEqualSlices(u8, StartingFen, board.original_fen);
+    try expectEqualSlices(u8, starting_fen, board.original_fen);
     try expect(board.previous_states.items.len == 0);
 
     // Verify agnostic piece bitboard setting
@@ -1481,7 +1480,7 @@ test "Fen reconstruction" {
     const fen_moves = try board.getFen(true);
     defer board.allocator.free(fen_moves);
 
-    try expectEqualSlices(u8, StartingFen, fen_moves);
+    try expectEqualSlices(u8, starting_fen, fen_moves);
 
     const fen_moveless = try board.getFen(false);
     defer board.allocator.free(fen_moveless);
@@ -1537,11 +1536,11 @@ test "Illegal fen handling" {
 
     // Completely garbage input
     try expect(!try board.setFen("fen: []const u8", true));
-    try expectEqualSlices(u8, StartingFen, board.original_fen);
+    try expectEqualSlices(u8, starting_fen, board.original_fen);
 
     // Check case where both sides are in check
     try expect(!try board.setFen("rnb1kbnr/pppp1ppp/3p4/8/1q6/3P1P2/PPP1QPPP/RNB1KBNR w KQkq - 0 1", true));
-    try expectEqualSlices(u8, StartingFen, board.original_fen);
+    try expectEqualSlices(u8, starting_fen, board.original_fen);
 }
 
 test "Move Making" {

@@ -114,22 +114,20 @@ pub fn distance(board: *const water.Board, comptime white_winning: bool) i32 {
     const black_king = board.kingSq(.black).index();
 
     var score: i32 = 0;
-    const m_dist = water.ManhattanDist[white_king][black_king];
+    const m_dist = water.manhattan_distance[white_king][black_king];
 
     if (white_winning) {
         score -= m_dist * 5;
-        score += water.CenterManhattanDist[black_king] * 10;
+        score += water.center_manhattan_distance[black_king] * 10;
     } else {
         score += m_dist * 5;
-        score -= water.CenterManhattanDist[white_king] * 10;
+        score -= water.center_manhattan_distance[white_king] * 10;
     }
 
     return score;
 }
 
 /// Performs a static evaluation for the stm on the given board.
-///
-/// Passing `Color.none` results in a compile error.
 pub fn evaluate(board: *const water.Board, comptime use_nnue: bool) i32 {
     const color = board.side_to_move;
 
