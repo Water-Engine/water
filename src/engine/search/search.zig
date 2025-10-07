@@ -69,7 +69,7 @@ pub fn negamax(
     water.movegen.legalmoves(searcher.search_board, &movelist, .{});
     const hm_draw = water.arbiter.halfmove(searcher.search_board, &movelist);
     const insufficient_material = water.arbiter.insufficientMaterial(searcher.search_board);
-    if (!is_root and (hm_draw != null or insufficient_material or searcher.search_board.isRepetition(2))) {
+    if (!is_root and (hm_draw != null or insufficient_material or searcher.search_board.isRepetition(1))) {
         return 0;
     }
 
