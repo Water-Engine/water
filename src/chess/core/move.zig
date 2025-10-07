@@ -14,19 +14,10 @@ pub const MoveType = enum(u16) {
     castling = @as(u16, 3) << @truncate(14),
 
     pub fn fromInt(comptime T: type, num: T) MoveType {
-        switch (@typeInfo(T)) {
-            .int, .comptime_int => {
-                return switch (num) {
-                    @intFromEnum(MoveType.normal) => .normal,
-                    @intFromEnum(MoveType.null_move) => .null_move,
-                    @intFromEnum(MoveType.promotion) => .promotion,
-                    @intFromEnum(MoveType.en_passant) => .en_passant,
-                    @intFromEnum(MoveType.castling) => .castling,
-                    else => .normal,
-                };
-            },
+        return switch (@typeInfo(T)) {
+            .int, .comptime_int => @enumFromInt(num),
             else => @compileError("T must be an integer type"),
-        }
+        };
     }
 
     pub fn asInt(self: *const MoveType, comptime T: type) T {
@@ -58,29 +49,31 @@ pub const Move = struct {
     pub fn make(
         source: Square,
         target: Square,
-        options: struct {
+        comptime options: struct {
             move_type: MoveType = .normal,
             promotion_type: PieceType = .knight,
         },
     ) Move {
-        const move_type = options.move_type;
-        const pt = options.promotion_type;
+        const move_type = comptime options.move_type;
+        const pt = comptime options.promotion_type;
+
         std.debug.assert(blk: {
             const knight_ord = pt.order(.knight);
             const queen_ord = pt.order(.queen);
 
-            break :blk (knight_ord == .gt or knight_ord == .eq) and (queen_ord == .lt or queen_ord == .eq);
+            break :blk knight_ord != .lt and queen_ord != .gt;
         });
 
-        const promotion_type = pt.asInt(u16) - PieceType.knight.asInt(u16);
+        const promotion_type = comptime pt.asInt(u16) - PieceType.knight.asInt(u16);
+        const type_bits = comptime move_type.asInt(u16);
+        const promotion_bits = comptime promotion_type << @truncate(12);
+        const special = comptime type_bits + promotion_bits;
 
-        const type_bits = move_type.asInt(u16);
-        const promotion_bits = promotion_type << @truncate(12);
         const from_bits = source.asInt(u16) << @truncate(6);
         const to_bits = target.asInt(u16);
 
         return .{
-            .move = type_bits + promotion_bits + from_bits + to_bits,
+            .move = special + from_bits + to_bits,
         };
     }
 

@@ -1,0 +1,30 @@
+CPU: AMD Ryzen 7 7800X3D 8-Core Processor
+
+Performed: October 7th 2025
+Iterations/FEN: 5
+Conditions: Aggressive movegen branch mitigation preserving queen movegen branch 
+
+C:\dev\chess\water>zig build bench --release -Dephemeral=false
+Running perft(6) to mitigate cold-start performance hit...
+Done. Commencing benchmark...
+
+Benchmarking Classical Positions:
+depth 7  nodes 3195901860   | avg time: 12953.4ms (min: 12931, max: 12979) | avg nps: 246723012 | fen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+depth 5  nodes 193690690    | avg time: 512.6ms (min:  512, max:  513) | avg nps: 377859325 | fen: r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -
+depth 7  nodes 178633661    | avg time: 1120.6ms (min: 1111, max: 1138) | avg nps: 159408943 | fen: 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -
+depth 6  nodes 706045033    | avg time: 1987.0ms (min: 1969, max: 2000) | avg nps: 355332176 | fen: r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1
+depth 5  nodes 89941194     | avg time: 267.0ms (min:  261, max:  282) | avg nps: 336858404 | fen: rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8
+depth 5  nodes 164075551    | avg time: 461.0ms (min:  458, max:  465) | avg nps: 355912258 | fen: r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 1
+
+Benchmarking FRC Positions:
+depth 6  nodes 119060324    | avg time: 530.4ms (min:  526, max:  535) | avg nps: 224472707 | fen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w AHah - 0 1
+depth 6  nodes 191762235    | avg time: 968.0ms (min:  962, max:  976) | avg nps: 198101482 | fen: 1rqbkrbn/1ppppp1p/1n6/p1N3p1/8/2P4P/PP1PPPP1/1RQBKRBN w FBfb - 0 9
+depth 6  nodes 924181432    | avg time: 3126.4ms (min: 3117, max: 3134) | avg nps: 295605627 | fen: rbbqn1kr/pp2p1pp/6n1/2pp1p2/2P4P/P7/BP1PPPP1/R1BQNNKR w HAha - 0 9
+depth 6  nodes 308553169    | avg time: 1225.4ms (min: 1219, max: 1229) | avg nps: 251797918 | fen: rqbbknr1/1ppp2pp/p5n1/4pp2/P7/1PP5/1Q1PPPPP/R1BBKNRN w GAga - 0 9
+depth 6  nodes 872323796    | avg time: 2904.0ms (min: 2897, max: 2911) | avg nps: 300386982 | fen: 4rrb1/1kp3b1/1p1p4/pP1Pn2p/5p2/1PR2P2/2P1NB1P/2KR1B2 w D - 0 21
+depth 6  nodes 2678022813   | avg time: 8101.0ms (min: 8070, max: 8161) | avg nps: 330579288 | fen: 1rkr3b/1ppn3p/3pB1n1/6q1/R2P4/4N1P1/1P5P/2KRQ1B1 b Dbd - 0 14
+depth 6  nodes 521301336    | avg time: 2162.4ms (min: 2156, max: 2171) | avg nps: 241075350 | fen: qbbnrkr1/p1pppppp/1p4n1/8/2P5/6N1/PPNPPPPP/1BRKBRQ1 b FCge - 1 3
+depth 4  nodes 2237725      | avg time:   6.2ms (min:    6, max:    7) | avg nps: 360923387 | fen: rr6/2kpp3/1ppnb1p1/p2Q1q1p/P4P1P/1PNN2P1/2PP4/1K2RR2 b E - 2 19
+depth 4  nodes 2098209      | avg time:   6.0ms (min:    6, max:    6) | avg nps: 349701500 | fen: rr6/2kpp3/1ppnb1p1/p4q1p/P4P1P/1PNN2P1/2PP2Q1/1K2RR2 w E - 1 19
+depth 5  nodes 79014522     | avg time: 237.0ms (min:  236, max:  239) | avg nps: 333394608 | fen: rr6/2kpp3/1ppnb1p1/p4q1p/P4P1P/1PNN2P1/2PP2Q1/1K2RR2 w E - 1 19
+depth 6  nodes 2998685421   | avg time: 8819.6ms (min: 8803, max: 8834) | avg nps: 340002429 | fen: rr6/2kpp3/1ppnb1p1/p4q1p/P4P1P/1PNN2P1/2PP2Q1/1K2RR2 w E - 1 19

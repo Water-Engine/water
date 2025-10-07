@@ -25,20 +25,10 @@ pub const PieceType = enum(u3) {
     // ================ INT UTILS ================
 
     pub fn fromInt(comptime T: type, num: T) PieceType {
-        switch (@typeInfo(T)) {
-            .int, .comptime_int => {
-                return switch (num) {
-                    0 => .pawn,
-                    1 => .knight,
-                    2 => .bishop,
-                    3 => .rook,
-                    4 => .queen,
-                    5 => .king,
-                    else => .none,
-                };
-            },
+        return switch (@typeInfo(T)) {
+            .int, .comptime_int => @enumFromInt(num),
             else => @compileError("T must be an integer type"),
-        }
+        };
     }
 
     pub fn asInt(self: *const PieceType, comptime T: type) T {
@@ -133,26 +123,10 @@ pub const Piece = enum(u8) {
     // ================ INT UTILS ================
 
     pub fn fromInt(comptime T: type, num: T) Piece {
-        switch (@typeInfo(T)) {
-            .int, .comptime_int => {
-                return switch (num) {
-                    0 => .white_pawn,
-                    1 => .white_knight,
-                    2 => .white_bishop,
-                    3 => .white_rook,
-                    4 => .white_queen,
-                    5 => .white_king,
-                    6 => .black_pawn,
-                    7 => .black_knight,
-                    8 => .black_bishop,
-                    9 => .black_rook,
-                    10 => .black_queen,
-                    11 => .black_king,
-                    else => .none,
-                };
-            },
+        return switch (@typeInfo(T)) {
+            .int, .comptime_int => @enumFromInt(num),
             else => @compileError("T must be an integer type"),
-        }
+        };
     }
 
     pub fn asInt(self: *const Piece, comptime T: type) T {
@@ -216,15 +190,23 @@ pub const Piece = enum(u8) {
     // ================ MISC UTILS ================
 
     pub fn asType(self: *const Piece) PieceType {
-        if (self.* == .none) return .none;
-        const ord = self.order(.white_king);
-        return PieceType.fromInt(i32, if (ord == .lt or ord == .eq) self.asInt(i32) else self.asInt(i32) - 6);
+        const is_black = @intFromBool(self.asInt(i32) > 5);
+        const offset = 6 * @as(i32, is_black);
+        return PieceType.fromInt(i32, self.asInt(i32) - offset);
     }
 
     pub fn color(self: *const Piece) Color {
-        if (self.* == .none) return .none;
-        const ord = self.order(.white_king);
-        return if (ord == .lt or ord == .eq) .white else .black;
+        const is_black = self.order(.white_king) == .gt;
+        const color_if_valid = @as(u8, @intFromBool(is_black));
+        const none_val = @intFromEnum(Color.none);
+
+        // Selector is is -1 if the piece is NOT none, and 0 otherwise.
+        const selector = -@as(i8, @intFromBool(self.* != .none));
+
+        const final_val = (color_if_valid & @as(u8, @bitCast(selector))) |
+            (none_val & ~@as(u8, @bitCast(selector)));
+
+        return @enumFromInt(final_val);
     }
 };
 
@@ -250,7 +232,6 @@ test "PieceType" {
     // ================ FROM / AS INT =================
     try expectEqual(PieceType.pawn, PieceType.fromInt(u8, 0));
     try expectEqual(PieceType.knight, PieceType.fromInt(u8, 1));
-    try expectEqual(PieceType.none, PieceType.fromInt(u8, 10));
 
     try expectEqual(0, pt.asInt(u8));
     try expectEqual(0, pt.asInt(i32));
@@ -282,7 +263,6 @@ test "Piece" {
     // ================ FROM / AS INT =================
     try expectEqual(Piece.white_pawn, Piece.fromInt(u8, 0));
     try expectEqual(Piece.black_king, Piece.fromInt(u8, 11));
-    try expectEqual(Piece.none, Piece.fromInt(u8, 20));
 
     try expectEqual(0, Piece.white_pawn.asInt(u8));
     try expectEqual(11, Piece.black_king.asInt(u8));

@@ -26,13 +26,13 @@ const generators = @import("generators.zig");
 const attacks = @import("attacks.zig");
 
 pub const default_check_mask = Bitboard.fromInt(u64, std.math.maxInt(u64));
-pub const MaxMoves: usize = 256;
+pub const max_moves: usize = 256;
 
 /// A zero allocation static initialized array with the ability to store up to 256 moves.
 ///
 /// Out of bounds checks are asserted.
 pub const Movelist = struct {
-    moves: [MaxMoves]Move = @splat(Move.init()),
+    moves: [max_moves]Move = @splat(Move.init()),
     size: usize = 0,
 
     /// Returns the first move in the internal list.
@@ -74,7 +74,7 @@ pub const Movelist = struct {
 
     /// Appends a move to the Movelist.
     pub fn add(self: *Movelist, move: Move) void {
-        std.debug.assert(self.size < MaxMoves);
+        std.debug.assert(self.size < max_moves);
         self.moves[self.size] = move;
         self.size += 1;
     }
@@ -172,13 +172,10 @@ pub fn checkMask(board: *const Board, color: Color, square: Square) struct {
 
     // selector will be -1 (all bits set) if mask is empty, or 0 otherwise.
     const selector = -@as(i64, @intFromBool(mask.empty()));
-
-    // 1. If selector is 0, this results in: mask.value | (DefaultCheckMask.value & 0) => mask.value
-    // 2. If selector is -1, this results in: 0 | (DefaultCheckMask.value & -1) => DefaultCheckMask.value
-    _ = mask.orAssign(default_check_mask.andU64(@bitCast(selector)));
+    const final_mask_value = mask.bits | (default_check_mask.bits & @as(u64, @bitCast(selector)));
 
     return .{
-        .mask = mask,
+        .mask = .{ .bits = final_mask_value },
         .checks = checks,
     };
 }
@@ -299,8 +296,8 @@ const expectEqualSlices = testing.expectEqualSlices;
 test "Movelist creation and operations" {
     var ml = Movelist{};
     try expect(ml.empty());
-    ml.size = MaxMoves;
-    for (ml.slice(MaxMoves - 1)) |move| {
+    ml.size = max_moves;
+    for (ml.slice(max_moves - 1)) |move| {
         try expectEqual(0, move.move);
     }
     for (ml.items()) |move| {

@@ -347,28 +347,29 @@ pub fn castleMoves(
 
 /// Returns a bitboard containing all possible moves a bishop on the given square can move to.
 pub fn bishopMoves(square: Square, pin_d: Bitboard, occ_all: Bitboard) Bitboard {
-    return blk: {
-        if (pin_d.andBB(Bitboard.fromSquare(square)).nonzero()) {
-            break :blk attacks.bishop(square, occ_all).andBB(pin_d);
-        } else {
-            break :blk attacks.bishop(square, occ_all);
-        }
-    };
+    const moves = attacks.bishop(square, occ_all);
+    const is_pinned = pin_d.contains(square.index());
+
+    const pin_selector = -%@as(u64, @intFromBool(is_pinned));
+    const final_mask = pin_d.bits | (~pin_selector);
+
+    return moves.andU64(final_mask);
 }
 
 /// Returns a bitboard containing all possible moves a rook on the given square can move to.
 pub fn rookMoves(square: Square, pin_hv: Bitboard, occ_all: Bitboard) Bitboard {
-    return blk: {
-        if (pin_hv.andBB(Bitboard.fromSquare(square)).nonzero()) {
-            break :blk attacks.rook(square, occ_all).andBB(pin_hv);
-        } else {
-            break :blk attacks.rook(square, occ_all);
-        }
-    };
+    const moves = attacks.rook(square, occ_all);
+    const is_pinned = pin_hv.contains(square.index());
+
+    const pin_selector = -%@as(u64, @intFromBool(is_pinned));
+    const final_mask = pin_hv.bits | (~pin_selector);
+
+    return moves.andU64(final_mask);
 }
 
 /// Returns a bitboard containing all possible moves a queen on the given square can move to.
 pub fn queenMoves(square: Square, pin_d: Bitboard, pin_hv: Bitboard, occ_all: Bitboard) Bitboard {
+    // Branched vs. not branched does not matter here as the unbranched computation is costly 
     return blk: {
         if (pin_d.andBB(Bitboard.fromSquare(square)).nonzero()) {
             break :blk attacks.bishop(square, occ_all).andBB(pin_d);

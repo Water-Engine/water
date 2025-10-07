@@ -32,23 +32,10 @@ pub const Color = enum(u8) {
     // ================ INT UTILS ================
 
     pub fn fromInt(comptime T: type, num: T) Color {
-        if (comptime T == u1) {
-            return switch (num) {
-                0 => .white,
-                1 => .black,
-            };
-        } else {
-            switch (@typeInfo(T)) {
-                .int, .comptime_int => {
-                    return switch (num) {
-                        0 => .white,
-                        1 => .black,
-                        else => .none,
-                    };
-                },
-                else => @compileError("T must be an integer type"),
-            }
-        }
+        return switch (@typeInfo(T)) {
+            .int, .comptime_int => @enumFromInt(num),
+            else => @compileError("T must be an integer type"),
+        };
     }
 
     pub fn asInt(self: *const Color, comptime T: type) T {
@@ -151,35 +138,10 @@ pub const File = enum(u8) {
     // ================ INT UTILS ================
 
     pub fn fromInt(comptime T: type, num: T) File {
-        if (comptime T == u3) {
-            return switch (num) {
-                0 => .fa,
-                1 => .fb,
-                2 => .fc,
-                3 => .fd,
-                4 => .fe,
-                5 => .ff,
-                6 => .fg,
-                7 => .fh,
-            };
-        } else {
-            switch (@typeInfo(T)) {
-                .int, .comptime_int => {
-                    return switch (num) {
-                        0 => .fa,
-                        1 => .fb,
-                        2 => .fc,
-                        3 => .fd,
-                        4 => .fe,
-                        5 => .ff,
-                        6 => .fg,
-                        7 => .fh,
-                        else => .none,
-                    };
-                },
-                else => @compileError("T must be an integer type"),
-            }
-        }
+        return switch (@typeInfo(T)) {
+            .int, .comptime_int => @enumFromInt(num),
+            else => @compileError("T must be an integer type"),
+        };
     }
 
     pub fn asInt(self: *const File, comptime T: type) T {
@@ -310,35 +272,10 @@ pub const Rank = enum(u8) {
     // ================ INT UTILS ================
 
     pub fn fromInt(comptime T: type, num: T) Rank {
-        if (comptime T == u3) {
-            return switch (num) {
-                0 => .r1,
-                1 => .r2,
-                2 => .r3,
-                3 => .r4,
-                4 => .r5,
-                5 => .r6,
-                6 => .r7,
-                7 => .r8,
-            };
-        } else {
-            switch (@typeInfo(T)) {
-                .int, .comptime_int => {
-                    return switch (num) {
-                        0 => .r1,
-                        1 => .r2,
-                        2 => .r3,
-                        3 => .r4,
-                        4 => .r5,
-                        5 => .r6,
-                        6 => .r7,
-                        7 => .r8,
-                        else => .none,
-                    };
-                },
-                else => @compileError("T must be an integer type"),
-            }
-        }
+        return switch (@typeInfo(T)) {
+            .int, .comptime_int => @enumFromInt(num),
+            else => @compileError("T must be an integer type"),
+        };
     }
 
     pub fn asInt(self: *const Rank, comptime T: type) T {
@@ -673,8 +610,6 @@ test "Color" {
 
     try expectEqual(white, Color.fromInt(i32, 0));
     try expectEqual(black, Color.fromInt(i32, 1));
-    try expectEqual(none, Color.fromInt(i32, -1));
-    try expectEqual(none, Color.fromInt(i32, 4));
 
     try expectEqual(0, white.asInt(i32));
     try expectEqual(1, black.asInt(i32));
@@ -726,8 +661,6 @@ test "File" {
     try expectEqual(fb, File.fromInt(i32, 1));
     try expectEqual(fh, File.fromInt(i32, 7));
     try expectEqual(none, File.fromInt(i32, 8));
-    try expectEqual(none, File.fromInt(i32, -1));
-    try expectEqual(none, File.fromInt(i32, 99));
 
     try expectEqual(0, fa.asInt(i32));
     try expectEqual(1, fb.asInt(i32));
@@ -801,8 +734,6 @@ test "Rank" {
     try expectEqual(r2, Rank.fromInt(i32, 1));
     try expectEqual(r8, Rank.fromInt(i32, 7));
     try expectEqual(none, Rank.fromInt(i32, 8));
-    try expectEqual(none, Rank.fromInt(i32, -1));
-    try expectEqual(none, Rank.fromInt(i32, 42));
 
     try expectEqual(0, r1.asInt(i32));
     try expectEqual(1, r2.asInt(i32));

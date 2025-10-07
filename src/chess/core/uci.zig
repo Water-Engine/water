@@ -88,14 +88,31 @@ pub fn uciToMove(board: *const Board, uci: []const u8) Move {
     if (pt_source == .pawn and uci.len == 5 and target.backRank(board.side_to_move.opposite())) {
         const promotion = PieceType.fromChar(uci[4]);
 
-        if (promotion == .none or promotion == .king or promotion == .pawn) {
-            return Move.init();
-        } else {
-            return Move.make(source, target, .{
-                .move_type = .promotion,
-                .promotion_type = promotion,
-            });
-        }
+        return blk: {
+            if (promotion == .none or promotion == .king or promotion == .pawn) {
+                break :blk Move.init();
+            } else {
+                break :blk switch (promotion) {
+                    .bishop => Move.make(source, target, .{
+                        .move_type = .promotion,
+                        .promotion_type = .bishop,
+                    }),
+                    .rook => Move.make(source, target, .{
+                        .move_type = .promotion,
+                        .promotion_type = .rook,
+                    }),
+                    .queen => Move.make(source, target, .{
+                        .move_type = .promotion,
+                        .promotion_type = .queen,
+                    }),
+                    .knight => Move.make(source, target, .{
+                        .move_type = .promotion,
+                        .promotion_type = .knight,
+                    }),
+                    else => unreachable,
+                };
+            }
+        };
     }
 
     // If we made it this far it's either a normal move or malformed

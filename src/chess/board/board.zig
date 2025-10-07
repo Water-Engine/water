@@ -715,13 +715,14 @@ pub const Board = struct {
         const captured = self.at(Piece, move.to());
         const pt_from = self.at(PieceType, move.from());
 
-        self.previous_states.append(self.allocator, .{
+        // This is worth the risk, allocating 2048 slots ensures that even the most extreme cases
+        self.previous_states.appendAssumeCapacity(.{
             .hash = self.key,
             .castling = self.castling_rights,
             .en_passant = self.ep_square,
             .half_moves = @intCast(self.halfmove_clock),
             .captured_piece = captured,
-        }) catch unreachable;
+        });
 
         self.halfmove_clock += 1;
         self.plies += 1;
@@ -879,8 +880,7 @@ pub const Board = struct {
     ///
     /// Asserts that the board has a state history.
     pub fn unmakeMove(self: *Board, move: Move) void {
-        const prev = self.previous_states.getLastOrNull();
-        if (prev) |previous_state| {
+        if (self.previous_states.pop()) |previous_state| {
             self.ep_square = previous_state.en_passant;
             self.castling_rights = previous_state.castling;
             self.halfmove_clock = previous_state.half_moves;
@@ -952,8 +952,7 @@ pub const Board = struct {
             }
 
             self.key = previous_state.hash;
-            _ = self.previous_states.pop();
-        } else return;
+        }
     }
 
     /// Makes a null move.
