@@ -11,69 +11,69 @@ pub const CastlingRights = struct {
         queen = 0,
         king = 1,
 
-        pub inline fn asInt(self: *const Side, comptime T: type) T {
+        pub fn asInt(self: *const Side, comptime T: type) T {
             return switch (@typeInfo(T)) {
                 .int, .comptime_int => @intFromEnum(self.*),
                 else => @compileError("T must be an integer type"),
             };
         }
 
-        pub inline fn index(self: *const Side) usize {
+        pub fn index(self: *const Side) usize {
             return self.asInt(usize);
         }
     };
 
     /// Clears both color's rights
-    pub inline fn clear(self: *CastlingRights) void {
+    pub fn clear(self: *CastlingRights) void {
         self.rooks = @splat(@splat(File.init()));
     }
 
     /// Clears the specified color's rights
-    pub inline fn clearColor(self: *CastlingRights, color: Color) void {
+    pub fn clearColor(self: *CastlingRights, color: Color) void {
         self.rooks[color.index()][0] = .none;
         self.rooks[color.index()][1] = .none;
     }
 
     /// Gives the right to castle for a color on the specified side
-    pub inline fn set(self: *CastlingRights, color: Color, side: Side, rook_file: File) void {
+    pub fn set(self: *CastlingRights, color: Color, side: Side, rook_file: File) void {
         self.rooks[color.index()][side.index()] = rook_file;
     }
 
     /// Removes the right to castle for a color on the specified side.
     ///
     /// The index is returned as an int `T`.
-    pub inline fn pop(self: *CastlingRights, comptime T: type, color: Color, side: Side) T {
+    pub fn pop(self: *CastlingRights, comptime T: type, color: Color, side: Side) T {
         self.rooks[color.index()][side.index()] = .none;
         return color.asInt(T) * 2 + side.asInt(T);
     }
 
     /// Determines if a color has the side's right
-    pub inline fn hasSide(self: *const CastlingRights, color: Color, side: Side) bool {
+    pub fn hasSide(self: *const CastlingRights, color: Color, side: Side) bool {
         return self.rooks[color.index()][side.index()] != .none;
     }
 
     /// Determines if a color has either side's right
-    pub inline fn hasEither(self: *const CastlingRights, color: Color) bool {
+    pub fn hasEither(self: *const CastlingRights, color: Color) bool {
         return self.hasSide(color, .king) or self.hasSide(color, .queen);
     }
 
     /// Determines if any color can castle
-    pub inline fn empty(self: *const CastlingRights) bool {
+    pub fn empty(self: *const CastlingRights) bool {
         return !self.hasEither(.white) and !self.hasEither(.black);
     }
 
     /// Determines which color's side's rook is on.
-    pub inline fn rookFile(self: *const CastlingRights, color: Color, side: Side) File {
+    pub fn rookFile(self: *const CastlingRights, color: Color, side: Side) File {
         return self.rooks[color.index()][side.index()];
     }
 
     /// Determines if a color has the side's right and returns as an integer type
-    inline fn hasSideKey(self: *const CastlingRights, color: Color, side: Side) u64 {
+    fn hasSideKey(self: *const CastlingRights, color: Color, side: Side) u64 {
         return @intFromBool(self.hasSide(color, side));
     }
 
     /// Converts the underlying data into zobrist-useable hash information.
-    pub inline fn hash(self: *const CastlingRights) u64 {
+    pub fn hash(self: *const CastlingRights) u64 {
         return self.hasSideKey(.white, .king) +
             2 * self.hasSideKey(.white, .queen) +
             4 * self.hasSideKey(.black, .king) +
@@ -83,7 +83,7 @@ pub const CastlingRights = struct {
     /// Returns the fen castle string based on the hash representation.
     ///
     /// Zero allocation, extremely efficient.
-    pub inline fn asStr(self: *const CastlingRights) []const u8 {
+    pub fn asStr(self: *const CastlingRights) []const u8 {
         return switch (self.hash()) {
             0b0001 => "K",
             0b0011 => "KQ",
@@ -105,7 +105,7 @@ pub const CastlingRights = struct {
     }
 
     /// Returns `.king` if square > pred.
-    pub inline fn closestSide(
+    pub fn closestSide(
         comptime T: type,
         square: T,
         pred: T,

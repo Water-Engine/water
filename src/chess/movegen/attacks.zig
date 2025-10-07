@@ -204,11 +204,11 @@ const BishopAttacks: [64][]const Bitboard = .{
     &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks62), slider_bbs.BishopAttacks62), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks63), slider_bbs.BishopAttacks63),
 };
 
-pub inline fn pawn(color: Color, square: Square) Bitboard {
+pub fn pawn(color: Color, square: Square) Bitboard {
     return PawnAttacks[color.index()][square.index()];
 }
 
-pub inline fn pawnLeftAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
+pub fn pawnLeftAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
     return blk: {
         if (comptime C.isWhite()) {
             break :blk pawns.shl(7).andBB(Bitboard.fromInt(u64, File.fh.mask()).not());
@@ -218,7 +218,7 @@ pub inline fn pawnLeftAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
     };
 }
 
-pub inline fn pawnRightAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
+pub fn pawnRightAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
     return blk: {
         if (comptime C.isWhite()) {
             break :blk pawns.shl(9).andBB(Bitboard.fromInt(u64, File.fa.mask()).not());
@@ -228,34 +228,34 @@ pub inline fn pawnRightAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
     };
 }
 
-pub inline fn knight(square: Square) Bitboard {
+pub fn knight(square: Square) Bitboard {
     return KnightAttacks[square.index()];
 }
 
-pub inline fn king(square: Square) Bitboard {
+pub fn king(square: Square) Bitboard {
     return KingAttacks[square.index()];
 }
 
-pub inline fn rook(square: Square, occupied: Bitboard) Bitboard {
+pub fn rook(square: Square, occupied: Bitboard) Bitboard {
     const index = square.index();
     const masked_occ = occupied.andBB(slider_bbs.RookMasks[index]);
     const key = (masked_occ.mulU64Wrapped(slider_bbs.RookMagics[index])).shr(slider_bbs.RookShifts[index]);
     return RookAttacks[index][key.bits];
 }
 
-pub inline fn bishop(square: Square, occupied: Bitboard) Bitboard {
+pub fn bishop(square: Square, occupied: Bitboard) Bitboard {
     const index = square.index();
     const masked_occ = occupied.andBB(slider_bbs.BishopMasks[index]);
     const key = (masked_occ.mulU64Wrapped(slider_bbs.BishopMagics[index])).shr(slider_bbs.BishopShifts[index]);
     return BishopAttacks[index][key.bits];
 }
 
-pub inline fn queen(square: Square, occupied: Bitboard) Bitboard {
+pub fn queen(square: Square, occupied: Bitboard) Bitboard {
     return rook(square, occupied).orBB(bishop(square, occupied));
 }
 
 /// Returns all slider attacks for the PieceType on the given square.
-pub inline fn slider(comptime pt: PieceType, square: Square, occupied: Bitboard) Bitboard {
+pub fn slider(comptime pt: PieceType, square: Square, occupied: Bitboard) Bitboard {
     return switch (pt) {
         .rook => rook(square, occupied),
         .bishop => bishop(square, occupied),
@@ -267,7 +267,7 @@ pub inline fn slider(comptime pt: PieceType, square: Square, occupied: Bitboard)
 /// Returns the attacks for the given piece (and color, for pawns) from the given square.
 ///
 /// This is equivalent to dispatching the individual attack functions in a conditional.
-pub inline fn attacks(pt: PieceType, color: Color, square: Square, occupied: Bitboard) Bitboard {
+pub fn attacks(pt: PieceType, color: Color, square: Square, occupied: Bitboard) Bitboard {
     return switch (pt) {
         .rook => rook(square, occupied),
         .bishop => bishop(square, occupied),
@@ -286,7 +286,7 @@ pub inline fn attacks(pt: PieceType, color: Color, square: Square, occupied: Bit
 }
 
 /// Shifts the given bitboard in the given direction
-pub inline fn shift(comptime D: Square.Direction, bb: Bitboard) Bitboard {
+pub fn shift(comptime D: Square.Direction, bb: Bitboard) Bitboard {
     return switch (D) {
         .north => |d| return bb.shl(@abs(d.asInt(i32))),
         .south => |d| return bb.shr(@abs(d.asInt(i32))),

@@ -184,7 +184,7 @@ pub const Board = struct {
     }
 
     /// In chess 960, we may need to determine rights based off of files
-    inline fn find_rook(board: *const Board, side: CastlingRights.Side, color: Color) File {
+    fn find_rook(board: *const Board, side: CastlingRights.Side, color: Color) File {
         const king_side = side == .king;
         const king_sq = board.kingSq(color);
         const square: Square = if (king_side) .h1 else .a1;
@@ -552,7 +552,7 @@ pub const Board = struct {
     /// Returns the specified piece bitboard, use `Color.none` for side agnostic bitboard.
     ///
     /// Asserts that the provided piece type is valid.
-    pub inline fn pieces(self: *const Board, color: Color, piece_type: PieceType) Bitboard {
+    pub fn pieces(self: *const Board, color: Color, piece_type: PieceType) Bitboard {
         std.debug.assert(piece_type.valid());
         return blk: {
             if (color == .none) {
@@ -566,7 +566,7 @@ pub const Board = struct {
     /// Returns the specified combined piece bitboards, use `Color.none` for side agnostic bitboard.
     ///
     /// Asserts that the provided piece types are valid.
-    pub inline fn piecesMany(self: *const Board, color: Color, comptime piece_types: []const PieceType) Bitboard {
+    pub fn piecesMany(self: *const Board, color: Color, comptime piece_types: []const PieceType) Bitboard {
         var result = Bitboard.init();
         inline for (piece_types) |pt| {
             _ = result.orAssign(self.pieces(color, pt));
@@ -576,7 +576,7 @@ pub const Board = struct {
     }
 
     /// Returns the Piece or PieceType at the given square.
-    pub inline fn at(self: *const Board, comptime T: type, square: Square) T {
+    pub fn at(self: *const Board, comptime T: type, square: Square) T {
         if (T != Piece and T != PieceType) @compileError("T must be of type Piece or PieceType");
         std.debug.assert(square.valid());
 
@@ -641,7 +641,7 @@ pub const Board = struct {
     /// Returns the square of the king of the current color.
     ///
     /// Asserts that there is a king for the given color.
-    pub inline fn kingSq(self: *const Board, color: Color) Square {
+    pub fn kingSq(self: *const Board, color: Color) Square {
         std.debug.assert(color.valid() and self.pieces(color, .king).bits != 0);
         return self.pieces(color, .king).lsb();
     }
@@ -657,7 +657,7 @@ pub const Board = struct {
     /// Checks if a move is a capture, including en passant.
     ///
     /// Moves are naively checked meaning legality is not considered.
-    pub inline fn isCapture(self: *const Board, move: Move) bool {
+    pub fn isCapture(self: *const Board, move: Move) bool {
         const valid_at = self.at(Piece, move.to()).valid();
         const valid_type = move.typeOf(MoveType) == .castling or move.typeOf(MoveType) == .en_passant;
         return valid_at and valid_type;
@@ -666,20 +666,20 @@ pub const Board = struct {
     /// Get the occupancy bitboard for the color.
     ///
     /// Asserts that the color is a valid color
-    pub inline fn us(self: *const Board, color: Color) Bitboard {
+    pub fn us(self: *const Board, color: Color) Bitboard {
         std.debug.assert(color.valid());
         return self.occ_bbs[color.index()];
     }
 
     /// Get the occupancy bitboard for the opposite color.
-    pub inline fn them(self: *const Board, color: Color) Bitboard {
+    pub fn them(self: *const Board, color: Color) Bitboard {
         return self.us(color.opposite());
     }
 
     /// Get the occupancy bitboard for both colors.
     ///
     /// Faster than calling all() or us(Color::WHITE) | us(Color::BLACK). Less indirection.
-    pub inline fn occ(self: *const Board) Bitboard {
+    pub fn occ(self: *const Board) Bitboard {
         return self.occ_bbs[0].orBB(self.occ_bbs[1]);
     }
 
@@ -1063,7 +1063,7 @@ pub const Board = struct {
     /// Determines if the given color is in check.
     ///
     /// If the color is null, uses the side to move.
-    pub inline fn inCheck(self: *const Board, comptime options: struct {
+    pub fn inCheck(self: *const Board, comptime options: struct {
         color: ?Color = null,
     }) bool {
         const color = if (options.color) |c| c else self.side_to_move;
@@ -1079,7 +1079,7 @@ pub const Board = struct {
     }
 
     /// Returns the sniper bb for the current position.
-    inline fn sniper(self: *const Board, king_sq: Square, occ_bb: Bitboard) Bitboard {
+    fn sniper(self: *const Board, king_sq: Square, occ_bb: Bitboard) Bitboard {
         const b_atks = attacks.bishop(king_sq, occ_bb).andBB(
             self.piecesMany(self.side_to_move, &.{ .bishop, .queen }),
         );
@@ -1167,7 +1167,7 @@ pub const Board = struct {
     }
 
     /// Determines the number of non-pawn and non-king pieces for the given color.
-    pub inline fn nonPawnMaterial(self: *const Board, color: Color) usize {
+    pub fn nonPawnMaterial(self: *const Board, color: Color) usize {
         const material = self.us(color).xorBB(
             self.piecesMany(color, &.{ .pawn, .king }),
         );

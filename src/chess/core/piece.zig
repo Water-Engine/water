@@ -14,17 +14,17 @@ pub const PieceType = enum(u3) {
 
     pub const all: [6]PieceType = .{ .pawn, .knight, .bishop, .rook, .queen, .king };
 
-    pub inline fn init() PieceType {
+    pub fn init() PieceType {
         return .none;
     }
 
-    pub inline fn valid(self: *const PieceType) bool {
+    pub fn valid(self: *const PieceType) bool {
         return self.* != .none;
     }
 
     // ================ INT UTILS ================
 
-    pub inline fn fromInt(comptime T: type, num: T) PieceType {
+    pub fn fromInt(comptime T: type, num: T) PieceType {
         switch (@typeInfo(T)) {
             .int, .comptime_int => {
                 return switch (num) {
@@ -41,30 +41,30 @@ pub const PieceType = enum(u3) {
         }
     }
 
-    pub inline fn asInt(self: *const PieceType, comptime T: type) T {
+    pub fn asInt(self: *const PieceType, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @intFromEnum(self.*),
             else => @compileError("T must be an integer type"),
         };
     }
 
-    pub inline fn index(self: *const PieceType) usize {
+    pub fn index(self: *const PieceType) usize {
         return self.asInt(usize);
     }
 
     // ================ SLICE UTILS ================
 
-    pub inline fn fromStr(str: []const u8) PieceType {
+    pub fn fromStr(str: []const u8) PieceType {
         return if (str.len == 0) .none else fromChar(str[0]);
     }
 
-    pub inline fn asStr(self: *const PieceType) []const u8 {
+    pub fn asStr(self: *const PieceType) []const u8 {
         return @tagName(self.*);
     }
 
     // ================ CHAR UTILS ================
 
-    pub inline fn fromChar(char: u8) PieceType {
+    pub fn fromChar(char: u8) PieceType {
         return switch (std.ascii.toLower(char)) {
             'p' => .pawn,
             'n' => .knight,
@@ -76,7 +76,7 @@ pub const PieceType = enum(u3) {
         };
     }
 
-    pub inline fn asChar(self: *const PieceType) u8 {
+    pub fn asChar(self: *const PieceType) u8 {
         return switch (self.*) {
             .pawn => 'p',
             .knight => 'n',
@@ -115,24 +115,24 @@ pub const Piece = enum(u8) {
 
     none = 12,
 
-    pub inline fn init() Piece {
+    pub fn init() Piece {
         return .none;
     }
 
-    pub inline fn make(piece_color: Color, piece_type: PieceType) Piece {
+    pub fn make(piece_color: Color, piece_type: PieceType) Piece {
         return Piece.fromInt(
             usize,
             piece_type.asInt(usize) + piece_color.asInt(usize) * 6,
         );
     }
 
-    pub inline fn valid(self: *const Piece) bool {
+    pub fn valid(self: *const Piece) bool {
         return self.* != .none;
     }
 
     // ================ INT UTILS ================
 
-    pub inline fn fromInt(comptime T: type, num: T) Piece {
+    pub fn fromInt(comptime T: type, num: T) Piece {
         switch (@typeInfo(T)) {
             .int, .comptime_int => {
                 return switch (num) {
@@ -155,20 +155,20 @@ pub const Piece = enum(u8) {
         }
     }
 
-    pub inline fn asInt(self: *const Piece, comptime T: type) T {
+    pub fn asInt(self: *const Piece, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @intFromEnum(self.*),
             else => @compileError("T must be an integer type"),
         };
     }
 
-    pub inline fn index(self: *const Piece) usize {
+    pub fn index(self: *const Piece) usize {
         return self.asInt(usize);
     }
 
     // ================ CHAR UTILS ================
 
-    pub inline fn fromChar(char: u8) Piece {
+    pub fn fromChar(char: u8) Piece {
         return switch (char) {
             'P' => .white_pawn,
             'N' => .white_knight,
@@ -186,7 +186,7 @@ pub const Piece = enum(u8) {
         };
     }
 
-    pub inline fn asChar(self: *const Piece) u8 {
+    pub fn asChar(self: *const Piece) u8 {
         return switch (self.*) {
             .white_pawn => 'P',
             .white_knight => 'N',
@@ -215,13 +215,13 @@ pub const Piece = enum(u8) {
 
     // ================ MISC UTILS ================
 
-    pub inline fn asType(self: *const Piece) PieceType {
+    pub fn asType(self: *const Piece) PieceType {
         if (self.* == .none) return .none;
         const ord = self.order(.white_king);
         return PieceType.fromInt(i32, if (ord == .lt or ord == .eq) self.asInt(i32) else self.asInt(i32) - 6);
     }
 
-    pub inline fn color(self: *const Piece) Color {
+    pub fn color(self: *const Piece) Color {
         if (self.* == .none) return .none;
         const ord = self.order(.white_king);
         return if (ord == .lt or ord == .eq) .white else .black;

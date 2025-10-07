@@ -19,7 +19,7 @@ pub const CheckType = enum {
     none,
 
     /// Returns true if the check type is not none.
-    pub inline fn check(self: *const CheckType) bool {
+    pub fn check(self: *const CheckType) bool {
         return self.* != .none;
     }
 };
@@ -254,27 +254,27 @@ fn generateCastlingKey(index: usize) u64 {
 }
 
 pub const Zobrist = struct {
-    pub inline fn piece(p: Piece, s: Square) u64 {
+    pub fn piece(p: Piece, s: Square) u64 {
         std.debug.assert(p.index() < 12);
         return zobrist_randoms[64 * map_hash_piece[p.index()] + s.index()];
     }
 
-    pub inline fn enPassant(f: File) u64 {
+    pub fn enPassant(f: File) u64 {
         std.debug.assert(f.index() < 8);
         return zobrist_randoms[772 + f.index()];
     }
 
-    pub inline fn castling(c: usize) u64 {
+    pub fn castling(c: usize) u64 {
         std.debug.assert(c >= 0 and c < 16);
         return castling_keys[c];
     }
 
-    pub inline fn castlingIdx(idx: usize) u64 {
+    pub fn castlingIdx(idx: usize) u64 {
         std.debug.assert(idx >= 0 and idx < 4);
         return zobrist_randoms[768 + idx];
     }
 
-    pub inline fn sideToMove() u64 {
+    pub fn sideToMove() u64 {
         return zobrist_randoms[780];
     }
 

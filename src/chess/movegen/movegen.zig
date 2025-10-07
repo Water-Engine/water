@@ -36,17 +36,17 @@ pub const Movelist = struct {
     size: usize = 0,
 
     /// Returns the first move in the internal list.
-    pub inline fn front(self: *const Movelist) Move {
+    pub fn front(self: *const Movelist) Move {
         return self.moves[0];
     }
 
     /// Returns the last move in the internal list.
-    pub inline fn back(self: *const Movelist) Move {
+    pub fn back(self: *const Movelist) Move {
         return self.moves[self.size - 1];
     }
 
     /// Retrieves the move at the given index.
-    pub inline fn at(self: *const Movelist, index: usize) Move {
+    pub fn at(self: *const Movelist, index: usize) Move {
         std.debug.assert(index < self.size);
         return self.moves[index];
     }
@@ -54,7 +54,7 @@ pub const Movelist = struct {
     /// Linearly searches the Movelist for the given move.
     ///
     /// Returns null if the move is not found.
-    pub inline fn find(self: *const Movelist, move: Move) ?usize {
+    pub fn find(self: *const Movelist, move: Move) ?usize {
         for (self.moves[0..self.size], 0..) |m, i| {
             if (move.orderByMove(m) == .eq) return i;
         }
@@ -62,18 +62,18 @@ pub const Movelist = struct {
     }
 
     /// Determines if the Movelist is empty.
-    pub inline fn empty(self: *const Movelist) bool {
+    pub fn empty(self: *const Movelist) bool {
         return self.size == 0;
     }
 
     /// Resets the size and internal moves to their starting values.
-    pub inline fn reset(self: *Movelist) void {
+    pub fn reset(self: *Movelist) void {
         self.moves = @splat(Move.init());
         self.size = 0;
     }
 
     /// Appends a move to the Movelist.
-    pub inline fn add(self: *Movelist, move: Move) void {
+    pub fn add(self: *Movelist, move: Move) void {
         std.debug.assert(self.size < MaxMoves);
         self.moves[self.size] = move;
         self.size += 1;
@@ -84,7 +84,7 @@ pub const Movelist = struct {
     /// The length must be compile time known, for non-comptime slices, use:
     ///
     /// `ml.items()` (immutable) or `ml.moves[0..ml.size]` (mutable) where ml is the Movelist.
-    pub inline fn slice(self: *const Movelist, comptime N: usize) *const [N]Move {
+    pub fn slice(self: *const Movelist, comptime N: usize) *const [N]Move {
         std.debug.assert(N <= self.size);
         return self.moves[0..N];
     }
@@ -92,7 +92,7 @@ pub const Movelist = struct {
     /// Returns a reference to the filled items.
     ///
     /// May not be as performant as the `slice` fn or runtime slices.
-    pub inline fn items(self: *const Movelist) []const Move {
+    pub fn items(self: *const Movelist) []const Move {
         return self.moves[0..self.size];
     }
 };

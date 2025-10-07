@@ -86,11 +86,11 @@ pub const Move = struct {
 
     // ================ UTILITIES ================
 
-    pub inline fn from(self: *const Move) Square {
+    pub fn from(self: *const Move) Square {
         return Square.fromInt(u16, (self.move >> @truncate(6)) & 0x3F);
     }
 
-    pub inline fn to(self: *const Move) Square {
+    pub fn to(self: *const Move) Square {
         return Square.fromInt(u16, self.move & 0x3F);
     }
 
