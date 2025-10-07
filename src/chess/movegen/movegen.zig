@@ -25,7 +25,7 @@ const distance = @import("../core/distance.zig");
 const generators = @import("generators.zig");
 const attacks = @import("attacks.zig");
 
-pub const DefaultCheckMask = Bitboard.fromInt(u64, std.math.maxInt(u64));
+pub const default_check_mask = Bitboard.fromInt(u64, std.math.maxInt(u64));
 pub const MaxMoves: usize = 256;
 
 /// A zero allocation static initialized array with the ability to store up to 256 moves.
@@ -170,8 +170,15 @@ pub fn checkMask(board: *const Board, color: Color, square: Square) struct {
         checks += 1;
     }
 
+    // selector will be -1 (all bits set) if mask is empty, or 0 otherwise.
+    const selector = -@as(i64, @intFromBool(mask.empty()));
+
+    // 1. If selector is 0, this results in: mask.value | (DefaultCheckMask.value & 0) => mask.value
+    // 2. If selector is -1, this results in: 0 | (DefaultCheckMask.value & -1) => DefaultCheckMask.value
+    _ = mask.orAssign(default_check_mask.andU64(@bitCast(selector)));
+
     return .{
-        .mask = if (mask.empty()) DefaultCheckMask else mask,
+        .mask = mask,
         .checks = checks,
     };
 }

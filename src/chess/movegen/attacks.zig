@@ -50,6 +50,42 @@ pub fn toBitboardArray(comptime T: type, arr: T) BitboardArrayTransformer(T) {
     return result;
 }
 
+const FlatSliderAttacks = struct {
+    attacks: []const Bitboard,
+    offsets: [64]usize,
+};
+
+/// Flattens a 2D array of Bitboards a 1D array with an offset table.
+fn flatten(comptime attacks_2d: [64][]const Bitboard) FlatSliderAttacks {
+    @setEvalBranchQuota(100_000_000);
+
+    var total_len: comptime_int = 0;
+    inline for (attacks_2d) |slice| {
+        total_len += slice.len;
+    }
+
+    return comptime blk: {
+        var flat_attacks: [total_len]Bitboard = undefined;
+        var offsets: [64]usize = undefined;
+        var current_offset: usize = 0;
+
+        for (attacks_2d, 0..) |slice, i| {
+            offsets[i] = current_offset;
+            for (slice, 0..) |bb, j| {
+                flat_attacks[current_offset + j] = bb;
+            }
+
+            current_offset += slice.len;
+        }
+
+        const s_attacks = flat_attacks;
+        break :blk FlatSliderAttacks{
+            .attacks = &s_attacks,
+            .offsets = offsets,
+        };
+    };
+}
+
 const PawnAttacksU64: [2][64]u64 = .{
     // white pawn attacks
     .{
@@ -134,7 +170,7 @@ const PawnAttacks: [2][64]Bitboard = toBitboardArray(@TypeOf(PawnAttacksU64), Pa
 const KnightAttacks: [64]Bitboard = toBitboardArray(@TypeOf(KnightAttacksU64), KnightAttacksU64);
 const KingAttacks: [64]Bitboard = toBitboardArray(@TypeOf(KingAttacksU64), KingAttacksU64);
 
-const RookAttacks: [64][]const Bitboard = .{
+const RookAttacks2D: [64][]const Bitboard = .{
     &toBitboardArray(@TypeOf(slider_bbs.RookAttacks00), slider_bbs.RookAttacks00), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks01), slider_bbs.RookAttacks01),
     &toBitboardArray(@TypeOf(slider_bbs.RookAttacks02), slider_bbs.RookAttacks02), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks03), slider_bbs.RookAttacks03),
     &toBitboardArray(@TypeOf(slider_bbs.RookAttacks04), slider_bbs.RookAttacks04), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks05), slider_bbs.RookAttacks05),
@@ -168,8 +204,9 @@ const RookAttacks: [64][]const Bitboard = .{
     &toBitboardArray(@TypeOf(slider_bbs.RookAttacks60), slider_bbs.RookAttacks60), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks61), slider_bbs.RookAttacks61),
     &toBitboardArray(@TypeOf(slider_bbs.RookAttacks62), slider_bbs.RookAttacks62), &toBitboardArray(@TypeOf(slider_bbs.RookAttacks63), slider_bbs.RookAttacks63),
 };
+const RookAttacks = flatten(RookAttacks2D);
 
-const BishopAttacks: [64][]const Bitboard = .{
+const BishopAttacks2D: [64][]const Bitboard = .{
     &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks00), slider_bbs.BishopAttacks00), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks01), slider_bbs.BishopAttacks01),
     &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks02), slider_bbs.BishopAttacks02), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks03), slider_bbs.BishopAttacks03),
     &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks04), slider_bbs.BishopAttacks04), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks05), slider_bbs.BishopAttacks05),
@@ -203,6 +240,7 @@ const BishopAttacks: [64][]const Bitboard = .{
     &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks60), slider_bbs.BishopAttacks60), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks61), slider_bbs.BishopAttacks61),
     &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks62), slider_bbs.BishopAttacks62), &toBitboardArray(@TypeOf(slider_bbs.BishopAttacks63), slider_bbs.BishopAttacks63),
 };
+const BishopAttacks = flatten(BishopAttacks2D);
 
 pub fn pawn(color: Color, square: Square) Bitboard {
     return PawnAttacks[color.index()][square.index()];
@@ -240,14 +278,14 @@ pub fn rook(square: Square, occupied: Bitboard) Bitboard {
     const index = square.index();
     const masked_occ = occupied.andBB(slider_bbs.RookMasks[index]);
     const key = (masked_occ.mulU64Wrapped(slider_bbs.RookMagics[index])).shr(slider_bbs.RookShifts[index]);
-    return RookAttacks[index][key.bits];
+    return RookAttacks.attacks[RookAttacks.offsets[index] + @as(usize, @truncate(key.bits))];
 }
 
 pub fn bishop(square: Square, occupied: Bitboard) Bitboard {
     const index = square.index();
     const masked_occ = occupied.andBB(slider_bbs.BishopMasks[index]);
     const key = (masked_occ.mulU64Wrapped(slider_bbs.BishopMagics[index])).shr(slider_bbs.BishopShifts[index]);
-    return BishopAttacks[index][key.bits];
+    return BishopAttacks.attacks[BishopAttacks.offsets[index] + @as(usize, @truncate(key.bits))];
 }
 
 pub fn queen(square: Square, occupied: Bitboard) Bitboard {
