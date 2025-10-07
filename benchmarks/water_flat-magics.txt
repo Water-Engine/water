@@ -1,7 +1,7 @@
 CPU: 13th Gen Intel(R) Core(TM) i9-13900H
 Performed: October 7th 2025
 Iterations/FEN: 5
-Conditions: No force inlining, branching not mitigated
+Conditions: Flattened slider attacks and removed checkMask branch
 
 C:\dev\chess\water>zig build bench --release
 Running perft(6) to mitigate cold-start performance hit...
