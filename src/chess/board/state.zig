@@ -18,7 +18,7 @@ pub const CheckType = enum {
     discovery,
     none,
 
-    /// Returns true if the check type if not none.
+    /// Returns true if the check type is not none.
     pub fn check(self: *const CheckType) bool {
         return self.* != .none;
     }
