@@ -17,6 +17,7 @@ pub const GoCommand = struct {
 
     infinite: bool = false,
     depth: ?usize = null,
+    nodes: ?usize = null,
 
     pub fn deserialize(
         allocator: std.mem.Allocator,
@@ -70,6 +71,8 @@ pub const GoCommand = struct {
         engine: *Engine,
     ) anyerror!void {
         const think_time_ns = self.chooseThinkTimeNs(engine.searcher.governing_board);
+        engine.searcher.max_nodes = self.nodes;
+        engine.searcher.soft_max_nodes = self.nodes;
         engine.search(think_time_ns, .{ think_time_ns, self.depth }, .{});
     }
 };

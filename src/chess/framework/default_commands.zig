@@ -113,3 +113,53 @@ pub fn DisplayCommand(comptime Searcher: type) type {
         }
     };
 }
+
+pub fn UciCommand(comptime Searcher: type) type {
+    return struct {
+        const Self = @This();
+        pub const command_name: []const u8 = "uci";
+
+        pub fn deserialize(
+            allocator: std.mem.Allocator,
+            tokens: *std.mem.TokenIterator(u8, .any),
+        ) anyerror!Self {
+            _ = allocator;
+            _ = tokens;
+            return .{};
+        }
+
+        pub fn dispatch(
+            self: *const Self,
+            engine: *engine_.Engine(Searcher),
+        ) anyerror!void {
+            _ = self;
+            try engine.writer.print("uciok\n", .{});
+            try engine.writer.flush();
+        }
+    };
+}
+
+pub fn ReadyCommand(comptime Searcher: type) type {
+    return struct {
+        const Self = @This();
+        pub const command_name: []const u8 = "isready";
+
+        pub fn deserialize(
+            allocator: std.mem.Allocator,
+            tokens: *std.mem.TokenIterator(u8, .any),
+        ) anyerror!Self {
+            _ = allocator;
+            _ = tokens;
+            return .{};
+        }
+
+        pub fn dispatch(
+            self: *const Self,
+            engine: *engine_.Engine(Searcher),
+        ) anyerror!void {
+            _ = self;
+            try engine.writer.print("readyok\n", .{});
+            try engine.writer.flush();
+        }
+    };
+}

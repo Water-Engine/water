@@ -106,7 +106,7 @@ pub const Board = struct {
         b.* = .{
             .allocator = allocator,
             .original_fen = try allocator.dupe(u8, options.fen),
-            .previous_states = try std.ArrayList(State).initCapacity(allocator, 256),
+            .previous_states = try std.ArrayList(State).initCapacity(allocator, 2048),
             .fischer_random = options.fischer_random,
         };
         _ = try b.setFen(options.fen, false);

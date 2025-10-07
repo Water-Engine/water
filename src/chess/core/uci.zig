@@ -24,6 +24,19 @@ const distance = @import("distance.zig");
 ///
 /// The caller is responsible for freeing the returned string.
 pub fn moveToUci(allocator: std.mem.Allocator, move: Move, fischer_random: bool) ![]const u8 {
+    var buffer = std.Io.Writer.Allocating.init(allocator);
+    defer buffer.deinit();
+    var writer = &buffer.writer;
+
+    try printMoveUci(move, fischer_random, writer);
+    return try allocator.dupe(u8, writer.buffered());
+}
+
+/// Prints a move to the output writer.
+/// Castling moves are corrected to the same rank and classical files if not in FRC.
+///
+/// The caller is responsible for freeing the returned string.
+pub fn printMoveUci(move: Move, fischer_random: bool, writer: *std.Io.Writer) !void {
     const from = move.from();
     var to = move.to();
 
@@ -31,17 +44,11 @@ pub fn moveToUci(allocator: std.mem.Allocator, move: Move, fischer_random: bool)
         to = Square.make(from.rank(), if (to.order(from) == .gt) .fg else .fc);
     }
 
-    var buffer = std.Io.Writer.Allocating.init(allocator);
-    defer buffer.deinit();
-    const writer = &buffer.writer;
-
     try writer.print("{s}", .{from.asStr()});
     try writer.print("{s}", .{to.asStr()});
     if (move.typeOf(MoveType) == .promotion) {
         try writer.print("{c}", .{move.promotionType().asChar()});
     }
-
-    return try allocator.dupe(u8, writer.buffered());
 }
 
 /// Uses the board's current state to convert a UCI move string to a move.

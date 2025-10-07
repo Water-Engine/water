@@ -7,6 +7,7 @@ const parameters = @import("parameters.zig");
 const tt = @import("../evaluation/tt.zig");
 const evaluator = @import("../evaluation/evaluator.zig");
 const orderer = @import("../evaluation/orderer.zig");
+const see = @import("../evaluation/see.zig");
 
 pub fn negamax(
     searcher: *searcher_.Searcher,
@@ -27,7 +28,7 @@ pub fn negamax(
     searcher.pv_size[searcher.ply] = 0;
 
     // Stop searching if time is up. Only check every 2048 nodes
-    if (searcher.nodes & 2047 == 0 and searcher.should_stop.load(.acquire)) {
+    if (searcher.nodes & 2047 == 0 and searcher.shouldStop()) {
         return 0;
     }
 
@@ -54,7 +55,7 @@ pub fn negamax(
     // Distance to mate
     if (!is_root) {
         const r_alpha = @max(-evaluator.mate_score + @as(i32, @intCast(searcher.ply)), alpha_val);
-        const r_beta = @max(evaluator.mate_score - @as(i32, @intCast(searcher.ply)) - 1, beta_val);
+        const r_beta = @min(evaluator.mate_score - @as(i32, @intCast(searcher.ply)) - 1, beta_val);
 
         if (r_alpha >= r_beta) {
             return r_alpha;
@@ -64,12 +65,9 @@ pub fn negamax(
     searcher.nodes += 1;
 
     // Move generation and draw checking to save recomputing
-    var movelist = searcher.allocator.create(water.movegen.Movelist) catch unreachable;
-    defer searcher.allocator.destroy(movelist);
-    movelist.* = .{};
-
-    water.movegen.legalmoves(searcher.search_board, movelist, .{});
-    const hm_draw = water.arbiter.halfmove(searcher.search_board, movelist);
+    var movelist = water.movegen.Movelist{};
+    water.movegen.legalmoves(searcher.search_board, &movelist, .{});
+    const hm_draw = water.arbiter.halfmove(searcher.search_board, &movelist);
     const insufficient_material = water.arbiter.insufficientMaterial(searcher.search_board);
     if (!is_root and (hm_draw != null or insufficient_material or searcher.search_board.isRepetition(2))) {
         return 0;
@@ -183,7 +181,7 @@ pub fn negamax(
             searcher.ply -= 1;
             searcher.search_board.unmakeNullMove();
 
-            if (searcher.should_stop.load(.acquire)) return 0;
+            if (searcher.shouldStop()) return 0;
 
             if (null_score >= beta_val) {
                 if (null_score >= evaluator.mate_score - evaluator.max_mate) {
@@ -197,7 +195,7 @@ pub fn negamax(
                 searcher.nmp_min_ply = searcher.ply + @divFloor((depth_val - r) * 3, 4);
                 const verify_score = negamax(
                     searcher,
-                    depth_val,
+                    depth_val - r,
                     beta_val - 1,
                     beta_val,
                     .{
@@ -208,7 +206,7 @@ pub fn negamax(
                 );
                 searcher.nmp_min_ply = 0;
 
-                if (searcher.should_stop.load(.acquire)) return 0;
+                if (searcher.shouldStop()) return 0;
                 if (verify_score >= beta_val) return verify_score;
             }
         }
@@ -220,10 +218,7 @@ pub fn negamax(
     }
 
     // Clean up movelist generation from earlier and prep quiets
-    var quiets = searcher.allocator.create(water.movegen.Movelist) catch unreachable;
-    defer searcher.allocator.destroy(quiets);
-    quiets.* = .{};
-
+    var quiets = water.movegen.Movelist{};
     searcher.killers[searcher.ply + 1][0] = .init();
     searcher.killers[searcher.ply + 1][1] = .init();
 
@@ -234,7 +229,7 @@ pub fn negamax(
             return 0;
         }
     }
-    orderer.orderMoves(searcher, movelist, hashmove, flags.is_null);
+    orderer.orderMoves(searcher, &movelist, hashmove, flags.is_null, false);
 
     // Move iteration
     var best_move = water.Move.init();
@@ -242,7 +237,8 @@ pub fn negamax(
     var skip_quiet = false;
     var legals: usize = 0;
 
-    for (movelist.moves[0..movelist.size], 0..) |move, i| {
+    for (0..movelist.size) |i| {
+        const move = orderer.nextBestMove(&movelist, i);
         if (move.order(searcher.exclude_move[searcher.ply], .mv) == .eq) {
             continue;
         }
@@ -368,7 +364,7 @@ pub fn negamax(
 
                 const casted_new_depth = @as(i32, @intCast(new_depth));
                 const rd: usize = @intCast(std.math.clamp(casted_new_depth - reduction, 1, casted_new_depth + 1));
-                score -= negamax(
+                score = -negamax(
                     searcher,
                     rd,
                     -alpha_val - 1,
@@ -418,7 +414,7 @@ pub fn negamax(
         searcher.search_board.unmakeMove(move);
 
         // Check for stopping condition before ab pruning
-        if (searcher.should_stop.load(.acquire)) return 0;
+        if (searcher.shouldStop()) return 0;
         if (score > best_score) {
             best_score = score;
             best_move = move;
@@ -453,7 +449,7 @@ pub fn negamax(
         water.MoveType,
     ) != .promotion) {
         const temp = searcher.killers[searcher.ply][0];
-        if (temp.order(best_move, .mv) == .eq) {
+        if (temp.order(best_move, .mv) != .eq) {
             searcher.killers[searcher.ply][0] = best_move;
             searcher.killers[searcher.ply][1] = temp;
         }
@@ -469,7 +465,7 @@ pub fn negamax(
         for (quiets.moves[0..quiets.size]) |move| {
             // HIstory heuristic
             const is_best = move.order(bm, .mv) == .eq;
-            const hist = searcher.history.heuristic[color.index()][move.from().index()][move.to().index()];
+            const hist = searcher.history.heuristic[color.index()][move.from().index()][move.to().index()] * adj;
             if (is_best) {
                 searcher.history.heuristic[color.index()][move.from().index()][move.to().index()] += adj - @divTrunc(hist, max_history);
             } else {
@@ -534,7 +530,7 @@ pub fn quiescence(
     const beta_val = beta;
 
     // Stop searching if time is up. Only check every 2048 nodes
-    if (searcher.nodes & 2047 == 0 and searcher.should_stop.load(.acquire)) {
+    if (searcher.nodes & 2047 == 0 and searcher.shouldStop()) {
         return 0;
     }
 
@@ -578,23 +574,21 @@ pub fn quiescence(
     }
 
     // Move generation & ordering
-    var movelist = searcher.allocator.create(water.movegen.Movelist) catch unreachable;
-    defer searcher.allocator.destroy(movelist);
-    movelist.* = .{};
-
+    var movelist = water.movegen.Movelist{};
     if (in_check) {
         // Generate all legal moves in check and check for checkmate
-        water.movegen.legalmoves(searcher.search_board, movelist, .{});
+        water.movegen.legalmoves(searcher.search_board, &movelist, .{});
         if (movelist.empty()) {
             return -evaluator.mate_score + @as(i32, @intCast(searcher.ply));
         }
     } else {
-        water.movegen.legalmoves(searcher.search_board, movelist, .{ .gen_type = .capture });
+        water.movegen.legalmoves(searcher.search_board, &movelist, .{ .gen_type = .capture });
     }
-    orderer.orderMoves(searcher, movelist, hashmove, false);
+    orderer.orderMoves(searcher, &movelist, hashmove, false, false);
 
     // Iterate through the sorted moves
-    for (movelist.moves[0..movelist.size], 0..) |move, i| {
+    for (0..movelist.size) |i| {
+        const move = orderer.nextBestMove(&movelist, i);
         const is_capture = searcher.search_board.isCapture(move);
 
         // SEE pruning
@@ -617,7 +611,7 @@ pub fn quiescence(
         searcher.search_board.unmakeMove(move);
 
         // Check for a stop signal out of the recursive call before pruning
-        if (searcher.should_stop.load(.acquire)) return 0;
+        if (searcher.shouldStop()) return 0;
 
         if (score > best_score) {
             best_score = score;

@@ -30,7 +30,6 @@ pub const Searcher = struct {
 
     writer: *std.Io.Writer,
     min_depth: usize = 1,
-    force_thinking: bool = false,
     iterative_deepening_depth: usize = 0,
     timer: std.time.Timer = undefined,
     alloted_time_ns: ?i128 = null,
@@ -127,6 +126,7 @@ pub const Searcher = struct {
         self.best_move = .init();
         self.timer = std.time.Timer.start() catch unreachable;
         self.alloted_time_ns = alloted_time_ns;
+        self.iterative_deepening_depth = 0;
 
         var prev_score = -evaluator.mate_score;
         var score = -evaluator.mate_score;
@@ -149,7 +149,7 @@ pub const Searcher = struct {
             // Aspiration window at deeper depths
             if (depth >= 6) {
                 alpha = @max(score - parameters.aspiration_window, -evaluator.mate_score);
-                beta = @min(score + score + parameters.aspiration_window, evaluator.mate_score);
+                beta = @min(score + parameters.aspiration_window, evaluator.mate_score);
                 delta = parameters.aspiration_window;
             }
 
@@ -170,7 +170,7 @@ pub const Searcher = struct {
                     },
                 );
 
-                if (self.should_stop.load(.acquire)) {
+                if (self.shouldStop()) {
                     break :outer;
                 }
 
@@ -227,24 +227,20 @@ pub const Searcher = struct {
                 // Print the pv sequence or the best move depending on the state
                 if (self.pv_size[0] > 0) {
                     for (0..self.pv_size[0]) |i| {
-                        const pv_move_str = try water.uci.moveToUci(
-                            self.allocator,
+                        try self.writer.writeByte(' ');
+                        try water.uci.printMoveUci(
                             self.pv[0][i],
                             self.governing_board.fischer_random,
+                            self.writer,
                         );
-                        defer self.allocator.free(pv_move_str);
-
-                        try self.writer.print(" {s}", .{pv_move_str});
                     }
                 } else {
-                    const bm_str = try water.uci.moveToUci(
-                        self.allocator,
+                    try self.writer.writeByte(' ');
+                    try water.uci.printMoveUci(
                         bm,
                         self.governing_board.fischer_random,
+                        self.writer,
                     );
-                    defer self.allocator.free(bm_str);
-
-                    try self.writer.print(" {s}", .{bm_str});
                 }
 
                 try self.writer.writeByte('\n');
@@ -268,6 +264,7 @@ pub const Searcher = struct {
         self.should_stop.store(true, .release);
         self.alloted_time_ns = null;
 
+        // The uci spec has a specific requirement about null moves, a single heap allocation here is fine
         const bm_str = try water.uci.moveToUci(
             self.allocator,
             self.best_move,
@@ -275,8 +272,18 @@ pub const Searcher = struct {
         );
         defer self.allocator.free(bm_str);
 
-        try self.writer.print("bestmove {s}\n", .{bm_str});
+        try self.writer.print("bestmove {s}\n", .{
+            if (std.mem.eql(u8, bm_str, "a1a1")) "0000" else bm_str,
+        });
         try self.writer.flush();
+    }
+
+    pub fn shouldStop(self: *const Searcher) bool {
+        const exceeded_min_depth = self.iterative_deepening_depth > self.min_depth;
+        const exceeded_max_nodes = if (self.max_nodes) |max| self.nodes >= max else false;
+        const notified = self.should_stop.load(.acquire);
+
+        return notified or (exceeded_min_depth and exceeded_max_nodes);
     }
 
     fn longEnough(self: *Searcher, factor: f32) bool {
@@ -287,7 +294,7 @@ pub const Searcher = struct {
         } else false;
         const notified = self.should_stop.load(.acquire);
 
-        return notified or (exceeded_min and (exceeded_soft or (!self.force_thinking and timed_out)));
+        return notified or (exceeded_min and (exceeded_soft or timed_out));
     }
 };
 

@@ -37,7 +37,7 @@ pub fn Engine(comptime Searcher: type) type {
     const SearcherDeinitFnExpected = void;
     const SearchFnExpected = anyerror!void;
 
-    // Verify the Searcher's contract with some beautiful metaprogramming
+    // Verify the Searcher's contract with some beautiful comptime reflection
     comptime {
         const searcher = @typeInfo(Searcher);
         switch (searcher) {
@@ -179,7 +179,7 @@ pub fn Engine(comptime Searcher: type) type {
             self.searcher.search_board = self.searcher.governing_board.clone(self.allocator) catch unreachable;
 
             self.search_thread = std.Thread.spawn(
-                .{},
+                .{ .stack_size = options.searcher_stack_size_mb * 1024 * 1024 },
                 Searcher.search,
                 if (options.forward_ptr) .{self.searcher} ++ search_args else search_args,
             ) catch unreachable;
@@ -188,7 +188,7 @@ pub fn Engine(comptime Searcher: type) type {
             self.alloted_search_time_ns = search_time_ns;
             if (search_time_ns) |limit_ns| {
                 self.search_timer_thread = std.Thread.spawn(
-                    .{ .stack_size = options.searcher_stack_size_mb * 1024 * 1024 },
+                    .{},
                     timerThread,
                     .{ self, limit_ns },
                 ) catch unreachable;
@@ -235,25 +235,41 @@ pub fn Engine(comptime Searcher: type) type {
 
         /// Starts the engines UCI compatible event loop. The provided commands are deserialized every input read.
         ///
-        /// Due to the simplicity of the 'position' and 'display' (d) commands, they are provided as defaults.
+        /// Some commands are implemented for you, like `d` and `position`.
+        /// The `uci` and `isready` commands are also defaults, but have no internal logic and only respond as per the uci spec.
+        /// For more information regarding the uci protocol, including what you need to handle:
+        /// https://gist.github.com/DOBRO/2592c6dad754ba67e6dcaec8c90165bf
         ///
         /// The 'quit' and 'stop' commands are handled internally. Cleanup of resources is not a responsibility of this function.
         ///
         /// The reader is used for handling user input and should almost always be `stdin`.
         pub fn launch(self: *Self, reader: *std.Io.Reader, comptime commands: struct {
+            uci_command: type = default_commands.UciCommand(Searcher),
+            ready_command: type = default_commands.ReadyCommand(Searcher),
             position_command: type = default_commands.PositionCommand(Searcher),
             display_command: type = default_commands.DisplayCommand(Searcher),
             go_command: type,
             opt_command: type,
             other_commands: []const type = &.{},
         }) !void {
-            // zig fmt: off
-            const command_list = comptime commands.other_commands
-                ++ .{commands.position_command}
-                ++ .{commands.display_command}
-                ++ .{commands.go_command}
-                ++ .{commands.opt_command};
-            // zig fmt: on
+            const command_list = comptime blk: {
+                var list: []const type = &.{};
+
+                for (std.meta.fields(@TypeOf(commands))) |field| {
+                    const val = @field(commands, field.name);
+                    const field_type = @TypeOf(val);
+
+                    if (field_type == type) {
+                        list = list ++ .{val};
+                    } else if (field_type == []const type) {
+                        list = list ++ val;
+                    } else {
+                        @compileError("Commands struct must only contain fields and slices of fields");
+                    }
+                }
+
+                break :blk list;
+            };
 
             const Dispatcher = dispatcher.Dispatcher(command_list, Searcher);
             if (self.welcome) |msg| {
