@@ -49,7 +49,7 @@ pub fn orderMoves(
             }
         }
 
-        if (hash_move != null and move.orderByMove(hash_move.?) == .eq) {
+        if (hash_move != null and move.order(hash_move.?, .mv) == .eq) {
             score += hash_bonus;
         } else if (board.isCapture(move.*)) {
             if (board.at(water.Piece, move.to()) == .none) {
@@ -67,13 +67,13 @@ pub fn orderMoves(
         } else {
             var last = if (searcher.ply > 0) searcher.history.moves[searcher.ply - 1] else water.Move.init();
             std.debug.assert(last.from().valid() and last.to().valid());
-            if (searcher.killers[searcher.ply][0].orderByMove(move.*) == .eq) {
+            if (searcher.killers[searcher.ply][0].order(move.*, .mv) == .eq) {
                 score += killer_one_bonus;
-            } else if (searcher.killers[searcher.ply][1].orderByMove(move.*) == .eq) {
+            } else if (searcher.killers[searcher.ply][1].order(move.*, .mv) == .eq) {
                 score += killer_two_bonus;
             } else if (searcher.ply >= 1 and searcher.counter_moves[
                 board.side_to_move.asInt(usize)
-            ][last.from().index()][last.to().index()].orderByMove(move.*) == .eq) {
+            ][last.from().index()][last.to().index()].order(move.*, .mv) == .eq) {
                 score += counter_move_bonus;
             } else {
                 const from = move.from();
@@ -109,7 +109,7 @@ pub fn orderMoves(
     // Use a greater than function to sort in descending order instead
     const greaterThanFn = struct {
         pub fn greaterThanFn(_: void, lhs: water.Move, rhs: water.Move) bool {
-            return lhs.orderByScore(rhs) == .gt;
+            return lhs.order(rhs, .sc) == .gt;
         }
     }.greaterThanFn;
 

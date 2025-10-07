@@ -24,8 +24,9 @@ const default_commands = @import("default_commands.zig");
 /// The searcher's `governing_board` is the board at the start of the search.
 ///
 /// The engine is responsible for telling the searcher when to stop, but determining alloted time must be handled externally.
+/// Of course, the searcher can stop itself if it feels so inclined.
 ///
-/// The searcher should free its `search_board`, but the `search_board` should be handled externally.
+/// The searcher should free its `search_board`, but the `governing_board` should be handled externally.
 ///
 /// Any Searcher that violates this contract results in a compilation error.
 pub fn Engine(comptime Searcher: type) type {
@@ -168,6 +169,7 @@ pub fn Engine(comptime Searcher: type) type {
         /// If a search is currently in progress, waits for the thread to wrap up.
         pub fn search(self: *Self, search_time_ns: ?i128, search_args: anytype, comptime options: struct {
             forward_ptr: bool = true,
+            searcher_stack_size_mb: usize = 64,
         }) void {
             // Stop any current searching
             self.notifyStopSearch();
@@ -186,7 +188,7 @@ pub fn Engine(comptime Searcher: type) type {
             self.alloted_search_time_ns = search_time_ns;
             if (search_time_ns) |limit_ns| {
                 self.search_timer_thread = std.Thread.spawn(
-                    .{},
+                    .{ .stack_size = options.searcher_stack_size_mb * 1024 * 1024 },
                     timerThread,
                     .{ self, limit_ns },
                 ) catch unreachable;
@@ -303,9 +305,9 @@ const test_objs = @import("test_objs.zig");
 test "Basic engine creation" {
     const allocator = testing.allocator;
 
-    var test_buffer = std.Io.Writer.Allocating.init(allocator);
-    defer test_buffer.deinit();
-    const writer = &test_buffer.writer;
+    var buffer: [1024]u8 = undefined;
+    var discarding = std.Io.Writer.Discarding.init(&buffer);
+    const writer = &discarding.writer;
 
     var board = try Board.init(allocator, .{});
     defer board.deinit();

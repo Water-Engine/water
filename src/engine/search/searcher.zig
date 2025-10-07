@@ -46,7 +46,7 @@ pub const Searcher = struct {
 
     nodes: u64 = 0,
     ply: usize = 0,
-    seldepth: u32 = 0,
+    seldepth: usize = 0,
 
     exclude_move: [max_ply]water.Move = @splat(water.Move.init()),
     nmp_min_ply: usize = 0,
@@ -160,7 +160,7 @@ pub const Searcher = struct {
 
                 const negamax = search_.negamax(
                     self,
-                    @intCast(depth),
+                    depth,
                     alpha,
                     beta,
                     .{
@@ -325,4 +325,42 @@ test "Search initialization" {
 
     const searcher = try Searcher.init(allocator, board, writer);
     defer searcher.deinit();
+}
+
+test "Searching" {
+    // Costly test, skip me!
+    if (true) return error.SkipZigTest;
+
+    // Housekeeping
+    const allocator = testing.allocator;
+    var tt_arena = std.heap.ArenaAllocator.init(allocator);
+    defer tt_arena.deinit();
+    const tt_allocator = tt_arena.allocator();
+
+    reloadQLMR();
+    tt.global_tt = try tt.TranspositionTable.init(tt_allocator, null);
+
+    // Actual testing
+    var board = try water.Board.init(allocator, .{});
+    defer board.deinit();
+
+    var buffer: [1024]u8 = undefined;
+    var discarding = std.Io.Writer.Discarding.init(&buffer);
+    const writer = &discarding.writer;
+
+    var searcher = try Searcher.init(allocator, board, writer);
+    defer searcher.deinit();
+
+    // Problematic position at depth 7
+    const trouble = "RB6/1P1pr1p1/P1b5/1P1n1PKN/4pR2/p1b1P1pk/2P4P/2r5 w - - 0 1";
+    try expect(try searcher.governing_board.setFen(trouble, true));
+    try expect(try searcher.search_board.setFen(trouble, true));
+
+    // Spawn the search thread with a large stack size to prevent overflow
+    const worker = try std.Thread.spawn(
+        .{ .stack_size = 64 * 1024 * 1024 },
+        Searcher.search,
+        .{ searcher, null, 10 },
+    );
+    worker.join();
 }

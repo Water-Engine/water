@@ -953,7 +953,7 @@ pub const Board = struct {
 
             self.key = previous_state.hash;
             _ = self.previous_states.pop();
-        } else unreachable;
+        } else return;
     }
 
     /// Makes a null move.

@@ -10,7 +10,7 @@ const orderer = @import("../evaluation/orderer.zig");
 
 pub fn negamax(
     searcher: *searcher_.Searcher,
-    depth: i32,
+    depth: usize,
     alpha: i32,
     beta: i32,
     comptime flags: struct {
@@ -31,7 +31,7 @@ pub fn negamax(
         return 0;
     }
 
-    searcher.seldepth = @intCast(@max(searcher.seldepth, searcher.ply));
+    searcher.seldepth = @max(searcher.seldepth, searcher.ply);
     const is_root = flags.node == .root;
     const on_pv: bool = flags.node != .non_pv;
 
@@ -40,9 +40,11 @@ pub fn negamax(
         return evaluator.evaluate(searcher.search_board, false);
     }
 
-    // Check extension
+    // Check extension only at reasonable depths
     const in_check = searcher.search_board.inCheck(.{});
-    if (in_check) depth_val += 1;
+    if (in_check and searcher.ply < 64) {
+        depth_val += 1;
+    }
 
     // Prevent Horizon effect at 0 depth
     if (depth_val == 0) {
@@ -62,10 +64,14 @@ pub fn negamax(
     searcher.nodes += 1;
 
     // Move generation and draw checking to save recomputing
-    var movelist = water.movegen.Movelist{};
-    water.movegen.legalmoves(searcher.search_board, &movelist, .{});
-    const hm_draw = water.arbiter.halfmove(searcher.search_board, &movelist);
-    if (!is_root and (hm_draw != null or searcher.search_board.isRepetition(2))) {
+    var movelist = searcher.allocator.create(water.movegen.Movelist) catch unreachable;
+    defer searcher.allocator.destroy(movelist);
+    movelist.* = .{};
+
+    water.movegen.legalmoves(searcher.search_board, movelist, .{});
+    const hm_draw = water.arbiter.halfmove(searcher.search_board, movelist);
+    const insufficient_material = water.arbiter.insufficientMaterial(searcher.search_board);
+    if (!is_root and (hm_draw != null or insufficient_material or searcher.search_board.isRepetition(2))) {
         return 0;
     }
 
@@ -140,12 +146,14 @@ pub fn negamax(
 
         // Reverse futility pruning
         if (@abs(beta_val) < evaluator.mate_score - evaluator.max_mate and depth_val <= parameters.rfp_depth) {
-            var n = depth_val * parameters.rfp_multiplier;
+            var n = @as(i32, @intCast(depth_val)) * parameters.rfp_multiplier;
             if (improving) {
                 n -= parameters.rfp_improving_deduction;
             }
 
-            if (static_eval - n >= beta_val) return beta_val;
+            if ((static_eval - n) >= beta_val) {
+                return beta_val;
+            }
         }
 
         // Null move pruning
@@ -155,17 +163,23 @@ pub fn negamax(
         }
 
         if (!flags.is_null and depth_val >= 3 and searcher.ply >= searcher.nmp_min_ply and nmp_static_eval >= beta_val and has_non_pawns) {
-            var r: usize = parameters.nmp_base + @divTrunc(@as(usize, @intCast(depth_val)), parameters.nmp_depth_divisor);
+            var r: usize = parameters.nmp_base + @divTrunc(depth_val, parameters.nmp_depth_divisor);
             r += @min(4, @as(usize, @intCast(@divTrunc(static_eval - beta_val, parameters.nmp_beta_divisor))));
-            r = @min(r, @as(usize, @intCast(depth_val)));
+            r = @min(r, depth_val);
 
             searcher.ply += 1;
             searcher.search_board.makeNullMove();
-            var null_score = -negamax(searcher, depth_val - @as(i32, @intCast(r)), -beta_val, -beta_val + 1, .{
-                .cutnode = !flags.cutnode,
-                .is_null = true,
-                .node = .non_pv,
-            });
+            var null_score = -negamax(
+                searcher,
+                depth_val - r,
+                -beta_val,
+                -beta_val + 1,
+                .{
+                    .cutnode = !flags.cutnode,
+                    .is_null = true,
+                    .node = .non_pv,
+                },
+            );
             searcher.ply -= 1;
             searcher.search_board.unmakeNullMove();
 
@@ -180,12 +194,18 @@ pub fn negamax(
                     return null_score;
                 }
 
-                searcher.nmp_min_ply = searcher.ply + @divFloor(@as(usize, @intCast(depth_val)) - r * 3, 4);
-                const verify_score = negamax(searcher, depth_val, beta_val - 1, beta_val, .{
-                    .cutnode = false,
-                    .is_null = false,
-                    .node = .non_pv,
-                });
+                searcher.nmp_min_ply = searcher.ply + @divFloor((depth_val - r) * 3, 4);
+                const verify_score = negamax(
+                    searcher,
+                    depth_val,
+                    beta_val - 1,
+                    beta_val,
+                    .{
+                        .cutnode = false,
+                        .is_null = false,
+                        .node = .non_pv,
+                    },
+                );
                 searcher.nmp_min_ply = 0;
 
                 if (searcher.should_stop.load(.acquire)) return 0;
@@ -194,13 +214,16 @@ pub fn negamax(
         }
 
         // Razoring
-        if (depth_val <= 3 and static_eval - parameters.razoring_base + parameters.razoring_margin * depth_val < alpha_val) {
+        if (depth_val <= 3 and (static_eval - parameters.razoring_base + parameters.razoring_margin * @as(i32, @intCast(depth_val))) < alpha_val) {
             return quiescence(searcher, alpha_val, beta_val);
         }
     }
 
     // Clean up movelist generation from earlier and prep quiets
-    var quiets = water.movegen.Movelist{};
+    var quiets = searcher.allocator.create(water.movegen.Movelist) catch unreachable;
+    defer searcher.allocator.destroy(quiets);
+    quiets.* = .{};
+
     searcher.killers[searcher.ply + 1][0] = .init();
     searcher.killers[searcher.ply + 1][1] = .init();
 
@@ -211,7 +234,7 @@ pub fn negamax(
             return 0;
         }
     }
-    orderer.orderMoves(searcher, &movelist, hashmove, flags.is_null);
+    orderer.orderMoves(searcher, movelist, hashmove, flags.is_null);
 
     // Move iteration
     var best_move = water.Move.init();
@@ -220,12 +243,15 @@ pub fn negamax(
     var legals: usize = 0;
 
     for (movelist.moves[0..movelist.size], 0..) |move, i| {
-        if (move.orderByMove(searcher.exclude_move[searcher.ply]) == .eq) {
+        if (move.order(searcher.exclude_move[searcher.ply], .mv) == .eq) {
             continue;
         }
 
         const is_capture = searcher.search_board.isCapture(move);
-        const is_killer = (move.orderByMove(searcher.killers[searcher.ply][0]) == .eq) or (move.orderByMove(searcher.killers[searcher.ply][1]) == .eq);
+        const is_killer = (move.order(
+            searcher.killers[searcher.ply][0],
+            .mv,
+        ) == .eq) or (move.order(searcher.killers[searcher.ply][1], .mv) == .eq);
 
         if (!is_capture) {
             quiets.add(move);
@@ -241,7 +267,7 @@ pub fn negamax(
                     late += 1 + @divTrunc(depth_val, 2);
                 }
 
-                if (quiets.size > @as(usize, @intCast(late))) {
+                if (quiets.size > late) {
                     skip_quiet = true;
                 }
             }
@@ -259,19 +285,25 @@ pub fn negamax(
             and tthit
             and maybe_entry.?.flag != .upper
             and !evaluator.mateish(maybe_entry.?.eval)
-            and hashmove.orderByMove(move) == .eq
+            and hashmove.order(move, .mv) == .eq
             and maybe_entry.?.depth >= depth_val - 3
         ) {
         // zig fmt: on
-            const margin = depth_val;
-            const singular_beta = @max(tt_eval - margin, -evaluator.mate_score + evaluator.max_mate);
+            const margin = @as(i32, @intCast(depth_val));
+            const singular_beta: i32 = @max(tt_eval - margin, -evaluator.mate_score + evaluator.max_mate);
 
             searcher.exclude_move[searcher.ply] = hashmove;
-            const singular_score = negamax(searcher, @divFloor(depth_val - 1, 2), singular_beta - 1, singular_beta, .{
-                .cutnode = flags.cutnode,
-                .is_null = true,
-                .node = .non_pv,
-            });
+            const singular_score = negamax(
+                searcher,
+                @divFloor(depth_val - 1, 2),
+                singular_beta - 1,
+                singular_beta,
+                .{
+                    .cutnode = flags.cutnode,
+                    .is_null = true,
+                    .node = .non_pv,
+                },
+            );
             searcher.exclude_move[searcher.ply] = .init();
 
             if (singular_score < singular_beta) {
@@ -283,7 +315,7 @@ pub fn negamax(
             } else if (flags.cutnode) {
                 extension = -1;
             }
-        } else if (on_pv and !is_root and searcher.ply < @as(usize, @intCast(depth_val)) * 2) {
+        } else if (on_pv and !is_root and searcher.ply < depth_val * 2) {
             // Recapture extension
             if (is_capture and ((searcher.search_board.isCapture(last_move) and move.to().order(
                 last_move.to(),
@@ -294,7 +326,7 @@ pub fn negamax(
             }
         }
 
-        const new_depth = @as(usize, @intCast(depth_val + extension - 1));
+        const new_depth: usize = @intCast(@as(i32, @intCast(depth_val)) + extension - 1);
 
         searcher.history.moves[searcher.ply] = move;
         searcher.history.moved_pieces[searcher.ply] = searcher.search_board.at(water.Piece, move.from());
@@ -309,15 +341,21 @@ pub fn negamax(
         var do_full_search = false;
 
         if (on_pv and legals == 1) {
-            score = -negamax(searcher, @intCast(new_depth), -beta_val, -alpha_val, .{
-                .cutnode = false,
-                .is_null = false,
-                .node = .pv,
-            });
+            score = -negamax(
+                searcher,
+                new_depth,
+                -beta_val,
+                -alpha_val,
+                .{
+                    .cutnode = false,
+                    .is_null = false,
+                    .node = .pv,
+                },
+            );
         } else {
             if (!in_check and depth_val >= 3 and i >= min_lmr_move and (!is_capture or !is_winning_capture)) {
                 // Late move reduction
-                var reduction = searcher_.quiet_lmr[@min(63, @as(usize, @intCast(depth_val)))][@min(63, i)];
+                var reduction = searcher_.quiet_lmr[@min(63, depth_val)][@min(63, i)];
                 reduction -= 1;
 
                 if (improving) reduction -= 1;
@@ -328,12 +366,19 @@ pub fn negamax(
                     6144,
                 );
 
-                const rd: usize = @intCast(std.math.clamp(@as(i32, @intCast(new_depth)) - reduction, 1, new_depth + 1));
-                score -= negamax(searcher, @intCast(rd), -alpha_val - 1, -alpha_val, .{
-                    .cutnode = true,
-                    .is_null = false,
-                    .node = .non_pv,
-                });
+                const casted_new_depth = @as(i32, @intCast(new_depth));
+                const rd: usize = @intCast(std.math.clamp(casted_new_depth - reduction, 1, casted_new_depth + 1));
+                score -= negamax(
+                    searcher,
+                    rd,
+                    -alpha_val - 1,
+                    -alpha_val,
+                    .{
+                        .cutnode = true,
+                        .is_null = false,
+                        .node = .non_pv,
+                    },
+                );
 
                 do_full_search = score > alpha_val and rd < new_depth;
             } else {
@@ -341,19 +386,31 @@ pub fn negamax(
             }
 
             if (do_full_search) {
-                score = -negamax(searcher, @intCast(new_depth), -alpha_val - 1, -alpha_val, .{
-                    .cutnode = !flags.cutnode,
-                    .is_null = false,
-                    .node = .non_pv,
-                });
+                score = -negamax(
+                    searcher,
+                    new_depth,
+                    -alpha_val - 1,
+                    -alpha_val,
+                    .{
+                        .cutnode = !flags.cutnode,
+                        .is_null = false,
+                        .node = .non_pv,
+                    },
+                );
             }
 
             if (on_pv and ((score > alpha_val and score < beta_val) or i == 0)) {
-                score = -negamax(searcher, @intCast(new_depth), -beta_val, -alpha_val, .{
-                    .cutnode = false,
-                    .is_null = false,
-                    .node = .pv,
-                });
+                score = -negamax(
+                    searcher,
+                    new_depth,
+                    -beta_val,
+                    -alpha_val,
+                    .{
+                        .cutnode = false,
+                        .is_null = false,
+                        .node = .pv,
+                    },
+                );
             }
         }
 
@@ -396,7 +453,7 @@ pub fn negamax(
         water.MoveType,
     ) != .promotion) {
         const temp = searcher.killers[searcher.ply][0];
-        if (temp.orderByMove(best_move) == .eq) {
+        if (temp.order(best_move, .mv) == .eq) {
             searcher.killers[searcher.ply][0] = best_move;
             searcher.killers[searcher.ply][1] = temp;
         }
@@ -411,7 +468,7 @@ pub fn negamax(
         const max_history: i32 = 16384;
         for (quiets.moves[0..quiets.size]) |move| {
             // HIstory heuristic
-            const is_best = move.orderByMove(bm) == .eq;
+            const is_best = move.order(bm, .mv) == .eq;
             const hist = searcher.history.heuristic[color.index()][move.from().index()][move.to().index()];
             if (is_best) {
                 searcher.history.heuristic[color.index()][move.from().index()][move.to().index()] += adj - @divTrunc(hist, max_history);
@@ -521,17 +578,20 @@ pub fn quiescence(
     }
 
     // Move generation & ordering
-    var movelist = water.movegen.Movelist{};
+    var movelist = searcher.allocator.create(water.movegen.Movelist) catch unreachable;
+    defer searcher.allocator.destroy(movelist);
+    movelist.* = .{};
+
     if (in_check) {
         // Generate all legal moves in check and check for checkmate
-        water.movegen.legalmoves(searcher.search_board, &movelist, .{});
+        water.movegen.legalmoves(searcher.search_board, movelist, .{});
         if (movelist.empty()) {
             return -evaluator.mate_score + @as(i32, @intCast(searcher.ply));
         }
     } else {
-        water.movegen.legalmoves(searcher.search_board, &movelist, .{ .gen_type = .capture });
+        water.movegen.legalmoves(searcher.search_board, movelist, .{ .gen_type = .capture });
     }
-    orderer.orderMoves(searcher, &movelist, hashmove, false);
+    orderer.orderMoves(searcher, movelist, hashmove, false);
 
     // Iterate through the sorted moves
     for (movelist.moves[0..movelist.size], 0..) |move, i| {

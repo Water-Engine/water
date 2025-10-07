@@ -12,6 +12,8 @@ pub const PieceType = enum(u3) {
 
     none = 6,
 
+    pub const all: [6]PieceType = .{ .pawn, .knight, .bishop, .rook, .queen, .king };
+
     pub fn init() PieceType {
         return .none;
     }
@@ -232,6 +234,12 @@ const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 
 test "PieceType" {
+    // ================ ALL =================
+    const expected_all: [6]PieceType = .{ .pawn, .knight, .bishop, .rook, .queen, .king };
+    for (expected_all, PieceType.all) |expected, actual| {
+        try expectEqual(expected, actual);
+    }
+
     // ================ INIT / VALID =================
     var pt = PieceType.init();
     try expect(pt == .none);

@@ -157,14 +157,19 @@ pub const pst: [6][2][64]i32 = .{
     },
 };
 
-/// Gathers data related to PeSTO's evaluation function.
-///
-/// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-pub fn pestoEval(board: *const water.Board) struct {
+pub const PeSTOEval = struct {
     score_mg: i32,
     score_eg_mat: i32,
     score_eg_non_mat: i32,
-} {
+};
+
+/// Gathers data related to PeSTO's evaluation function.
+///
+/// Using SIMD here loses performance. See benchmark at bottom of this file.
+/// Average performance of this function is 20ns.
+///
+/// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+pub fn pestoEval(board: *const water.Board) PeSTOEval {
     var mg: i32 = 0;
     var eg_material: i32 = 0;
     var eg_non_material: i32 = 0;
@@ -172,7 +177,6 @@ pub fn pestoEval(board: *const water.Board) struct {
     for (board.mailbox, 0..) |piece, i| {
         if (piece == .none) continue;
 
-        std.debug.assert(piece.valid());
         const pt_idx = piece.asType().index();
 
         if (piece.color().isWhite()) {
@@ -224,4 +228,235 @@ test "PeSTO evaluation" {
     try expectEqual(expected_end[0], actual_end.score_mg);
     try expectEqual(expected_end[1], actual_end.score_eg_mat);
     try expectEqual(expected_end[2], actual_end.score_eg_non_mat);
+}
+
+test "PeSTO evaluation benchmark" {
+    // Hack to skip the test without other errors
+    if (true) return error.SkipZigTest;
+
+    const allocator = testing.allocator;
+    var board = try water.Board.init(allocator, .{});
+    defer board.deinit();
+
+    const pestoSimd = struct {
+        /// The PeSTO evaluation function from https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+        ///
+        /// Implemented using SIMD
+        pub fn pestoSimd(b: *const water.Board) PeSTOEval {
+            const Vec = @Vector(4, i32);
+
+            // 1. Calculate Material Score
+            var mg_material_score: i32 = 0;
+            var eg_material_score: i32 = 0;
+            inline for (water.PieceType.all) |pt| {
+                const pt_idx = pt.index();
+                const white_count: i32 = @intCast(b.pieces(.white, pt).count());
+                const black_count: i32 = @intCast(b.pieces(.black, pt).count());
+                mg_material_score += material[pt_idx][0] * (white_count - black_count);
+                eg_material_score += material[pt_idx][1] * (white_count - black_count);
+            }
+
+            // 2. Calculate PST Score
+            var mg_pst_vec_sum: Vec = @splat(0);
+            var eg_pst_vec_sum: Vec = @splat(0);
+            var mg_pst_scalar_rem: i32 = 0;
+            var eg_pst_scalar_rem: i32 = 0;
+
+            inline for (water.PieceType.all) |pt| {
+                const pt_idx = pt.index();
+
+                // Chunk white for efficient computation
+                var bb_white = b.pieces(.white, pt);
+                while (bb_white.count() >= 4) {
+                    const @"i0" = bb_white.popLsb().index();
+                    const @"i1" = bb_white.popLsb().index();
+                    const @"i2" = bb_white.popLsb().index();
+                    const @"i3" = bb_white.popLsb().index();
+                    mg_pst_vec_sum += Vec{
+                        pst[pt_idx][0][@"i0" ^ 56], pst[pt_idx][0][@"i1" ^ 56],
+                        pst[pt_idx][0][@"i2" ^ 56], pst[pt_idx][0][@"i3" ^ 56],
+                    };
+                    eg_pst_vec_sum += Vec{
+                        pst[pt_idx][1][@"i0" ^ 56], pst[pt_idx][1][@"i1" ^ 56],
+                        pst[pt_idx][1][@"i2" ^ 56], pst[pt_idx][1][@"i3" ^ 56],
+                    };
+                }
+
+                // Scalar remainder handling for white remaining
+                while (bb_white.nonzero()) {
+                    const i = bb_white.popLsb().index();
+                    mg_pst_scalar_rem += pst[pt_idx][0][i ^ 56];
+                    eg_pst_scalar_rem += pst[pt_idx][1][i ^ 56];
+                }
+
+                // Chunk black for efficient computation
+                var bb_black = b.pieces(.black, pt);
+                while (bb_black.count() >= 4) {
+                    const @"i0" = bb_black.popLsb().index();
+                    const @"i1" = bb_black.popLsb().index();
+                    const @"i2" = bb_black.popLsb().index();
+                    const @"i3" = bb_black.popLsb().index();
+                    mg_pst_vec_sum -= Vec{
+                        pst[pt_idx][0][@"i0"], pst[pt_idx][0][@"i1"],
+                        pst[pt_idx][0][@"i2"], pst[pt_idx][0][@"i3"],
+                    };
+                    eg_pst_vec_sum -= Vec{
+                        pst[pt_idx][1][@"i0"], pst[pt_idx][1][@"i1"],
+                        pst[pt_idx][1][@"i2"], pst[pt_idx][1][@"i3"],
+                    };
+                }
+
+                // Scalar remainder handling for black remaining
+                while (bb_black.nonzero()) {
+                    const i = bb_black.popLsb().index();
+                    mg_pst_scalar_rem -= pst[pt_idx][0][i];
+                    eg_pst_scalar_rem -= pst[pt_idx][1][i];
+                }
+            }
+
+            // 3. Horizontal Sum and combine with scalar remainder
+            const mg_pst_from_vec = @reduce(.Add, mg_pst_vec_sum);
+            const eg_pst_from_vec = @reduce(.Add, eg_pst_vec_sum);
+
+            const mg_pst_score = mg_pst_from_vec + mg_pst_scalar_rem;
+            const eg_pst_score = eg_pst_from_vec + eg_pst_scalar_rem;
+
+            // 4. Return Final Scores
+            return .{
+                .score_mg = mg_material_score + mg_pst_score,
+                .score_eg_mat = eg_material_score,
+                .score_eg_non_mat = eg_pst_score,
+            };
+        }
+    }.pestoSimd;
+
+    const pestoReference = struct {
+        /// The PeSTO evaluation function from https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+        ///
+        /// Used in https://github.com/SnowballSH/Avalanche
+        pub fn pestoReference(b: *const water.Board) PeSTOEval {
+            var mg: i32 = 0;
+            var eg_material: i32 = 0;
+            var eg_non_material: i32 = 0;
+
+            for (b.mailbox, 0..) |piece, i| {
+                if (piece == .none) continue;
+
+                const pt_idx = piece.asType().index();
+
+                if (piece.color().isWhite()) {
+                    mg += material[pt_idx][0];
+                    mg += pst[pt_idx][0][i ^ 56];
+                    eg_material += material[pt_idx][1];
+                    eg_non_material += pst[pt_idx][1][i ^ 56];
+                } else if (piece.color().isBlack()) {
+                    mg -= material[pt_idx][0];
+                    mg -= pst[pt_idx][0][i];
+                    eg_material -= material[pt_idx][1];
+                    eg_non_material -= pst[pt_idx][1][i];
+                }
+            }
+
+            return .{
+                .score_mg = mg,
+                .score_eg_mat = eg_material,
+                .score_eg_non_mat = eg_non_material,
+            };
+        }
+    }.pestoReference;
+
+    const pestoBranched = struct {
+        /// The PeSTO evaluation function opting for simd for large positions only
+        pub fn pestoBranched(b: *const water.Board) PeSTOEval {
+            return if (b.occ().count() > 10)
+                pestoSimd(b)
+            else
+                pestoReference(b);
+        }
+    }.pestoBranched;
+
+    // Random FEN strings from http://bernd.bplaced.net/fengenerator/fengenerator.html
+    const short_fens = [_][]const u8{
+        "8/4k3/8/2K5/8/P5P1/6B1/8 w - - 0 1",
+        "8/2k5/6P1/3K2p1/6n1/8/8/8 w - - 0 1",
+        "6Q1/8/7k/2b5/3N4/8/8/5K2 w - - 0 1",
+        "8/3P1p2/3b4/8/5k2/8/3K4/8 w - - 0 1",
+        "1N6/4p3/6K1/8/8/4Bk2/8/8 w - - 0 1",
+        "8/8/K7/8/B7/Q7/6k1/7b w - - 0 1",
+        "8/8/4P3/4kp2/1K6/8/1p6/8 w - - 0 1",
+        "8/8/1k1n4/5p2/5p2/8/4K3/8 w - - 0 1",
+        "8/1p6/7K/8/3k4/P7/1r6/8 w - - 0 1",
+        "6K1/p7/p7/6k1/8/8/4p3/8 w - - 0 1",
+    };
+
+    const long_fens = [_][]const u8{
+        "r1N1R3/pPb3R1/q4BNP/PPpK4/b1rP2P1/pP2Pn1n/k1ppp1pp/5B1Q w - - 0 1",
+        "R6N/RbBp1Pp1/1p1n1k1p/1P1B2qp/P1PP2Pn/1p2NP1K/1p2pPQ1/1r2b1r1 w - - 0 1",
+        "b3NBK1/R4pp1/1PqPR1NP/4p3/2rPPpnb/2k1PP1P/p1p2prp/nQ5B w - - 0 1",
+        "2q2n1b/p1P2BQP/p1PN1p1K/5PP1/N1Rprppn/2B3P1/1pPpb2P/1R4rk w - - 0 1",
+        "8/1pP2bRP/P1rppp1P/PP1kp2p/p1N2nNb/1PqPnp1Q/1Br4R/3B3K w - - 0 1",
+        "7K/1N1Qpr2/p1PB1rPk/pPp5/q2n1Rpp/P1PPPbpB/p1P5/bR1N3n w - - 0 1",
+        "BR1n3Q/1P1pbr1P/Pp2p3/1NrpPP2/p2PR2p/Bn1ppk2/KP5P/1N2q2b w - - 0 1",
+        "1R1q4/n2bP1rR/1BNP1n1p/PPpp3p/kP3PP1/br4p1/BpP1p2p/1K2QN2 w - - 0 1",
+        "2N3N1/pnR2BP1/P1b2PpQ/1p1R1PKP/q3P2p/1Pb1nr1p/k1pp1pP1/4B1r1 w - - 0 1",
+        "B6N/QP2pPbR/2q1p2p/2PRp2p/Pk2p1r1/nP1PPr2/1Kpp2PN/1bB3n1 w - - 0 1",
+    };
+
+    // Compare the simd and reference for correctness
+    for (long_fens, short_fens) |long_fen, short_fen| {
+        // Long fen verification
+        try expect(try board.setFen(long_fen, true));
+        const expected_long = pestoReference(board);
+        const actual_long = pestoSimd(board);
+
+        try expect(std.meta.eql(expected_long, actual_long));
+
+        // Short fen verification
+        try expect(try board.setFen(short_fen, true));
+        const expected_short = pestoReference(board);
+        const actual_short = pestoSimd(board);
+
+        try expect(std.meta.eql(expected_short, actual_short));
+    }
+
+    var simd_times: [long_fens.len + short_fens.len]i128 = @splat(0);
+    var simd_sum: i128 = 0;
+    var ref_times: [long_fens.len + short_fens.len]i128 = @splat(0);
+    var ref_sum: i128 = 0;
+    var branched_times: [long_fens.len + short_fens.len]i128 = @splat(0);
+    var branched_sum: i128 = 0;
+
+    // Time the execution of each function
+    for (long_fens ++ short_fens, 0..) |fen, i| {
+        _ = try board.setFen(fen, true);
+
+        const s_simd = std.time.nanoTimestamp();
+        _ = pestoSimd(board);
+        const e_simd = std.time.nanoTimestamp();
+
+        const s_ref = std.time.nanoTimestamp();
+        _ = pestoReference(board);
+        const e_ref = std.time.nanoTimestamp();
+
+        const s_branched = std.time.nanoTimestamp();
+        _ = pestoBranched(board);
+        const e_branched = std.time.nanoTimestamp();
+
+        simd_times[i] = e_simd - s_simd;
+        simd_sum += simd_times[i];
+        ref_times[i] = e_ref - s_ref;
+        ref_sum += ref_times[i];
+        branched_times[i] = e_branched - s_branched;
+        branched_sum += branched_times[i];
+    }
+
+    // Performance information
+    const average_simd_ns = @divTrunc(simd_sum, simd_times.len);
+    const average_ref_ns = @divTrunc(ref_sum, ref_times.len);
+    const average_branched_ns = @divTrunc(branched_sum, branched_times.len);
+    std.debug.print("SIMD: {d}ns\nBranched: {d}ns\nReference: {d}ns\n", .{
+        average_simd_ns,
+        average_branched_ns,
+        average_ref_ns,
+    });
 }
