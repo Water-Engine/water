@@ -17,6 +17,22 @@ const Board = board_.Board;
 
 const slider_bbs = @import("slider_bbs.zig");
 
+const FlatSliderAttacks = struct {
+    attacks: []const Bitboard,
+    offsets: [64]usize,
+    masks: [64]Bitboard,
+    magics: [64]u64,
+    shifts: [64]u64,
+
+    /// Computes the attacks for the piece on the square with the given occ bb
+    pub fn compute(self: *const FlatSliderAttacks, square: Square, occupied: Bitboard) Bitboard {
+        const index = square.index();
+        const masked_occ = occupied.andBB(self.masks[index]);
+        const key = (masked_occ.mulU64Wrapped(self.magics[index])).shr(self.shifts[index]);
+        return self.attacks[self.offsets[index] + @as(usize, @truncate(key.bits))];
+    }
+};
+
 /// Converts the type of u64 arrays (or nested) to Bitboard arrays of the same dimensions.
 ///
 /// Example: `[2][64]u64` becomes `[2][64]Bitboard`
@@ -50,13 +66,13 @@ pub fn toBitboardArray(comptime T: type, arr: T) BitboardArrayTransformer(T) {
     return result;
 }
 
-const FlatSliderAttacks = struct {
-    attacks: []const Bitboard,
-    offsets: [64]usize,
-};
-
 /// Flattens a 2D array of Bitboards a 1D array with an offset table.
-fn flatten(comptime attacks_2d: [64][]const Bitboard) FlatSliderAttacks {
+fn flatten(
+    comptime attacks_2d: [64][]const Bitboard,
+    comptime masks: [64]Bitboard,
+    comptime magics: [64]u64,
+    comptime shifts: [64]u64,
+) FlatSliderAttacks {
     @setEvalBranchQuota(100_000_000);
 
     var total_len: comptime_int = 0;
@@ -82,6 +98,9 @@ fn flatten(comptime attacks_2d: [64][]const Bitboard) FlatSliderAttacks {
         break :blk FlatSliderAttacks{
             .attacks = &s_attacks,
             .offsets = offsets,
+            .masks = masks,
+            .magics = magics,
+            .shifts = shifts,
         };
     };
 }
@@ -172,77 +191,19 @@ const pawn_attacks: [128]Bitboard = pawn_attacks_2d[0] ++ pawn_attacks_2d[1];
 const knight_attacks: [64]Bitboard = toBitboardArray(@TypeOf(knight_attacks_u64), knight_attacks_u64);
 const king_attacks: [64]Bitboard = toBitboardArray(@TypeOf(king_attacks_u64), king_attacks_u64);
 
-const rook_attacks_2d: [64][]const Bitboard = .{
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_00), slider_bbs.rook_attacks_00), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_01), slider_bbs.rook_attacks_01),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_02), slider_bbs.rook_attacks_02), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_03), slider_bbs.rook_attacks_03),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_04), slider_bbs.rook_attacks_04), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_05), slider_bbs.rook_attacks_05),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_06), slider_bbs.rook_attacks_06), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_07), slider_bbs.rook_attacks_07),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_08), slider_bbs.rook_attacks_08), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_09), slider_bbs.rook_attacks_09),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_10), slider_bbs.rook_attacks_10), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_11), slider_bbs.rook_attacks_11),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_12), slider_bbs.rook_attacks_12), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_13), slider_bbs.rook_attacks_13),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_14), slider_bbs.rook_attacks_14), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_15), slider_bbs.rook_attacks_15),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_16), slider_bbs.rook_attacks_16), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_17), slider_bbs.rook_attacks_17),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_18), slider_bbs.rook_attacks_18), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_19), slider_bbs.rook_attacks_19),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_20), slider_bbs.rook_attacks_20), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_21), slider_bbs.rook_attacks_21),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_22), slider_bbs.rook_attacks_22), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_23), slider_bbs.rook_attacks_23),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_24), slider_bbs.rook_attacks_24), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_25), slider_bbs.rook_attacks_25),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_26), slider_bbs.rook_attacks_26), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_27), slider_bbs.rook_attacks_27),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_28), slider_bbs.rook_attacks_28), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_29), slider_bbs.rook_attacks_29),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_30), slider_bbs.rook_attacks_30), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_31), slider_bbs.rook_attacks_31),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_32), slider_bbs.rook_attacks_32), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_33), slider_bbs.rook_attacks_33),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_34), slider_bbs.rook_attacks_34), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_35), slider_bbs.rook_attacks_35),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_36), slider_bbs.rook_attacks_36), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_37), slider_bbs.rook_attacks_37),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_38), slider_bbs.rook_attacks_38), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_39), slider_bbs.rook_attacks_39),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_40), slider_bbs.rook_attacks_40), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_41), slider_bbs.rook_attacks_41),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_42), slider_bbs.rook_attacks_42), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_43), slider_bbs.rook_attacks_43),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_44), slider_bbs.rook_attacks_44), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_45), slider_bbs.rook_attacks_45),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_46), slider_bbs.rook_attacks_46), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_47), slider_bbs.rook_attacks_47),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_48), slider_bbs.rook_attacks_48), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_49), slider_bbs.rook_attacks_49),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_50), slider_bbs.rook_attacks_50), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_51), slider_bbs.rook_attacks_51),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_52), slider_bbs.rook_attacks_52), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_53), slider_bbs.rook_attacks_53),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_54), slider_bbs.rook_attacks_54), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_55), slider_bbs.rook_attacks_55),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_56), slider_bbs.rook_attacks_56), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_57), slider_bbs.rook_attacks_57),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_58), slider_bbs.rook_attacks_58), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_59), slider_bbs.rook_attacks_59),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_60), slider_bbs.rook_attacks_60), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_61), slider_bbs.rook_attacks_61),
-    &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_62), slider_bbs.rook_attacks_62), &toBitboardArray(@TypeOf(slider_bbs.rook_attacks_63), slider_bbs.rook_attacks_63),
-};
-const rook_attacks = flatten(rook_attacks_2d);
+const rook_attacks = flatten(
+    slider_bbs.rook_attacks_2d,
+    slider_bbs.rook_masks,
+    slider_bbs.rook_magics,
+    slider_bbs.rook_shifts,
+);
 
-const bishop_attacks_2d: [64][]const Bitboard = .{
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_00), slider_bbs.bishop_attacks_00), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_01), slider_bbs.bishop_attacks_01),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_02), slider_bbs.bishop_attacks_02), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_03), slider_bbs.bishop_attacks_03),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_04), slider_bbs.bishop_attacks_04), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_05), slider_bbs.bishop_attacks_05),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_06), slider_bbs.bishop_attacks_06), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_07), slider_bbs.bishop_attacks_07),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_08), slider_bbs.bishop_attacks_08), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_09), slider_bbs.bishop_attacks_09),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_10), slider_bbs.bishop_attacks_10), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_11), slider_bbs.bishop_attacks_11),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_12), slider_bbs.bishop_attacks_12), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_13), slider_bbs.bishop_attacks_13),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_14), slider_bbs.bishop_attacks_14), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_15), slider_bbs.bishop_attacks_15),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_16), slider_bbs.bishop_attacks_16), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_17), slider_bbs.bishop_attacks_17),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_18), slider_bbs.bishop_attacks_18), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_19), slider_bbs.bishop_attacks_19),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_20), slider_bbs.bishop_attacks_20), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_21), slider_bbs.bishop_attacks_21),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_22), slider_bbs.bishop_attacks_22), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_23), slider_bbs.bishop_attacks_23),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_24), slider_bbs.bishop_attacks_24), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_25), slider_bbs.bishop_attacks_25),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_26), slider_bbs.bishop_attacks_26), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_27), slider_bbs.bishop_attacks_27),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_28), slider_bbs.bishop_attacks_28), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_29), slider_bbs.bishop_attacks_29),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_30), slider_bbs.bishop_attacks_30), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_31), slider_bbs.bishop_attacks_31),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_32), slider_bbs.bishop_attacks_32), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_33), slider_bbs.bishop_attacks_33),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_34), slider_bbs.bishop_attacks_34), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_35), slider_bbs.bishop_attacks_35),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_36), slider_bbs.bishop_attacks_36), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_37), slider_bbs.bishop_attacks_37),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_38), slider_bbs.bishop_attacks_38), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_39), slider_bbs.bishop_attacks_39),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_40), slider_bbs.bishop_attacks_40), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_41), slider_bbs.bishop_attacks_41),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_42), slider_bbs.bishop_attacks_42), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_43), slider_bbs.bishop_attacks_43),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_44), slider_bbs.bishop_attacks_44), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_45), slider_bbs.bishop_attacks_45),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_46), slider_bbs.bishop_attacks_46), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_47), slider_bbs.bishop_attacks_47),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_48), slider_bbs.bishop_attacks_48), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_49), slider_bbs.bishop_attacks_49),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_50), slider_bbs.bishop_attacks_50), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_51), slider_bbs.bishop_attacks_51),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_52), slider_bbs.bishop_attacks_52), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_53), slider_bbs.bishop_attacks_53),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_54), slider_bbs.bishop_attacks_54), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_55), slider_bbs.bishop_attacks_55),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_56), slider_bbs.bishop_attacks_56), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_57), slider_bbs.bishop_attacks_57),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_58), slider_bbs.bishop_attacks_58), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_59), slider_bbs.bishop_attacks_59),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_60), slider_bbs.bishop_attacks_60), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_61), slider_bbs.bishop_attacks_61),
-    &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_62), slider_bbs.bishop_attacks_62), &toBitboardArray(@TypeOf(slider_bbs.bishop_attacks_63), slider_bbs.bishop_attacks_63),
-};
-const bishop_attacks = flatten(bishop_attacks_2d);
+const bishop_attacks = flatten(
+    slider_bbs.bishop_attacks_2d,
+    slider_bbs.bishop_masks,
+    slider_bbs.bishop_magics,
+    slider_bbs.bishop_shifts,
+);
 
 pub fn pawn(color: Color, square: Square) Bitboard {
     std.debug.assert(color.valid());
@@ -278,17 +239,11 @@ pub fn king(square: Square) Bitboard {
 }
 
 pub fn rook(square: Square, occupied: Bitboard) Bitboard {
-    const index = square.index();
-    const masked_occ = occupied.andBB(slider_bbs.rook_masks[index]);
-    const key = (masked_occ.mulU64Wrapped(slider_bbs.rook_magics[index])).shr(slider_bbs.rook_shifts[index]);
-    return rook_attacks.attacks[rook_attacks.offsets[index] + @as(usize, @truncate(key.bits))];
+    return rook_attacks.compute(square, occupied);
 }
 
 pub fn bishop(square: Square, occupied: Bitboard) Bitboard {
-    const index = square.index();
-    const masked_occ = occupied.andBB(slider_bbs.bishop_masks[index]);
-    const key = (masked_occ.mulU64Wrapped(slider_bbs.bishop_magics[index])).shr(slider_bbs.bishop_shifts[index]);
-    return bishop_attacks.attacks[bishop_attacks.offsets[index] + @as(usize, @truncate(key.bits))];
+    return bishop_attacks.compute(square, occupied);
 }
 
 pub fn queen(square: Square, occupied: Bitboard) Bitboard {
