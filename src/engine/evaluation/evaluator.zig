@@ -128,8 +128,6 @@ pub fn distance(board: *const water.Board, comptime white_winning: bool) i32 {
 }
 
 /// A dynamic evaluator for managing pesto and NNUE evaluations.
-///
-/// Implementation heavily inspired from https://github.com/SnowballSH/Avalanche
 pub const Evaluator = struct {
     pesto: pst.PeSTOEval = .{},
     needs_pesto: bool = false,

@@ -35,7 +35,6 @@ pub fn orderMoves(
     movelist: *water.movegen.Movelist,
     hash_move: ?water.Move,
     comptime is_null: bool,
-    comptime sort: bool,
 ) void {
     for (movelist.moves[0..movelist.size]) |*move| {
         const board = searcher.search_board;
@@ -118,26 +117,14 @@ pub fn orderMoves(
         move.score = score;
     }
 
-    if (comptime sort) {
-        // Use a greater than function to sort in descending order instead
-        const greaterThanFn = struct {
-            pub fn greaterThanFn(_: void, lhs: water.Move, rhs: water.Move) bool {
-                return lhs.order(rhs, .sc) == .gt;
-            }
-        }.greaterThanFn;
-
-        std.mem.sort(water.Move, movelist.moves[0..movelist.size], {}, greaterThanFn);
-    }
-}
-
-pub fn nextBestMove(movelist: *water.movegen.Movelist, i: usize) water.Move {
-    var j = i + 1;
-    while (j < movelist.size) : (j += 1) {
-        if (movelist.moves[i].order(movelist.moves[j], .sc) == .lt) {
-            std.mem.swap(water.Move, &movelist.moves[i], &movelist.moves[j]);
+    // Use a greater than function to sort in descending order instead
+    const greaterThanFn = struct {
+        pub fn greaterThanFn(_: void, lhs: water.Move, rhs: water.Move) bool {
+            return lhs.order(rhs, .sc) == .gt;
         }
-    }
-    return movelist.moves[i];
+    }.greaterThanFn;
+
+    std.mem.sort(water.Move, movelist.moves[0..movelist.size], {}, greaterThanFn);
 }
 
 // ================ TESTING ================
@@ -163,38 +150,10 @@ test "Basic unbiased move ordering" {
     water.movegen.legalmoves(searcher.search_board, &movelist, .{});
 
     // Order the moves and verify that the scores are sorted in descending order
-    orderMoves(searcher, &movelist, water.Move.init(), false, true);
+    orderMoves(searcher, &movelist, water.Move.init(), false);
     for (0..movelist.size - 1) |i| {
         const lhs = movelist.moves[i];
         const rhs = movelist.moves[i + 1];
         try expect(lhs.score >= rhs.score);
     }
-}
-
-test "Move ordering without full sort" {
-    const allocator = testing.allocator;
-    var board = try water.Board.init(allocator, .{
-        .fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
-    });
-    defer board.deinit();
-
-    var buffer: [1024]u8 = undefined;
-    var discarding = std.Io.Writer.Discarding.init(&buffer);
-    const writer = &discarding.writer;
-
-    const searcher = try searcher_.Searcher.init(allocator, board, writer);
-    defer searcher.deinit();
-
-    var movelist_sorted = water.movegen.Movelist{};
-    water.movegen.legalmoves(searcher.search_board, &movelist_sorted, .{});
-
-    var movelist_unsorted = water.movegen.Movelist{};
-    water.movegen.legalmoves(searcher.search_board, &movelist_unsorted, .{});
-
-    orderMoves(searcher, &movelist_sorted, null, false, true);
-    orderMoves(searcher, &movelist_unsorted, null, false, false);
-    const bubbled_next = nextBestMove(&movelist_unsorted, 0);
-
-    try expectEqual(movelist_sorted.moves[0].move, bubbled_next.move);
-    try expectEqual(movelist_sorted.moves[0].score, bubbled_next.score);
 }

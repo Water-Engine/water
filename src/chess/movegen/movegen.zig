@@ -56,7 +56,7 @@ pub const Movelist = struct {
     /// Returns null if the move is not found.
     pub fn find(self: *const Movelist, move: Move) ?usize {
         for (self.moves[0..self.size], 0..) |m, i| {
-            if (move.orderByMove(m) == .eq) return i;
+            if (move.order(m, .mv) == .eq) return i;
         }
         return null;
     }

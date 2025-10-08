@@ -229,7 +229,7 @@ pub fn negamax(
             return 0;
         }
     }
-    orderer.orderMoves(searcher, &movelist, hashmove, flags.is_null, false);
+    orderer.orderMoves(searcher, &movelist, hashmove, flags.is_null);
 
     // Move iteration
     var best_move = water.Move.init();
@@ -237,8 +237,7 @@ pub fn negamax(
     var skip_quiet = false;
     var legals: usize = 0;
 
-    for (0..movelist.size) |i| {
-        const move = orderer.nextBestMove(&movelist, i);
+    for (movelist.moves[0..movelist.size], 0..) |move, i| {
         if (move.order(searcher.exclude_move[searcher.ply], .mv) == .eq) {
             continue;
         }
@@ -603,11 +602,10 @@ pub fn quiescence(
     } else {
         water.movegen.legalmoves(searcher.search_board, &movelist, .{ .gen_type = .capture });
     }
-    orderer.orderMoves(searcher, &movelist, hashmove, false, false);
+    orderer.orderMoves(searcher, &movelist, hashmove, false);
 
     // Iterate through the sorted moves
-    for (0..movelist.size) |i| {
-        const move = orderer.nextBestMove(&movelist, i);
+    for (movelist.moves[0..movelist.size], 0..) |move, i| {
         const is_capture = searcher.search_board.isCapture(move);
 
         // SEE pruning

@@ -108,7 +108,7 @@ pub const Move = struct {
     // ================ COMPARISON ================
 
     pub fn order(lhs: Move, rhs: Move, comptime by: enum { mv, sc }) std.math.Order {
-        return switch (by) {
+        return switch (comptime by) {
             .mv => lhs.orderByMove(rhs),
             .sc => lhs.orderByScore(rhs),
         };

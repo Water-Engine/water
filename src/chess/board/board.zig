@@ -195,9 +195,9 @@ pub const Board = struct {
         while (blk: {
             const ord = sq.order(sq_corner);
             if (king_side) {
-                break :blk ord == .lt or ord == .eq;
+                break :blk ord != .gt;
             } else {
-                break :blk ord == .gt or ord == .eq;
+                break :blk ord != .lt;
             }
         }) : (if (king_side) {
             _ = sq.inc();

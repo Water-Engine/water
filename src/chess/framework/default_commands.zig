@@ -49,6 +49,7 @@ pub fn PositionCommand(comptime Searcher: type) type {
             self: *const Self,
             engine: *engine_.Engine(Searcher),
         ) anyerror!void {
+            if (!engine.searcher.should_stop.load(.acquire)) return;
             if (!try engine.searcher.governing_board.setFen(self.fen, true)) {
                 return types.ChessError.IllegalFen;
             }
