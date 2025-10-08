@@ -158,9 +158,9 @@ pub const pst: [6][2][64]i32 = .{
 };
 
 pub const PeSTOEval = struct {
-    score_mg: i32,
-    score_eg_mat: i32,
-    score_eg_non_mat: i32,
+    score_mg: i32 = 0,
+    score_eg_mat: i32 = 0,
+    score_eg_non_mat: i32 = 0,
 };
 
 /// Gathers data related to PeSTO's evaluation function.

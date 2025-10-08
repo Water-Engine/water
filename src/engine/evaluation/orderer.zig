@@ -62,8 +62,8 @@ pub fn orderMoves(
                 std.debug.assert(to_pt_idx < mvvlva[from_pt_idx].len);
                 score += mvvlva[to_pt_idx][from_pt_idx];
 
-                const see_relevant = see.seeThreshold(board, move.*, -90);
-                score += if (see_relevant) winning_capture_bonus else losing_capture_bonus;
+                const see_relevant: i32 = @intFromBool(see.seeThreshold(board, move.*, -90));
+                score += see_relevant * winning_capture_bonus + (1 - see_relevant) * losing_capture_bonus;
             }
         } else {
             var last = if (searcher.ply > 0) searcher.history.moves[searcher.ply - 1] else water.Move.init();
@@ -77,26 +77,37 @@ pub fn orderMoves(
             ][last.from().index()][last.to().index()].order(move.*, .mv) == .eq) {
                 score += counter_move_bonus;
             } else {
-                const from = move.from();
-                std.debug.assert(from.valid());
-                const to = move.to();
-                std.debug.assert(to.valid());
-
                 score += quiet_bonus;
-                score += searcher.history.heuristic[board.side_to_move.index()][from.index()][to.index()];
+                std.debug.assert(move.valid());
 
-                if (!is_null and searcher.ply >= 1) {
-                    inline for ([_]usize{ 0, 1, 3 }) |plies_ago| {
-                        const divider: i32 = 1;
-                        if (searcher.ply >= plies_ago + 1) {
-                            const prev = searcher.history.moves[searcher.ply - plies_ago - 1];
-                            if (prev.valid()) {
+                const stm_idx = board.side_to_move.index();
+                const move_from_idx = move.from().index();
+                const move_to_idx = move.to().index();
+
+                const heuristic_offset = (stm_idx << 12) | (move_from_idx << 6) | move_to_idx;
+                const heuristic_ptr: [*]const i32 = @ptrCast(&searcher.history.heuristic);
+                const heuristic_value = heuristic_ptr[heuristic_offset];
+
+                score += heuristic_value;
+
+                if (comptime !is_null) {
+                    if (searcher.ply >= 1) {
+                        inline for ([_]usize{ 0, 1, 3 }) |plies_ago| {
+                            const divider: i32 = 1;
+                            if (searcher.ply >= plies_ago + 1) {
+                                const prev = searcher.history.moves[searcher.ply - plies_ago - 1];
                                 const moved_piece = searcher.history.moved_pieces[searcher.ply - plies_ago - 1];
-                                std.debug.assert(moved_piece.valid() and prev.from().valid() and prev.to().valid());
-                                score += @divTrunc(
-                                    searcher.continuation[moved_piece.index()][prev.to().index()][move.from().index()][move.to().index()],
-                                    divider,
-                                );
+
+                                // Perform pointer arithmetic to index continuation
+                                const moved_piece_idx = moved_piece.index();
+                                const prev_idx = prev.to().index();
+
+                                // Not using a many-item pointer here results in about 98% of performance being spent on 12 MiB copy!
+                                const continuation_offset = (moved_piece_idx << 18) | (prev_idx << 12) | (move_from_idx << 6) | move_to_idx;
+                                const continuation_ptr: [*]const i32 = @ptrCast(searcher.continuation);
+                                const continuation_value = continuation_ptr[continuation_offset];
+
+                                score += @intFromBool(prev.valid()) * @divTrunc(continuation_value, divider);
                             }
                         }
                     }

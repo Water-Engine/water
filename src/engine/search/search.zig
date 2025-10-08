@@ -38,7 +38,7 @@ pub fn negamax(
 
     // Check for a ply overflow
     if (searcher.ply == searcher_.max_ply) {
-        return evaluator.evaluate(searcher.search_board, false);
+        return searcher.evaluator.evaluate(searcher.search_board, false);
     }
 
     // Check extension only at reasonable depths
@@ -119,7 +119,7 @@ pub fn negamax(
         } else if (searcher.exclude_move[searcher.ply].move != 0) {
             break :blk searcher.history.evaluations[searcher.ply];
         } else {
-            break :blk evaluator.evaluate(searcher.search_board, false);
+            break :blk searcher.evaluator.evaluate(searcher.search_board, false);
         }
     };
     var best_score: i32 = static_eval;
@@ -357,10 +357,15 @@ pub fn negamax(
                 if (improving) reduction -= 1;
                 if (!on_pv) reduction += 1;
 
-                reduction -= @divTrunc(
-                    searcher.history.heuristic[color.index()][move.from().index()][move.to().index()],
-                    6144,
-                );
+                const move_from_idx = move.from().index();
+                const move_to_idx = move.to().index();
+
+                // History heuristic
+                const heuristic_offset = (color.index() << 12) | (move_from_idx << 6) | move_to_idx;
+                const heuristic_ptr: [*]const i32 = @ptrCast(&searcher.history.heuristic);
+                const heuristic_value = heuristic_ptr[heuristic_offset];
+
+                reduction -= @divTrunc(heuristic_value, 6144);
 
                 const casted_new_depth = @as(i32, @intCast(new_depth));
                 const rd: usize = @intCast(std.math.clamp(casted_new_depth - reduction, 1, casted_new_depth + 1));
@@ -463,13 +468,19 @@ pub fn negamax(
         const bm = best_move;
         const max_history: i32 = 16384;
         for (quiets.moves[0..quiets.size]) |move| {
-            // HIstory heuristic
+            const move_from_idx = move.from().index();
+            const move_to_idx = move.to().index();
+
+            // History heuristic
+            const heuristic_offset = (color.index() << 12) | (move_from_idx << 6) | move_to_idx;
+            const heuristic_ptr: [*]i32 = @ptrCast(&searcher.history.heuristic);
+
             const is_best = move.order(bm, .mv) == .eq;
-            const hist = searcher.history.heuristic[color.index()][move.from().index()][move.to().index()] * adj;
+            const hist = heuristic_ptr[heuristic_offset] * adj;
             if (is_best) {
-                searcher.history.heuristic[color.index()][move.from().index()][move.to().index()] += adj - @divTrunc(hist, max_history);
+                heuristic_ptr[heuristic_offset] += adj - @divTrunc(hist, max_history);
             } else {
-                searcher.history.heuristic[color.index()][move.from().index()][move.to().index()] += -adj - @divTrunc(hist, max_history);
+                heuristic_ptr[heuristic_offset] += -adj - @divTrunc(hist, max_history);
             }
 
             // Continuation heuristic
@@ -480,14 +491,22 @@ pub fn negamax(
                         const prev = searcher.history.moves[searcher.ply - plies_ago - 1];
                         if (!prev.valid()) continue;
 
-                        const cont = searcher.continuation[searcher.history.moved_pieces[searcher.ply - plies_ago - 1].index()][prev.to().index()][move.from().index()][move.to().index()] * adj;
+                        // Perform pointer arithmetic to index continuation
+                        const moved_piece_idx = searcher.history.moved_pieces[searcher.ply - plies_ago - 1].index();
+                        const prev_idx = prev.to().index();
+
+                        // Not using a many-item pointer here results in about 78% of performance being spent on 12 MiB copy!
+                        const offset = (moved_piece_idx << 18) | (prev_idx << 12) | (move_from_idx << 6) | move_to_idx;
+                        const continuation_ptr: [*]i32 = @ptrCast(searcher.continuation);
+
+                        const cont = continuation_ptr[offset] * adj;
                         if (is_best) {
-                            searcher.continuation[searcher.history.moved_pieces[searcher.ply - plies_ago - 1].index()][prev.to().index()][move.from().index()][move.to().index()] += adj - @divTrunc(
+                            continuation_ptr[offset] += adj - @divTrunc(
                                 cont,
                                 max_history,
                             );
                         } else {
-                            searcher.continuation[searcher.history.moved_pieces[searcher.ply - plies_ago - 1].index()][prev.to().index()][move.from().index()][move.to().index()] += -adj - @divTrunc(
+                            continuation_ptr[offset] += -adj - @divTrunc(
                                 cont,
                                 max_history,
                             );
@@ -540,7 +559,7 @@ pub fn quiescence(
     if (water.arbiter.insufficientMaterial(searcher.search_board)) {
         return 0;
     } else if (searcher.ply >= searcher_.max_ply) {
-        return evaluator.evaluate(searcher.search_board, false);
+        return searcher.evaluator.evaluate(searcher.search_board, false);
     }
 
     searcher.nodes += 1;
@@ -549,7 +568,7 @@ pub fn quiescence(
     var best_score = -evaluator.mate_score + @as(i32, @intCast(searcher.ply));
     var static_eval = best_score;
     if (!in_check) {
-        static_eval = evaluator.evaluate(searcher.search_board, false);
+        static_eval = searcher.evaluator.evaluate(searcher.search_board, false);
         best_score = static_eval;
 
         // Standpat pruning

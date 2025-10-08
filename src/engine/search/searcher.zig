@@ -4,7 +4,7 @@ const water = @import("water");
 const parameters = @import("parameters.zig");
 const search_ = @import("search.zig");
 
-const evaluator = @import("../evaluation/evaluator.zig");
+const evaluator_ = @import("../evaluation/evaluator.zig");
 const tt = @import("../evaluation/tt.zig");
 
 pub const max_ply: usize = 128;
@@ -39,6 +39,7 @@ pub const Searcher = struct {
 
     governing_board: *water.Board,
     search_board: *water.Board,
+    evaluator: evaluator_.Evaluator = .{},
 
     should_stop: std.atomic.Value(bool) = .init(false),
     silent_output: bool = false,
@@ -128,8 +129,8 @@ pub const Searcher = struct {
         self.alloted_time_ns = alloted_time_ns;
         self.iterative_deepening_depth = 0;
 
-        var prev_score = -evaluator.mate_score;
-        var score = -evaluator.mate_score;
+        var prev_score = -evaluator_.mate_score;
+        var score = -evaluator_.mate_score;
         var bm = water.Move.init();
         var stability: usize = 0;
 
@@ -140,16 +141,16 @@ pub const Searcher = struct {
             self.ply = 0;
             self.seldepth = 0;
 
-            var alpha = -evaluator.mate_score;
-            var beta = evaluator.mate_score;
-            var delta = evaluator.mate_score;
+            var alpha = -evaluator_.mate_score;
+            var beta = evaluator_.mate_score;
+            var delta = evaluator_.mate_score;
 
             var depth = tdepth;
 
             // Aspiration window at deeper depths
             if (depth >= 6) {
-                alpha = @max(score - parameters.aspiration_window, -evaluator.mate_score);
-                beta = @min(score + parameters.aspiration_window, evaluator.mate_score);
+                alpha = @max(score - parameters.aspiration_window, -evaluator_.mate_score);
+                beta = @min(score + parameters.aspiration_window, evaluator_.mate_score);
                 delta = parameters.aspiration_window;
             }
 
@@ -163,7 +164,7 @@ pub const Searcher = struct {
                     depth,
                     alpha,
                     beta,
-                    .{
+                    comptime .{
                         .is_null = false,
                         .cutnode = false,
                         .node = .root,
@@ -178,9 +179,9 @@ pub const Searcher = struct {
 
                 if (score <= alpha) {
                     beta = @divTrunc(alpha + beta, 2);
-                    alpha = @max(alpha - delta, -evaluator.mate_score);
+                    alpha = @max(alpha - delta, -evaluator_.mate_score);
                 } else if (score >= beta) {
-                    beta = @min(beta + delta, evaluator.mate_score);
+                    beta = @min(beta + delta, evaluator_.mate_score);
                     if (depth > 1 and (tdepth < 4 or depth > tdepth - 4)) {
                         depth -= 1;
                     }
@@ -212,8 +213,8 @@ pub const Searcher = struct {
                 });
 
                 // Print the mate score if close enough
-                if (@abs(score) >= (evaluator.mate_score - evaluator.max_mate)) {
-                    const mate_in: i32 = @divTrunc(evaluator.mate_score - @as(i32, @intCast(@abs(score))), 2) + 1;
+                if (@abs(score) >= (evaluator_.mate_score - evaluator_.max_mate)) {
+                    const mate_in: i32 = @divTrunc(evaluator_.mate_score - @as(i32, @intCast(@abs(score))), 2) + 1;
                     const perspective: i32 = if (score > 0) 1 else -1;
                     try self.writer.print("mate {} pv", .{perspective * mate_in});
 

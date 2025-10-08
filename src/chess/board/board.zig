@@ -1039,7 +1039,7 @@ pub const Board = struct {
 
     /// Checks if the current position is a repetition.
     ///
-    /// Only returns true if the position has been seen at `count` times.
+    /// Only returns true if the position has been seen at least `count` times.
     pub fn isRepetition(self: *const Board, count: usize) bool {
         std.debug.assert(count > 0);
         var seen_count: usize = 0;

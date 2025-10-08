@@ -127,76 +127,104 @@ pub fn distance(board: *const water.Board, comptime white_winning: bool) i32 {
     return score;
 }
 
-/// Performs a static evaluation for the stm on the given board.
-pub fn evaluate(board: *const water.Board, comptime use_nnue: bool) i32 {
-    const color = board.side_to_move;
+/// A dynamic evaluator for managing pesto and NNUE evaluations.
+///
+/// Implementation heavily inspired from https://github.com/SnowballSH/Avalanche
+pub const Evaluator = struct {
+    pesto: pst.PeSTOEval = .{},
+    needs_pesto: bool = false,
 
-    // TODO: Integrate NNUE evaluation
-    _ = use_nnue;
-
-    const p = phase(board);
-    var result: i32 = 0;
-
-    const pesto = pst.pestoEval(board);
-
-    var mg_phase: i32 = 0;
-    var eg_phase: i32 = 0;
-    var mg_score: i32 = 0;
-    var eg_score: i32 = 0;
-
-    // Taper the eval as a starting position is at phase 24
-    mg_phase = p;
-    if (mg_phase > 24) {
-        mg_phase = 24;
-    }
-    eg_phase = 24 - mg_phase;
-
-    mg_score = pesto.score_mg;
-    eg_score = pesto.score_eg_mat;
-
-    const half_moves: i32 = if (board.previous_states.getLastOrNull()) |state| blk: {
-        break :blk @intCast(state.half_moves);
-    } else 0;
-
-    while (true) {
-        // Late endgame consideration only
-        if (p <= 4 and p >= 1 and board.pieces(.none, .pawn).empty()) {
-            // Consider a side winning iff the other side only has a king
-            if (board.pieces(.black, .king).eqBB(board.us(.black))) {
-                eg_score += distance(board, true);
-                eg_score += @divTrunc(pesto.score_eg_non_mat, 2);
-                eg_score = @max(100, eg_score - half_moves);
-                break;
-            } else if (board.pieces(.white, .king).eqBB(board.us(.white))) {
-                eg_score += distance(board, false);
-                eg_score += @divTrunc(pesto.score_eg_non_mat, 2);
-                eg_score = @min(-100, eg_score + half_moves);
-                break;
-            }
+    /// Reloads the PeSTO evaluation terms from the board.
+    ///
+    /// Prefer more incremental updates than direct calls here.
+    pub fn refresh(
+        self: *Evaluator,
+        board: *const water.Board,
+        comptime options: enum { nnue, pesto, full },
+    ) void {
+        if (comptime options != .nnue) {
+            self.pesto = pst.pestoEval(board);
         }
 
-        eg_score += pesto.score_eg_non_mat;
-        break;
+        if (comptime options != .pesto) {}
     }
 
-    // Normalize the score with the determined phases
-    if (color.isWhite()) {
-        result = @divTrunc(mg_score * mg_phase + eg_score * eg_phase, 24);
-    } else {
-        result = -@divTrunc(mg_score * mg_phase + eg_score * eg_phase, 24);
+    /// Performs a static evaluation for the stm on the given board.
+    pub fn evaluate(self: *Evaluator, board: *const water.Board, comptime use_nnue: bool) i32 {
+        const color = board.side_to_move;
+
+        // TODO: If the pesto was turned off last evaluation, reload and re-enable
+        // if (!self.needs_pesto) {
+        //     self.needs_pesto = true;
+        //     self.refresh(board, .pesto);
+        // }
+        self.refresh(board, .pesto);
+
+        // TODO: Integrate NNUE evaluation
+        _ = use_nnue;
+
+        const p = phase(board);
+        var result: i32 = 0;
+
+        var mg_phase: i32 = 0;
+        var eg_phase: i32 = 0;
+        var mg_score: i32 = 0;
+        var eg_score: i32 = 0;
+
+        // Taper the eval as a starting position is at phase 24
+        mg_phase = p;
+        if (mg_phase > 24) {
+            mg_phase = 24;
+        }
+        eg_phase = 24 - mg_phase;
+
+        mg_score = self.pesto.score_mg;
+        eg_score = self.pesto.score_eg_mat;
+
+        const half_moves: i32 = if (board.previous_states.getLastOrNull()) |state| blk: {
+            break :blk @intCast(state.half_moves);
+        } else 0;
+
+        while (true) {
+            // Late endgame consideration only
+            if (p <= 4 and p >= 1 and board.pieces(.none, .pawn).empty()) {
+                // Consider a side winning iff the other side only has a king
+                if (board.pieces(.black, .king).eqBB(board.us(.black))) {
+                    eg_score += distance(board, true);
+                    eg_score += @divTrunc(self.pesto.score_eg_non_mat, 2);
+                    eg_score = @max(100, eg_score - half_moves);
+                    break;
+                } else if (board.pieces(.white, .king).eqBB(board.us(.white))) {
+                    eg_score += distance(board, false);
+                    eg_score += @divTrunc(self.pesto.score_eg_non_mat, 2);
+                    eg_score = @min(-100, eg_score + half_moves);
+                    break;
+                }
+            }
+
+            eg_score += self.pesto.score_eg_non_mat;
+            break;
+        }
+
+        // Normalize the score with the determined phases
+        if (color.isWhite()) {
+            result = @divTrunc(mg_score * mg_phase + eg_score * eg_phase, 24);
+        } else {
+            result = -@divTrunc(mg_score * mg_phase + eg_score * eg_phase, 24);
+        }
+
+        if (p <= 5 and @abs(result) >= 16 and drawish(board)) {
+            const drawish_heuristic: i32 = 8;
+            result = @divTrunc(result, drawish_heuristic);
+        }
+
+        // Scale the result
+        const material_normalized: i32 = @divTrunc(materialPhase(board), 32);
+        result = @divTrunc(result * (700 + material_normalized - half_moves * 5), 1024);
+
+        return result;
     }
-
-    if (p <= 5 and @abs(result) >= 16 and drawish(board)) {
-        const drawish_heuristic: i32 = 8;
-        result = @divTrunc(result, drawish_heuristic);
-    }
-
-    // Scale the result
-    const material_normalized: i32 = @divTrunc(materialPhase(board), 32);
-    result = @divTrunc(result * (700 + material_normalized - half_moves * 5), 1024);
-
-    return result;
-}
+};
 
 // ================ TESTING ================
 const testing = std.testing;
@@ -242,19 +270,26 @@ test "Board evaluation" {
     var board = try water.Board.init(allocator, .{});
     defer board.deinit();
 
-    try expectEqual(0, evaluate(board, false));
+    var eval = Evaluator{};
+
+    try expectEqual(0, eval.evaluate(board, false));
     try expect(try board.setFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1", true));
-    try expectEqual(0, evaluate(board, false));
+    eval.refresh(board, .pesto);
+    try expectEqual(0, eval.evaluate(board, false));
 
     try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ", true));
-    try expectEqual(49, evaluate(board, false));
+    eval.refresh(board, .pesto);
+    try expectEqual(49, eval.evaluate(board, false));
     try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - ", true));
-    try expectEqual(-49, evaluate(board, false));
+    eval.refresh(board, .pesto);
+    try expectEqual(-49, eval.evaluate(board, false));
 
     try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80", true));
-    try expectEqual(100, evaluate(board, false));
+    eval.refresh(board, .pesto);
+    try expectEqual(100, eval.evaluate(board, false));
     try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 b - - 20 80", true));
-    try expectEqual(-100, evaluate(board, false));
+    eval.refresh(board, .pesto);
+    try expectEqual(-100, eval.evaluate(board, false));
 }
 
 test "Weak draw detection" {
