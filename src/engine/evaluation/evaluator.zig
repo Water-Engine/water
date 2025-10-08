@@ -1,7 +1,7 @@
 const std = @import("std");
 const water = @import("water");
 
-const pst = @import("pst.zig");
+const pesto = @import("pesto.zig");
 const see = @import("see.zig");
 
 pub const mate_score: i32 = 888888;
@@ -129,8 +129,8 @@ pub fn distance(board: *const water.Board, comptime white_winning: bool) i32 {
 
 /// A dynamic evaluator for managing pesto and NNUE evaluations.
 pub const Evaluator = struct {
-    pesto: pst.PeSTOEval = .{},
-    needs_pesto: bool = false,
+    pesto: pesto.PeSTOEval = .{},
+    needs_pesto: bool = true,
 
     /// Reloads the PeSTO evaluation terms from the board.
     ///
@@ -141,10 +141,171 @@ pub const Evaluator = struct {
         comptime options: enum { nnue, pesto, full },
     ) void {
         if (comptime options != .nnue) {
-            self.pesto = pst.pestoEval(board);
+            self.pesto = pesto.eval(board);
         }
 
         if (comptime options != .pesto) {}
+    }
+
+    /// Applies score changes for a piece on a square.
+    fn updateScore(
+        self: *Evaluator,
+        piece_type: water.PieceType,
+        color: water.Color,
+        square: water.Square,
+        comptime delta: enum(i32) { add = 1, sub = -1 },
+    ) void {
+        std.debug.assert(piece_type.valid() and color.valid() and square.valid());
+
+        const pt_idx = piece_type.index();
+        const sq_idx = square.index();
+        const delta_val: i32 = comptime @intFromEnum(delta);
+
+        const sign = 1 - 2 * color.asInt(i32);
+        const change_mg = (pesto.material[pt_idx][0] + pesto.pst[pt_idx][0][sq_idx]) * delta_val * sign;
+        const change_eg_mat = pesto.material[pt_idx][1] * delta_val * sign;
+        const change_eg_non_mat = pesto.pst[pt_idx][1][sq_idx] * delta_val * sign;
+
+        self.pesto.score_mg += change_mg;
+        self.pesto.score_eg_mat += change_eg_mat;
+        self.pesto.score_eg_non_mat += change_eg_non_mat;
+    }
+
+    /// Incrementally updates the evaluation by making a move.
+    ///
+    /// Must be called before updating the board.
+    pub fn makeMove(
+        self: *Evaluator,
+        board: *const water.Board,
+        move: water.Move,
+    ) void {
+        const stm = board.side_to_move;
+        const from = move.from();
+        const to = move.to();
+        std.debug.assert(stm.valid() and from.valid() and to.valid());
+
+        const captured_pt = board.at(water.PieceType, to);
+        const mover = board.at(water.PieceType, from);
+        std.debug.assert(mover != .none);
+        self.updateScore(mover, stm, from, .sub);
+
+        switch (move.typeOf(water.MoveType)) {
+            .normal => {
+                if (captured_pt != .none) {
+                    self.updateScore(
+                        captured_pt,
+                        stm.opposite(),
+                        to,
+                        .sub,
+                    );
+                }
+                self.updateScore(mover, stm, to, .add);
+            },
+            .promotion => {
+                if (captured_pt != .none) {
+                    self.updateScore(
+                        captured_pt,
+                        stm.opposite(),
+                        to,
+                        .sub,
+                    );
+                }
+                self.updateScore(move.promotionType(), stm, to, .add);
+            },
+            .en_passant => {
+                const captured_sq = board.ep_square;
+                std.debug.assert(captured_sq.valid());
+                self.updateScore(mover, stm, to, .add);
+                self.updateScore(.pawn, stm.opposite(), captured_sq, .sub);
+            },
+            .castling => {
+                const side = water.CastlingRights.closestSide(
+                    water.Square,
+                    to,
+                    from,
+                    water.Square.order,
+                );
+
+                const king_to = water.Square.castlingKingTo(side, stm);
+                const rook_from = to;
+                const rook_to = water.Square.castlingRookTo(side, stm);
+                std.debug.assert(king_to.valid() and rook_from.valid() and rook_to.valid());
+
+                self.updateScore(.king, stm, king_to, .add);
+                self.updateScore(.rook, stm, rook_from, .sub);
+                self.updateScore(.rook, stm, rook_to, .add);
+            },
+            .null_move => {},
+        }
+    }
+
+    /// Incrementally updates the evaluation by unmaking a move.
+    ///
+    /// Must be called after updating the board.
+    pub fn unmakeMove(
+        self: *Evaluator,
+        board: *const water.Board,
+        move: water.Move,
+        captured_piece: water.Piece,
+    ) void {
+        const stm = board.side_to_move.opposite();
+        const from = move.from();
+        const to = move.to();
+        std.debug.assert(stm.valid() and from.valid() and to.valid());
+
+        const mover = board.at(water.PieceType, from);
+        std.debug.assert(mover != .none);
+        self.updateScore(mover, stm, from, .add);
+
+        switch (move.typeOf(water.MoveType)) {
+            .normal => {
+                self.updateScore(mover, stm, to, .sub);
+                if (captured_piece != .none) {
+                    self.updateScore(
+                        captured_piece.asType(),
+                        stm.opposite(),
+                        to,
+                        .add,
+                    );
+                }
+            },
+            .promotion => {
+                self.updateScore(move.promotionType(), stm, to, .sub);
+                if (captured_piece.asType() != .none) {
+                    self.updateScore(
+                        captured_piece.asType(),
+                        stm.opposite(),
+                        to,
+                        .add,
+                    );
+                }
+            },
+            .en_passant => {
+                const captured_sq = water.Square.make(to.rank(), from.file());
+                std.debug.assert(captured_sq.valid());
+
+                self.updateScore(mover, stm, to, .sub);
+                self.updateScore(.pawn, stm.opposite(), captured_sq, .add);
+            },
+            .castling => {
+                const side = water.CastlingRights.closestSide(
+                    water.Square,
+                    to,
+                    from,
+                    water.Square.order,
+                );
+
+                const king_to = water.Square.castlingKingTo(side, stm);
+                const rook_from = to;
+                const rook_to = water.Square.castlingRookTo(side, stm);
+                std.debug.assert(king_to.valid() and rook_from.valid() and rook_to.valid());
+
+                self.updateScore(.king, stm, king_to, .sub);
+                self.updateScore(.rook, stm, rook_from, .add);
+                self.updateScore(.rook, stm, rook_to, .sub);
+            },
+            .null_move => {},
+        }
     }
 
     /// Performs a static evaluation for the stm on the given board.
@@ -152,11 +313,10 @@ pub const Evaluator = struct {
         const color = board.side_to_move;
 
         // TODO: If the pesto was turned off last evaluation, reload and re-enable
-        // if (!self.needs_pesto) {
-        //     self.needs_pesto = true;
-        //     self.refresh(board, .pesto);
-        // }
-        self.refresh(board, .pesto);
+        if (!self.needs_pesto) {
+            self.needs_pesto = true;
+            self.refresh(board, .pesto);
+        }
 
         // TODO: Integrate NNUE evaluation
         _ = use_nnue;
@@ -170,10 +330,7 @@ pub const Evaluator = struct {
         var eg_score: i32 = 0;
 
         // Taper the eval as a starting position is at phase 24
-        mg_phase = p;
-        if (mg_phase > 24) {
-            mg_phase = 24;
-        }
+        mg_phase = @min(p, 24);
         eg_phase = 24 - mg_phase;
 
         mg_score = self.pesto.score_mg;
@@ -345,4 +502,39 @@ test "Weak draw detection" {
     // Not drawish example
     try expect(try board.setFen("8/8/8/8/8/8/8/KBkq4 w - - 0 1", true));
     try expect(!drawish(board));
+}
+
+test "Board incremental evaluation" {
+    const allocator = testing.allocator;
+    var board = try water.Board.init(allocator, .{});
+    defer board.deinit();
+
+    var refresh_eval = Evaluator{};
+    var incremental_eval = Evaluator{};
+
+    // Opening position
+    const opening = water.uci.uciToMove(board, "e2e4");
+    incremental_eval.makeMove(board, opening);
+    board.makeMove(opening, .{});
+    refresh_eval.refresh(board, .pesto);
+    try expectEqual(
+        refresh_eval.evaluate(board, false),
+        incremental_eval.evaluate(board, false),
+    );
+
+    // TODO: Midgame position
+    try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ", true));
+    refresh_eval.refresh(board, .pesto);
+    try expectEqual(49, refresh_eval.evaluate(board, false));
+    try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - ", true));
+    refresh_eval.refresh(board, .pesto);
+    try expectEqual(-49, refresh_eval.evaluate(board, false));
+
+    // TODO: Endgame position
+    try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80", true));
+    refresh_eval.refresh(board, .pesto);
+    try expectEqual(100, refresh_eval.evaluate(board, false));
+    try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 b - - 20 80", true));
+    refresh_eval.refresh(board, .pesto);
+    try expectEqual(-100, refresh_eval.evaluate(board, false));
 }

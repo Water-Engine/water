@@ -20,8 +20,6 @@ pub const material: [6][2]i32 = .{
 /// Phase is represented as index 1 for endgame and 0 for everything else.
 ///
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-///
-/// http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 pub const pst: [6][2][64]i32 = .{
     .{
         .{
@@ -169,7 +167,7 @@ pub const PeSTOEval = struct {
 /// Average performance of this function is 20ns.
 ///
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-pub fn pestoEval(board: *const water.Board) PeSTOEval {
+pub fn eval(board: *const water.Board) PeSTOEval {
     var mg: i32 = 0;
     var eg_material: i32 = 0;
     var eg_non_material: i32 = 0;
@@ -210,21 +208,21 @@ test "PeSTO evaluation" {
     defer board.deinit();
 
     const expected_starting: [3]i32 = .{ 0, 0, 0 };
-    const actual_starting = pestoEval(board);
+    const actual_starting = eval(board);
     try expectEqual(expected_starting[0], actual_starting.score_mg);
     try expectEqual(expected_starting[1], actual_starting.score_eg_mat);
     try expectEqual(expected_starting[2], actual_starting.score_eg_non_mat);
 
     try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80", true));
     const expected_mid: [3]i32 = .{ 198, 94, 9 };
-    const actual_mid = pestoEval(board);
+    const actual_mid = eval(board);
     try expectEqual(expected_mid[0], actual_mid.score_mg);
     try expectEqual(expected_mid[1], actual_mid.score_eg_mat);
     try expectEqual(expected_mid[2], actual_mid.score_eg_non_mat);
 
     try expect(try board.setFen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 ", true));
     const expected_end: [3]i32 = .{ 70, 0, 31 };
-    const actual_end = pestoEval(board);
+    const actual_end = eval(board);
     try expectEqual(expected_end[0], actual_end.score_mg);
     try expectEqual(expected_end[1], actual_end.score_eg_mat);
     try expectEqual(expected_end[2], actual_end.score_eg_non_mat);

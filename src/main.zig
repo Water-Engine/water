@@ -52,7 +52,7 @@ test {
 
     _ = @import("engine/evaluation/evaluator.zig");
     _ = @import("engine/evaluation/orderer.zig");
-    _ = @import("engine/evaluation/pst.zig");
+    _ = @import("engine/evaluation/pesto.zig");
     _ = @import("engine/evaluation/see.zig");
     _ = @import("engine/evaluation/tt.zig");
 }
