@@ -22,7 +22,7 @@ const default_commands = @import("default_commands.zig");
 ///
 /// The searcher's `search_board` is used for searcher and access is not thread safe.
 /// The searcher's `governing_board` is the board at the start of the search.
-/// 
+///
 /// It is recommended to initialize `should_stop` to true, but this is not part of the contract.
 ///
 /// The engine is responsible for telling the searcher when to stop, but determining alloted time must be handled externally.

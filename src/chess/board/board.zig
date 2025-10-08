@@ -705,11 +705,16 @@ pub const Board = struct {
     /// A moves legality should be verified externally.
     /// For external verification, check if the move is in the list of current legal moves.
     ///
+    /// Using `return_captured` changes the return type to Piece, which is the captured piece and can be `.none`.
+    ///
     /// Only asserts that the side to move aligns with the piece to move.
     pub fn makeMove(self: *Board, move: Move, comptime options: struct {
         exact: bool = false,
-    }) void {
+        return_captured: bool = false,
+    }) if (options.return_captured) Piece else void {
         std.debug.assert((self.at(Piece, move.from()).order(.black_pawn) == .lt) == (self.side_to_move == .white));
+
+        var tracked_captured: Piece = .none;
 
         const capture = self.at(Piece, move.to()) != .none and move.typeOf(MoveType) != .castling;
         const captured = self.at(Piece, move.to());
@@ -732,6 +737,10 @@ pub const Board = struct {
 
         // Handle direct captures (excludes EP)
         if (capture) {
+            if (comptime options.return_captured) {
+                tracked_captured = captured;
+            }
+
             self.removePiece(captured, move.to());
 
             self.halfmove_clock = 0;
@@ -865,6 +874,10 @@ pub const Board = struct {
             std.debug.assert(self.at(PieceType, move.to().ep()) == .pawn);
 
             const piece = Piece.make(self.side_to_move.opposite(), .pawn);
+            if (comptime options.return_captured) {
+                tracked_captured = piece;
+            }
+
             self.removePiece(piece, move.to().ep());
 
             self.key ^= Zobrist.piece(piece, move.to().ep());
@@ -872,6 +885,10 @@ pub const Board = struct {
 
         self.key ^= Zobrist.sideToMove();
         self.side_to_move = self.side_to_move.opposite();
+
+        if (comptime options.return_captured) {
+            return tracked_captured;
+        }
     }
 
     /// Unmakes a LEGAL move on the board.
@@ -1542,7 +1559,7 @@ test "Illegal fen handling" {
     try expectEqualSlices(u8, starting_fen, board.original_fen);
 }
 
-test "Move Making" {
+test "Move making without capture tracking" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
     defer board.deinit();
@@ -1634,6 +1651,35 @@ test "Move Making" {
 
     board.unmakeMove(frc_castle);
     try expectEqual(15836352940436779965, board.key);
+}
+
+test "Move making with capture tracking" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+    defer board.deinit();
+
+    // From starting position
+    const opening = uci.uciToMove(board, "e2e4");
+    const captured_opening: Piece = board.makeMove(opening, .{
+        .return_captured = true,
+    });
+    try expectEqual(Piece.none, captured_opening);
+
+    // Standard capture move
+    try expect(try board.setFen("4rb1k/2pqn2p/6pn/pppP2N1/P1Q3b1/1P2p3/2B3PP/B3RRK1 w - - 0 24", true));
+    const basic_capture = uci.uciToMove(board, "c4g4");
+    const captured_basic: Piece = board.makeMove(basic_capture, .{
+        .return_captured = true,
+    });
+    try expectEqual(Piece.black_bishop, captured_basic);
+
+    // En passant capture
+    try expect(try board.setFen("rnbqkbnr/pppp1ppp/8/3P4/4pP2/8/PPP1P1PP/RNBQKBNR b KQkq f3 0 1", true));
+    const ep_capture = uci.uciToMove(board, "e4f3");
+    const captured_ep: Piece = board.makeMove(ep_capture, .{
+        .return_captured = true,
+    });
+    try expectEqual(Piece.white_pawn, captured_ep);
 }
 
 test "Null move making" {
