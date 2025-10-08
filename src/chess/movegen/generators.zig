@@ -369,7 +369,7 @@ pub fn rookMoves(square: Square, pin_hv: Bitboard, occ_all: Bitboard) Bitboard {
 
 /// Returns a bitboard containing all possible moves a queen on the given square can move to.
 pub fn queenMoves(square: Square, pin_d: Bitboard, pin_hv: Bitboard, occ_all: Bitboard) Bitboard {
-    // Branched vs. not branched does not matter here as the unbranched computation is costly 
+    // Branched vs. not branched does not matter here as the unbranched computation is costly
     return blk: {
         if (pin_d.andBB(Bitboard.fromSquare(square)).nonzero()) {
             break :blk attacks.bishop(square, occ_all).andBB(pin_d);

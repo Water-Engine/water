@@ -166,7 +166,8 @@ const KingAttacksU64: [64]u64 = .{
     0x2838000000000000, 0x5070000000000000, 0xA0E0000000000000, 0x40C0000000000000,
 };
 
-const PawnAttacks: [2][64]Bitboard = toBitboardArray(@TypeOf(PawnAttacksU64), PawnAttacksU64);
+const PawnAttacks2D: [2][64]Bitboard = toBitboardArray(@TypeOf(PawnAttacksU64), PawnAttacksU64);
+const PawnAttacks: [128]Bitboard = PawnAttacks2D[0] ++ PawnAttacks2D[1];
 const KnightAttacks: [64]Bitboard = toBitboardArray(@TypeOf(KnightAttacksU64), KnightAttacksU64);
 const KingAttacks: [64]Bitboard = toBitboardArray(@TypeOf(KingAttacksU64), KingAttacksU64);
 
@@ -243,7 +244,8 @@ const BishopAttacks2D: [64][]const Bitboard = .{
 const BishopAttacks = flatten(BishopAttacks2D);
 
 pub fn pawn(color: Color, square: Square) Bitboard {
-    return PawnAttacks[color.index()][square.index()];
+    std.debug.assert(color.valid());
+    return PawnAttacks[64 * color.index() + square.index()];
 }
 
 pub fn pawnLeftAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
@@ -340,10 +342,13 @@ pub fn shift(comptime D: Square.Direction, bb: Bitboard) Bitboard {
 /// Returns the origin squares of pieces of a given color attacking a target square.
 ///
 /// Passing a bitboard for occupied overrides the board's occupied status.
-pub fn attackers(board: *const Board, color: Color, square: Square, options: struct {
-    occupied: ?Bitboard = null,
-    include_king: bool = true,
-}) Bitboard {
+pub fn attackers(
+    board: *const Board,
+    color: Color,
+    square: Square,
+    comptime include_king: bool,
+    options: struct { occupied: ?Bitboard = null },
+) Bitboard {
     const queens = board.pieces(color, .queen);
     const occ = options.occupied orelse board.occ();
 
@@ -359,7 +364,7 @@ pub fn attackers(board: *const Board, color: Color, square: Square, options: str
         board.pieces(color, .rook).orBB(queens),
     ));
 
-    if (options.include_king) {
+    if (comptime include_king) {
         _ = atks.orAssign(king(square).andBB(board.pieces(color, .king)));
     }
 
@@ -435,8 +440,8 @@ test "Attacks" {
     const black_pawn_bb = Bitboard.fromInt(u64, @as(u64, 1) << @truncate(e2.index()));
 
     // Simple lookups
-    try expectEqual(PawnAttacks[Color.white.index()][e2.index()], pawn(.white, e2));
-    try expectEqual(PawnAttacks[Color.black.index()][e2.index()], pawn(.black, e2));
+    try expectEqual(PawnAttacks[64 * Color.white.index() + e2.index()], pawn(.white, e2));
+    try expectEqual(PawnAttacks[64 * Color.black.index() + e2.index()], pawn(.black, e2));
 
     // Comptime pawn left/right attacks
     const w_left = pawnLeftAttacks(.white, white_pawn_bb);
@@ -563,6 +568,7 @@ test "Attackers in a complex position" {
             board,
             .white,
             Square.fromInt(usize, i),
+            true,
             .{},
         );
         try expectEqual(white_attackers[i], atks.bits);
@@ -610,6 +616,7 @@ test "Attackers in a complex position" {
             board,
             .black,
             Square.fromInt(usize, i),
+            true,
             .{},
         );
         try expectEqual(black_attackers[i], atks.bits);

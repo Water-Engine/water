@@ -92,12 +92,14 @@ pub fn seeThreshold(board: *const water.Board, move: water.Move, threshold: i32)
         board,
         .white,
         to,
-        .{ .occupied = relevant_occ, .include_king = false },
+        false,
+        .{ .occupied = relevant_occ },
     ).orBB(water.attacks.attackers(
         board,
         .black,
         to,
-        .{ .occupied = relevant_occ, .include_king = false },
+        false,
+        .{ .occupied = relevant_occ },
     )).andBB(relevant_occ);
 
     const bishops = board.sliders(.diag, .none);
