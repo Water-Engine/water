@@ -41,7 +41,7 @@ pub const Searcher = struct {
     search_board: *water.Board,
     evaluator: evaluator_.Evaluator = .{},
 
-    should_stop: std.atomic.Value(bool) = .init(false),
+    should_stop: std.atomic.Value(bool) = .init(true),
     silent_output: bool = false,
 
     nodes: u64 = 0,
