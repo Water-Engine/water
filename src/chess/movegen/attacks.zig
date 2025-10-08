@@ -66,7 +66,7 @@ pub fn toBitboardArray(comptime T: type, arr: T) BitboardArrayTransformer(T) {
     return result;
 }
 
-/// Flattens a 2D array of Bitboards a 1D array with an offset table.
+/// Creates a slider attack instance by flattening a 2d attack array of Bitboards.
 fn flatten(
     comptime attacks_2d: [64][]const Bitboard,
     comptime masks: [64]Bitboard,
@@ -80,28 +80,26 @@ fn flatten(
         total_len += slice.len;
     }
 
-    return comptime blk: {
-        var flat_attacks: [total_len]Bitboard = undefined;
-        var offsets: [64]usize = undefined;
-        var current_offset: usize = 0;
+    var flat_attacks: [total_len]Bitboard = undefined;
+    var offsets: [64]usize = undefined;
+    var current_offset: usize = 0;
 
-        for (attacks_2d, 0..) |slice, i| {
-            offsets[i] = current_offset;
-            for (slice, 0..) |bb, j| {
-                flat_attacks[current_offset + j] = bb;
-            }
-
-            current_offset += slice.len;
+    inline for (attacks_2d, 0..) |slice, i| {
+        offsets[i] = current_offset;
+        inline for (slice, 0..) |bb, j| {
+            flat_attacks[current_offset + j] = bb;
         }
 
-        const s_attacks = flat_attacks;
-        break :blk FlatSliderAttacks{
-            .attacks = &s_attacks,
-            .offsets = offsets,
-            .masks = masks,
-            .magics = magics,
-            .shifts = shifts,
-        };
+        current_offset += slice.len;
+    }
+
+    const s_attacks = flat_attacks;
+    return FlatSliderAttacks{
+        .attacks = &s_attacks,
+        .offsets = offsets,
+        .masks = masks,
+        .magics = magics,
+        .shifts = shifts,
     };
 }
 
