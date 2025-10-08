@@ -510,7 +510,9 @@ test "Board incremental evaluation" {
     defer board.deinit();
 
     var refresh_eval = Evaluator{};
+    refresh_eval.refresh(board, .pesto);
     var incremental_eval = Evaluator{};
+    incremental_eval.refresh(board, .pesto);
 
     // Opening position
     const opening = water.uci.uciToMove(board, "e2e4");
