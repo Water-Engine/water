@@ -150,25 +150,25 @@ pub const Evaluator = struct {
     /// Applies score changes for a piece on a square.
     fn updateScore(
         self: *Evaluator,
-        piece_type: water.PieceType,
-        color: water.Color,
+        piece: water.Piece,
         square: water.Square,
-        comptime delta: enum(i32) { add = 1, sub = -1 },
     ) void {
-        std.debug.assert(piece_type.valid() and color.valid() and square.valid());
+        std.debug.assert(piece.valid() and square.valid());
 
-        const pt_idx = piece_type.index();
-        const sq_idx = square.index();
-        const delta_val: i32 = comptime @intFromEnum(delta);
+        const pt_idx = piece.asType().index();
+        const index = square.index();
 
-        const sign = 1 - 2 * color.asInt(i32);
-        const change_mg = (pesto.material[pt_idx][0] + pesto.pst[pt_idx][0][sq_idx]) * delta_val * sign;
-        const change_eg_mat = pesto.material[pt_idx][1] * delta_val * sign;
-        const change_eg_non_mat = pesto.pst[pt_idx][1][sq_idx] * delta_val * sign;
-
-        self.pesto.score_mg += change_mg;
-        self.pesto.score_eg_mat += change_eg_mat;
-        self.pesto.score_eg_non_mat += change_eg_non_mat;
+        if (piece.color().isWhite()) {
+            self.score_mg += pesto.material[pt_idx][0];
+            self.score_mg += pesto.pst[pt_idx][0][index ^ 56];
+            self.score_eg_mat += pesto.material[pt_idx][1];
+            self.score_eg_non_mat += pesto.pst[pt_idx][1][index ^ 56];
+        } else if (piece.color().isBlack()) {
+            self.score_mg -= pesto.material[pt_idx][0];
+            self.score_mg -= pesto.pst[pt_idx][0][index];
+            self.score_eg_mat -= pesto.material[pt_idx][1];
+            self.score_eg_non_mat -= pesto.pst[pt_idx][1][index];
+        }
     }
 
     /// Incrementally updates the evaluation by making a move.
@@ -213,7 +213,7 @@ pub const Evaluator = struct {
                 self.updateScore(move.promotionType(), stm, to, .add);
             },
             .en_passant => {
-                const captured_sq = board.ep_square;
+                const captured_sq = board.ep_square.ep();
                 std.debug.assert(captured_sq.valid());
                 self.updateScore(mover, stm, to, .add);
                 self.updateScore(.pawn, stm.opposite(), captured_sq, .sub);
@@ -281,7 +281,7 @@ pub const Evaluator = struct {
                 }
             },
             .en_passant => {
-                const captured_sq = water.Square.make(to.rank(), from.file());
+                const captured_sq = water.Square.make(to.rank(), from.file()).ep();
                 std.debug.assert(captured_sq.valid());
 
                 self.updateScore(mover, stm, to, .sub);
