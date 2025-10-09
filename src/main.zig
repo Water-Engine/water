@@ -7,12 +7,9 @@ const commands = @import("engine/commands.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
-    var tt_arena = std.heap.ArenaAllocator.init(allocator);
-    defer tt_arena.deinit();
-    const tt_allocator = tt_arena.allocator();
 
     search.reloadQLMR();
-    tt.global_tt = try tt.TranspositionTable.init(tt_allocator, null);
+    tt.global_tt = try tt.TranspositionTable.init(allocator, null);
 
     var board = try water.Board.init(allocator, .{});
     defer board.deinit();

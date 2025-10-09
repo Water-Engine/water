@@ -3,9 +3,6 @@ const builtin = @import("builtin");
 const water = @import("water");
 
 pub const megabytes: usize = 1 << 20;
-pub const kilobytes: usize = 1 << 10;
-
-pub const default_tt_size: usize = (16 * megabytes) / @sizeOf(TTEntry);
 
 pub var lock_global_tt = false;
 pub var global_tt: TranspositionTable = undefined;
@@ -43,41 +40,49 @@ pub const TTEntry = packed struct {
     age: u6,
 };
 
+const entry_size = blk: {
+    const size: usize = @sizeOf(TTEntry);
+    if (size != 16) {
+        @compileError("TTEntry must be 16 bytes exactly");
+    }
+    break :blk size;
+};
+const max_entries = (MaxHashSize.mb_size * megabytes) / entry_size;
+
 /// A high performance transposition table.
-///
-/// The TT is thread safe by design courtesy of https://github.com/SnowballSH/Avalanche
 pub const TranspositionTable = struct {
     allocator: std.mem.Allocator,
 
-    // i128 is used as the TTEntry struct has a size of 16 bytes (128 bits)
-    data: std.ArrayList(i128),
-    megs: usize,
+    data: []i128,
+    entries: usize,
+    mask: usize,
     age: u6,
 
     /// Creates a transposition table with the TT size.
     ///
-    /// Passing null for `size_mb` forces a default size `default_tt_size`.
+    /// Passing null or an invalid value defaults to the 16MB starting size.
     pub fn init(allocator: std.mem.Allocator, size_mb: ?usize) !TranspositionTable {
-        const desired_size = if (size_mb) |mb| (mb * megabytes) / @sizeOf(TTEntry) else default_tt_size;
-        if (desired_size == 0) return error.InvalidSize;
-        if (desired_size > MaxHashSize.mb_size) return error.TTTooLarge;
+        const desired_bytes = (size_mb orelse 16) * megabytes;
+        var num_entries = desired_bytes / entry_size;
+        num_entries = std.math.clamp(num_entries, 1, max_entries);
+        num_entries = std.math.floorPowerOfTwo(usize, num_entries);
 
-        var tt = TranspositionTable{
+        const buf: []i128 = try allocator.alloc(i128, num_entries);
+        @memset(buf, 0);
+
+        return .{
             .allocator = allocator,
-            .data = try std.ArrayList(i128).initCapacity(allocator, desired_size),
-            .megs = size_mb orelse ((default_tt_size * @sizeOf(TTEntry)) / megabytes),
+            .data = buf,
+            .entries = num_entries,
+            .mask = num_entries - 1,
             .age = 0,
         };
-
-        try tt.data.ensureTotalCapacity(tt.allocator, tt.megs);
-        tt.data.expandToCapacity();
-
-        return tt;
     }
 
     /// Frees all memory allocated by the arena.
     pub fn deinit(self: *TranspositionTable) void {
-        self.data.deinit(self.allocator);
+        self.allocator.free(self.data);
+        self.data = &.{};
     }
 
     /// Reloads the table, clearing all entries and restoring age.
@@ -85,14 +90,15 @@ pub const TranspositionTable = struct {
     /// Passing null for `size_mb` uses the previous size.
     pub fn reset(self: *TranspositionTable, size_mb: ?usize) !void {
         self.deinit();
-        self.* = try .init(self.allocator, size_mb orelse self.megs);
+        self.* = try init(
+            self.allocator,
+            size_mb orelse ((self.entries * entry_size) / megabytes),
+        );
     }
 
     /// Clears all stored pointers in the table.
     pub fn clear(self: *TranspositionTable) void {
-        for (self.data.items) |*ptr| {
-            ptr.* = 0;
-        }
+        @memset(self.data, 0);
     }
 
     /// Increments the internal age of the table.
@@ -101,12 +107,12 @@ pub const TranspositionTable = struct {
     }
 
     pub inline fn index(self: *TranspositionTable, hash: u64) u64 {
-        return @intCast(@as(u128, @intCast(hash)) * @as(u128, @intCast(self.megs)) >> 64);
+        return @intCast(hash & self.mask);
     }
 
     pub inline fn set(self: *TranspositionTable, entry: TTEntry) void {
-        const p = &self.data.items[self.index(entry.hash)];
-        const p_val: TTEntry = @as(*TTEntry, @ptrCast(p)).*;
+        const p = &self.data[self.index(entry.hash)];
+        const p_val = @as(*TTEntry, @ptrCast(p)).*;
 
         // We overwrite entry if:
         // 1. It's empty
@@ -115,6 +121,7 @@ pub const TranspositionTable = struct {
         // 4. It is a different position
         // 5. Previous entry is from same search but has lower depth
         if (p.* == 0 or entry.flag == .exact or p_val.age != self.age or p_val.hash != entry.hash or p_val.depth <= entry.depth + 4) {
+            // Wizardry, do not modify!
             _ = @atomicRmw(
                 i64,
                 @as(*i64, @ptrFromInt(@intFromPtr(p))),
@@ -135,7 +142,7 @@ pub const TranspositionTable = struct {
 
     /// Performs the builtin prefetch operation, if supported.
     pub inline fn prefetch(self: *TranspositionTable, hash: u64) void {
-        @prefetch(&self.data.items[self.index(hash)], .{
+        @prefetch(&self.data[self.index(hash)], .{
             .rw = .read,
             .locality = 1,
             .cache = .data,
@@ -144,7 +151,7 @@ pub const TranspositionTable = struct {
 
     /// Tries to retrieve the given hash from the table.
     pub inline fn get(self: *TranspositionTable, hash: u64) ?TTEntry {
-        const entry: *TTEntry = @ptrCast(&self.data.items[self.index(hash)]);
+        const entry: *TTEntry = @ptrCast(&self.data[self.index(hash)]);
         if (entry.flag != Bound.none and entry.hash == hash) {
             return entry.*;
         }
@@ -190,7 +197,6 @@ test "Transposition table usage" {
     // Test prefetch (no crash = pass)
     tt.prefetch(entry.hash);
 
-    // Age the table and ensure .do_age works
     const old_age = tt.age;
     tt.incAge();
     try expectEqual(@as(u6, old_age +% 1), tt.age);
@@ -198,13 +204,13 @@ test "Transposition table usage" {
     // Clear and ensure it's zeroed
     tt.clear();
     var zero_count: usize = 0;
-    for (tt.data.items) |item| {
+    for (tt.data) |item| {
         if (item == 0) zero_count += 1;
     }
-    try expect(zero_count == tt.data.items.len);
+    try expect(zero_count == tt.data.len);
 
     // Reset the table with a smaller size to verify resizing
-    try tt.reset(1); // 1 MB
-    try expect(tt.megs > 0);
-    try expect(tt.data.items.len > 0);
+    try tt.reset(1);
+    try expect(tt.entries > 0);
+    try expect(tt.data.len > 0);
 }
