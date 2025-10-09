@@ -189,11 +189,11 @@ pub const Searcher = struct {
                 } else break;
 
                 // Narrow the window on a failed probe
-                delta += @divTrunc(delta, 4);
+                delta = @max(1, @min(delta + @divTrunc(delta, 4), evaluator_.mate_score));
             }
 
             // We lose stability if a best move was not found by the end of the previous probing iteration
-            if (self.best_move.orderByMove(bm) != .eq) {
+            if (self.best_move.order(bm, .eq) != .eq) {
                 stability = 0;
             } else {
                 stability += 1;
