@@ -193,7 +193,7 @@ pub const Searcher = struct {
             }
 
             // We lose stability if a best move was not found by the end of the previous probing iteration
-            if (self.best_move.order(bm, .eq) != .eq) {
+            if (self.best_move.order(bm, .mv) != .eq) {
                 stability = 0;
             } else {
                 stability += 1;
