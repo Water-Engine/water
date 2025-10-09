@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const water = @import("water");
 
 pub const megabytes: usize = 1 << 20;
@@ -8,6 +9,23 @@ pub const default_tt_size: usize = (16 * megabytes) / @sizeOf(TTEntry);
 
 pub var lock_global_tt = false;
 pub var global_tt: TranspositionTable = undefined;
+
+/// Max hash size for the target architecture.
+///
+///  Bounds from https://github.com/official-stockfish/Stockfish/blob/e18ed795f2603d6482ac18bc0a6546e2a18406ae/src/engine.cpp#L50
+pub const MaxHashSize = struct {
+    pub const mb_size: usize = switch (builtin.target.ptrBitWidth()) {
+        64 => 33554432,
+        16 => @compileError("Unsupported CPU architecture"),
+        else => 2048,
+    };
+
+    pub const mb_string: []const u8 = switch (builtin.target.ptrBitWidth()) {
+        64 => "33554432",
+        16 => @compileError("Unsupported CPU architecture"),
+        else => "2048",
+    };
+};
 
 pub const Bound = enum(u2) {
     none,
@@ -33,7 +51,7 @@ pub const TranspositionTable = struct {
 
     // i128 is used as the TTEntry struct has a size of 16 bytes (128 bits)
     data: std.ArrayList(i128),
-    size: usize,
+    megs: usize,
     age: u6,
 
     /// Creates a transposition table with the TT size.
@@ -41,14 +59,17 @@ pub const TranspositionTable = struct {
     /// Passing null for `size_mb` forces a default size `default_tt_size`.
     pub fn init(allocator: std.mem.Allocator, size_mb: ?usize) !TranspositionTable {
         const desired_size = if (size_mb) |mb| (mb * megabytes) / @sizeOf(TTEntry) else default_tt_size;
+        if (desired_size == 0) return error.InvalidSize;
+        if (desired_size > MaxHashSize.mb_size) return error.TTTooLarge;
+
         var tt = TranspositionTable{
             .allocator = allocator,
             .data = try std.ArrayList(i128).initCapacity(allocator, desired_size),
-            .size = desired_size,
+            .megs = size_mb orelse ((default_tt_size * @sizeOf(TTEntry)) / megabytes),
             .age = 0,
         };
 
-        try tt.data.ensureTotalCapacity(tt.allocator, tt.size);
+        try tt.data.ensureTotalCapacity(tt.allocator, tt.megs);
         tt.data.expandToCapacity();
 
         return tt;
@@ -61,10 +82,10 @@ pub const TranspositionTable = struct {
 
     /// Reloads the table, clearing all entries and restoring age.
     ///
-    /// Passing null for `size_mb` forces a default size `default_tt_size`.
+    /// Passing null for `size_mb` uses the previous size.
     pub fn reset(self: *TranspositionTable, size_mb: ?usize) !void {
         self.deinit();
-        self.* = try .init(self.allocator, size_mb);
+        self.* = try .init(self.allocator, size_mb orelse self.megs);
     }
 
     /// Clears all stored pointers in the table.
@@ -80,7 +101,7 @@ pub const TranspositionTable = struct {
     }
 
     pub inline fn index(self: *TranspositionTable, hash: u64) u64 {
-        return @intCast(@as(u128, @intCast(hash)) * @as(u128, @intCast(self.size)) >> 64);
+        return @intCast(@as(u128, @intCast(hash)) * @as(u128, @intCast(self.megs)) >> 64);
     }
 
     pub inline fn set(self: *TranspositionTable, entry: TTEntry) void {
@@ -184,6 +205,6 @@ test "Transposition table usage" {
 
     // Reset the table with a smaller size to verify resizing
     try tt.reset(1); // 1 MB
-    try expect(tt.size > 0);
+    try expect(tt.megs > 0);
     try expect(tt.data.items.len > 0);
 }

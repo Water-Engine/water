@@ -11,7 +11,6 @@ pub const DeserializeError = error{
     IntegerParseError,
     FloatParseError,
     BoolParseError,
-    TemporaryAllocationError,
     ArrayParseError,
 };
 
@@ -29,7 +28,6 @@ pub const DeserializeError = error{
 /// T must be a struct with fields that are all default initialized.
 pub fn deserializeFields(
     comptime T: type,
-    allocator: std.mem.Allocator,
     tokens: *std.mem.TokenIterator(u8, .any),
     comptime standalone_tokens: ?[]const []const u8,
     comptime kv_ignores: ?[]const []const u8,
@@ -110,20 +108,17 @@ pub fn deserializeFields(
                 const FieldType = if (@typeInfo(field.type) == .optional) @typeInfo(field.type).optional.child else field.type;
                 switch (@typeInfo(FieldType)) {
                     .bool => {
-                        const lowered = std.ascii.allocLowerString(allocator, value) catch {
-                            return error.TemporaryAllocationError;
+                        @field(result, field.name) = blk: {
+                            if (std.ascii.eqlIgnoreCase("true", value)) {
+                                break :blk true;
+                            } else if (std.ascii.eqlIgnoreCase("1", value)) {
+                                break :blk true;
+                            } else if (std.ascii.eqlIgnoreCase("false", value)) {
+                                break :blk false;
+                            } else if (std.ascii.eqlIgnoreCase("0", value)) {
+                                break :blk false;
+                            } else return error.BoolParseError;
                         };
-                        defer allocator.free(lowered);
-
-                        @field(result, field.name) = if (std.mem.eql(u8, "true", lowered)) blk: {
-                            break :blk true;
-                        } else if (std.mem.eql(u8, "1", lowered)) blk: {
-                            break :blk true;
-                        } else if (std.mem.eql(u8, "false", lowered)) blk: {
-                            break :blk true;
-                        } else if (std.mem.eql(u8, "0", lowered)) blk: {
-                            break :blk true;
-                        } else return error.BoolParseError;
                     },
                     .int => {
                         @field(result, field.name) = std.fmt.parseInt(FieldType, value, 10) catch {
@@ -204,12 +199,9 @@ const expectEqualSlices = testing.expectEqualSlices;
 const test_objs = @import("test_objs.zig");
 
 test "Basic field deserialize use" {
-    const allocator = testing.allocator;
-
     var tokens = std.mem.tokenizeAny(u8, "buffer: []const T", " ");
     const result = try deserializeFields(
         test_objs.TestCommand(test_objs.TestSearcher),
-        allocator,
         &tokens,
         null,
         null,
@@ -228,8 +220,6 @@ test "Basic field deserialize use" {
 }
 
 test "Actual field deserialize use" {
-    const allocator = testing.allocator;
-
     var tokens = std.mem.tokenizeAny(
         u8,
         "go wtime 10 crunched btime 9 winc 1 msize -67 binc 2 name john fsize 100.2 tsize -3.0",
@@ -237,7 +227,6 @@ test "Actual field deserialize use" {
     );
     const result = try deserializeFields(
         test_objs.TestCommand(test_objs.TestSearcher),
-        allocator,
         &tokens,
         &.{"crunched"},
         null,
@@ -258,8 +247,6 @@ test "Actual field deserialize use" {
 }
 
 test "Runtime deserialization errors" {
-    const allocator = testing.allocator;
-
     // NoKVPairs: only label present
     {
         var tokens = std.mem.tokenizeAny(u8, "go", " ");
@@ -267,7 +254,6 @@ test "Runtime deserialization errors" {
             error.NoKVPairs,
             deserializeFields(
                 test_objs.TestCommand(test_objs.TestSearcher),
-                allocator,
                 &tokens,
                 &.{"crunched"},
                 null,
@@ -282,7 +268,6 @@ test "Runtime deserialization errors" {
             error.IntegerParseError,
             deserializeFields(
                 test_objs.TestCommand(test_objs.TestSearcher),
-                allocator,
                 &tokens,
                 &.{"crunched"},
                 null,
@@ -297,7 +282,6 @@ test "Runtime deserialization errors" {
             error.FloatParseError,
             deserializeFields(
                 test_objs.TestCommand(test_objs.TestSearcher),
-                allocator,
                 &tokens,
                 &.{"crunched"},
                 null,
@@ -312,7 +296,6 @@ test "Runtime deserialization errors" {
             error.BoolParseError,
             deserializeFields(
                 test_objs.TestCommand(test_objs.TestSearcher),
-                allocator,
                 &tokens,
                 &.{"crunched"},
                 null,
@@ -328,7 +311,6 @@ test "Runtime deserialization errors" {
             error.InvalidFieldType,
             deserializeFields(
                 BadStruct,
-                allocator,
                 &tokens,
                 null,
                 null,
@@ -344,7 +326,6 @@ test "Runtime deserialization errors" {
             error.InvalidFieldType,
             deserializeFields(
                 BadArray,
-                allocator,
                 &tokens,
                 null,
                 null,

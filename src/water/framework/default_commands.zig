@@ -25,9 +25,9 @@ pub fn PositionCommand(comptime Searcher: type) type {
             allocator: std.mem.Allocator,
             tokens: *std.mem.TokenIterator(u8, .any),
         ) anyerror!Self {
+            _ = allocator;
             var parsed = try dispatcher.deserializeFields(
                 Self,
-                allocator,
                 tokens,
                 &.{"startpos"},
                 &.{"moves"},
@@ -88,9 +88,9 @@ pub fn DisplayCommand(comptime Searcher: type) type {
             allocator: std.mem.Allocator,
             tokens: *std.mem.TokenIterator(u8, .any),
         ) anyerror!Self {
+            _ = allocator;
             return dispatcher.deserializeFields(
                 Self,
-                allocator,
                 tokens,
                 null,
                 null,

@@ -826,7 +826,7 @@ pub const Board = struct {
             }
         }
 
-        // Handle actual piece removal
+        // Handle actual piece moves
         if (move.typeOf(MoveType) == .castling) {
             std.debug.assert(self.at(PieceType, move.from()) == .king);
             std.debug.assert(self.at(PieceType, move.to()) == .rook);
@@ -1017,15 +1017,15 @@ pub const Board = struct {
     pub fn perft(self: *Board, depth: usize, comptime options: struct {
         check_checks: bool = false,
     }) usize {
-        var moves = movegen.Movelist{};
-        movegen.legalmoves(self, &moves, .{});
+        var movelist = movegen.Movelist{};
+        movegen.legalmoves(self, &movelist, .{});
 
         if (depth <= 1) {
-            return moves.size;
+            return movelist.size;
         }
 
         var nodes: usize = 0;
-        for (moves.moves[0..moves.size]) |move| {
+        for (movelist.moves[0..movelist.size]) |move| {
             // Verify alignment of checks if asked
             if (comptime options.check_checks) {
                 const gives_check = self.givesCheck(move).check();
@@ -1054,9 +1054,44 @@ pub const Board = struct {
         return nodes;
     }
 
+    /// Perform a perft divide test to the given depth.
+    ///
+    /// A copy of the board is operated on, and the writer is flushed every node.
+    ///
+    /// This is ideal for chess engines.
+    pub fn divide(self: *const Board, depth: usize, writer: *std.Io.Writer) !void {
+        defer writer.flush() catch {};
+        var nodes: usize = 0;
+        var branch: usize = 0;
+
+        var copy = try self.clone(self.allocator);
+        defer copy.deinit();
+
+        var movelist = movegen.Movelist{};
+        movegen.legalmoves(self, &movelist, .{});
+
+        if (depth <= 1) {
+            try writer.print("\nNodes searched: {}\n", .{movelist.size});
+            return;
+        }
+
+        for (movelist.moves[0..movelist.size]) |move| {
+            copy.makeMove(move, .{});
+            branch = copy.perft(depth - 1, .{});
+            nodes += branch;
+            copy.unmakeMove(move);
+
+            try uci.printMoveUci(move, copy.fischer_random, writer);
+            try writer.print(": {d}\n", .{branch});
+            try writer.flush();
+        }
+
+        try writer.print("\nNodes searched: {}\n", .{nodes});
+    }
+
     /// Checks if the current position is a repetition.
     ///
-    /// Only returns true if the position has been seen at least `count` times.
+    /// Only returns true if the current position has been seen at least `count` times.
     pub fn isRepetition(self: *const Board, count: usize) bool {
         std.debug.assert(count > 0);
         var seen_count: usize = 0;

@@ -40,7 +40,16 @@ pub fn main() !void {
 
     try engine.launch(
         stdin,
-        .{ .go_command = commands.GoCommand, .opt_command = commands.OptCommand },
+        .{
+            .go_command = commands.GoCommand,
+            .opt_command = commands.OptCommand,
+            .uci_command = commands.UciCommand,
+            .ready_command = commands.ReadyCommand,
+            .other_commands = &.{
+                commands.NewGameCommand,
+                commands.DebugCommand,
+            },
+        },
     );
 }
 
@@ -49,6 +58,7 @@ test {
 
     _ = @import("engine/search/searcher.zig");
     _ = @import("engine/search/search.zig");
+    _ = @import("engine/search/parameters.zig");
 
     _ = @import("engine/evaluation/evaluator.zig");
     _ = @import("engine/evaluation/orderer.zig");

@@ -304,10 +304,7 @@ pub fn Engine(comptime Searcher: type) type {
                 }
 
                 var tokens = std.mem.tokenizeAny(u8, line, " ");
-                Dispatcher.dispatch(&tokens, self) catch |err| switch (err) {
-                    error.TemporaryAllocationError => break,
-                    else => continue,
-                };
+                Dispatcher.dispatch(&tokens, self) catch continue;
             }
         }
     };

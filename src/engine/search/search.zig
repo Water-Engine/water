@@ -2,6 +2,7 @@ const std = @import("std");
 const water = @import("water");
 
 const searcher_ = @import("searcher.zig");
+const parameters = @import("parameters.zig");
 
 const tt = @import("../evaluation/tt.zig");
 const evaluator = @import("../evaluation/evaluator.zig");
@@ -142,10 +143,10 @@ pub fn negamax(
         low_estimate = if (!tthit or maybe_entry.?.flag == .lower) static_eval else maybe_entry.?.eval;
 
         // Reverse futility pruning
-        if (@abs(beta_val) < evaluator.mate_score - evaluator.max_mate and depth_val <= searcher_.rfp_depth) {
-            var n = @as(i32, @intCast(depth_val)) * searcher_.rfp_multiplier;
+        if (@abs(beta_val) < evaluator.mate_score - evaluator.max_mate and depth_val <= parameters.rfp_depth) {
+            var n = @as(i32, @intCast(depth_val)) * parameters.rfp_multiplier;
             if (improving) {
-                n -= searcher_.rfp_improving_deduction;
+                n -= parameters.rfp_improving_deduction;
             }
 
             if ((static_eval - n) >= beta_val) {
@@ -156,12 +157,12 @@ pub fn negamax(
         // Null move pruning
         var nmp_static_eval = static_eval;
         if (improving) {
-            nmp_static_eval += searcher_.nmp_improving_margin;
+            nmp_static_eval += parameters.nmp_improving_margin;
         }
 
         if (!flags.is_null and depth_val >= 3 and searcher.ply >= searcher.nmp_min_ply and nmp_static_eval >= beta_val and has_non_pawns) {
-            var r: usize = searcher_.nmp_base + @divTrunc(depth_val, searcher_.nmp_depth_divisor);
-            r += @min(4, @as(usize, @intCast(@divTrunc(static_eval - beta_val, searcher_.nmp_beta_divisor))));
+            var r: usize = parameters.nmp_base + @divTrunc(depth_val, parameters.nmp_depth_divisor);
+            r += @min(4, @as(usize, @intCast(@divTrunc(static_eval - beta_val, parameters.nmp_beta_divisor))));
             r = @min(r, depth_val);
 
             searcher.ply += 1;
@@ -211,7 +212,7 @@ pub fn negamax(
         }
 
         // Razoring
-        if (depth_val <= 3 and (static_eval - searcher_.razoring_base + searcher_.razoring_margin * @as(i32, @intCast(depth_val))) < alpha_val) {
+        if (depth_val <= 3 and (static_eval - parameters.razoring_base + parameters.razoring_margin * @as(i32, @intCast(depth_val))) < alpha_val) {
             return quiescence(searcher, alpha_val, beta_val);
         }
     }

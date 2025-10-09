@@ -2,8 +2,95 @@ const std = @import("std");
 const water = @import("water");
 
 const searcher = @import("search/searcher.zig");
+const parameters = @import("search/parameters.zig");
 
 const Engine = water.engine.Engine(searcher.Searcher);
+
+pub const NewGameCommand = struct {
+    pub const command_name: []const u8 = "ucinewgame";
+
+    pub fn deserialize(
+        allocator: std.mem.Allocator,
+        tokens: *std.mem.TokenIterator(u8, .any),
+    ) anyerror!NewGameCommand {
+        _ = allocator;
+        _ = tokens;
+        return .{};
+    }
+
+    pub fn dispatch(
+        self: *const NewGameCommand,
+        engine: *Engine,
+    ) anyerror!void {
+        _ = self;
+
+        // Only reset the searcher when we aren't actively searching since this is heavily destructive
+        if (engine.searcher.should_stop.load(.acquire)) {
+            engine.searcher.governing_board.deinit();
+            engine.searcher.governing_board = try water.Board.init(engine.allocator, .{});
+            engine.searcher.search_board.deinit();
+            engine.searcher.search_board = try water.Board.init(engine.allocator, .{});
+        }
+    }
+};
+
+pub const UciCommand = struct {
+    pub const command_name: []const u8 = "uci";
+
+    pub fn deserialize(
+        allocator: std.mem.Allocator,
+        tokens: *std.mem.TokenIterator(u8, .any),
+    ) anyerror!UciCommand {
+        _ = allocator;
+        _ = tokens;
+        return .{};
+    }
+
+    pub fn dispatch(
+        self: *const UciCommand,
+        engine: *Engine,
+    ) anyerror!void {
+        _ = self;
+        try engine.writer.writeAll(
+            \\id name Water 0.0.1
+            \\if author the Water Engine developers (see AUTHORS file)
+            \\
+            \\
+        );
+
+        try parameters.writeOut(engine.writer);
+        try engine.writer.print("uciok\n", .{});
+        try engine.writer.flush();
+    }
+};
+
+pub const ReadyCommand = struct {
+    pub const command_name: []const u8 = "isready";
+
+    pub fn deserialize(
+        allocator: std.mem.Allocator,
+        tokens: *std.mem.TokenIterator(u8, .any),
+    ) anyerror!ReadyCommand {
+        _ = allocator;
+        _ = tokens;
+        return .{};
+    }
+
+    pub fn dispatch(
+        self: *const ReadyCommand,
+        engine: *Engine,
+    ) anyerror!void {
+        _ = self;
+
+        // Wait for the engine to stop thinking
+        if (engine.search_thread) |thread| {
+            thread.join();
+        }
+
+        try engine.writer.print("readyok\n", .{});
+        try engine.writer.flush();
+    }
+};
 
 pub const GoCommand = struct {
     pub const command_name: []const u8 = "go";
@@ -18,14 +105,17 @@ pub const GoCommand = struct {
     infinite: bool = false,
     depth: ?usize = null,
     nodes: ?usize = null,
+    movestogo: ?usize = null,
+
+    perft: ?usize = null,
 
     pub fn deserialize(
         allocator: std.mem.Allocator,
         tokens: *std.mem.TokenIterator(u8, .any),
     ) anyerror!GoCommand {
+        _ = allocator;
         return water.dispatcher.deserializeFields(
             GoCommand,
-            allocator,
             tokens,
             &.{"infinite"},
             null,
@@ -50,32 +140,56 @@ pub const GoCommand = struct {
         const winc_ns: i128 = @intCast(1_000_000 * (self.winc orelse 0));
         const binc_ns: i128 = @intCast(1_000_000 * (self.binc orelse 0));
 
+        // With zero tc it doesn't make sense to calculate, and movestogo means nothing
         if (std.mem.allEqual(i128, &.{ wtime_ns, btime_ns, winc_ns, binc_ns }, 0)) {
             return null;
         }
 
-        const time_us = if (board.side_to_move == .white) wtime_ns else btime_ns;
-        const inc_us = if (board.side_to_move == .white) winc_ns else binc_ns;
+        const overhead: i128 = 25_000;
+        var ideal_time: i128 = 0;
+        var movetime: i128 = 0;
 
-        var think_time_ns = @divTrunc(time_us, 40);
-        if (time_us > inc_us * 2) {
-            think_time_ns += @intFromFloat(@as(f128, @floatFromInt(inc_us)) * 0.8);
+        const my_time = if (board.side_to_move == .white) wtime_ns else btime_ns;
+        const my_inc = if (board.side_to_move == .white) winc_ns else binc_ns;
+
+        if (self.movestogo) |mtg| {
+            // In the case that we have an explicit number of remaining moves, calculate directly
+            ideal_time = my_inc + @divTrunc(2 * (my_time - overhead), 2 * mtg + 1);
+            movetime = 2 * ideal_time;
+            movetime = @min(movetime, my_time - @min(my_time - overhead, overhead * @min(mtg, 5)));
+        } else {
+            // Otherwise, assume a game is going to last about 50 moves
+            const moves_remaining = @max(10, 50 - board.fullmoves(i128));
+            ideal_time = my_inc + @divTrunc(my_time - overhead, moves_remaining);
+            const movetime_divisor = @max(8, @divTrunc(moves_remaining * 2, 3));
+            movetime = my_inc + @divTrunc(my_time - overhead, movetime_divisor);
         }
 
-        const min_time_ns = @min(50, @as(i128, @intFromFloat(@as(f128, @floatFromInt(inc_us)) * 0.25)));
-        return @max(min_time_ns, think_time_ns);
+        ideal_time = @min(ideal_time, my_time - overhead);
+        movetime = @min(movetime, my_time - overhead);
+
+        return movetime;
     }
 
     pub fn dispatch(
         self: *const GoCommand,
         engine: *Engine,
     ) anyerror!void {
+        // Perft takes priority over all other options
+        if (self.perft) |depth| {
+            try engine.searcher.governing_board.divide(depth, engine.writer);
+            return;
+        }
+
         const think_time_ns = self.chooseThinkTimeNs(engine.searcher.governing_board);
         engine.searcher.max_nodes = self.nodes;
         engine.searcher.soft_max_nodes = self.nodes;
         engine.search(think_time_ns, .{ think_time_ns, self.depth }, .{});
     }
 };
+
+var notify_search_silent = false;
+var notify_search_loud = false;
 
 pub const OptCommand = struct {
     pub const command_name: []const u8 = "setoption";
@@ -84,8 +198,12 @@ pub const OptCommand = struct {
         allocator: std.mem.Allocator,
         tokens: *std.mem.TokenIterator(u8, .any),
     ) anyerror!OptCommand {
-        _ = allocator;
-        _ = tokens;
+        parameters.setoption(allocator, tokens) catch |err| switch (err) {
+            error.SilentSearchOutput => notify_search_silent = true,
+            error.LoudSearchOutput => notify_search_loud = true,
+            else => {},
+        };
+
         return .{};
     }
 
@@ -94,7 +212,53 @@ pub const OptCommand = struct {
         engine: *Engine,
     ) anyerror!void {
         _ = self;
-        _ = engine;
+
+        // For safety reasons, only update the silent output when the search thread is asleep
+        if (engine.searcher.should_stop.load(.acquire)) {
+            if (notify_search_silent) {
+                engine.searcher.silent_output = true;
+            } else if (notify_search_loud) {
+                engine.searcher.silent_output = false;
+            }
+        }
+
+        // Local global state should be reset without fail so there is no fallthrough
+        notify_search_silent = false;
+        notify_search_loud = false;
+    }
+};
+
+pub const DebugCommand = struct {
+    pub const command_name: []const u8 = "debug";
+
+    on: bool = false,
+    off: bool = false,
+
+    pub fn deserialize(
+        allocator: std.mem.Allocator,
+        tokens: *std.mem.TokenIterator(u8, .any),
+    ) anyerror!DebugCommand {
+        _ = allocator;
+        return try water.dispatcher.deserializeFields(
+            DebugCommand,
+            tokens,
+            &.{ "on", "off" },
+            null,
+        );
+    }
+
+    pub fn dispatch(
+        self: *const DebugCommand,
+        engine: *Engine,
+    ) anyerror!void {
+        // For safety reasons, only update the silent output when the search thread is asleep
+        if (engine.searcher.should_stop.load(.acquire)) {
+            if (self.on) {
+                engine.searcher.silent_output = false;
+            } else if (self.off) {
+                engine.searcher.silent_output = true;
+            }
+        }
     }
 };
 
@@ -119,7 +283,7 @@ test "Go think time finding" {
 
         const time_ns = go.chooseThinkTimeNs(board);
         try expect(time_ns != null);
-        try expectEqual(1_300_000, time_ns);
+        try expectEqual(1_624_218, time_ns);
     }
 
     // Normal timed input with movetime override
