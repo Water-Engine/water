@@ -130,7 +130,6 @@ pub fn distance(board: *const water.Board, comptime white_winning: bool) i32 {
 /// A dynamic evaluator for managing pesto and NNUE evaluations.
 pub const Evaluator = struct {
     pesto: pesto.PeSTOEval = .{},
-    needs_pesto: bool = true,
 
     /// Reloads the PeSTO evaluation terms from the board.
     ///
@@ -150,25 +149,25 @@ pub const Evaluator = struct {
     /// Applies score changes for a piece on a square.
     fn updateScore(
         self: *Evaluator,
-        piece: water.Piece,
+        piece_type: water.PieceType,
+        color: water.Color,
         square: water.Square,
+        comptime delta: enum(i32) { add = 1, sub = -1 },
     ) void {
-        std.debug.assert(piece.valid() and square.valid());
+        std.debug.assert(piece_type.valid() and color.valid() and square.valid());
 
-        const pt_idx = piece.asType().index();
-        const index = square.index();
+        const pt_idx = piece_type.index();
+        const sq_idx = square.index() ^ (56 * (1 - color.asInt(usize)));
+        const delta_val: i32 = comptime @intFromEnum(delta);
 
-        if (piece.color().isWhite()) {
-            self.score_mg += pesto.material[pt_idx][0];
-            self.score_mg += pesto.pst[pt_idx][0][index ^ 56];
-            self.score_eg_mat += pesto.material[pt_idx][1];
-            self.score_eg_non_mat += pesto.pst[pt_idx][1][index ^ 56];
-        } else if (piece.color().isBlack()) {
-            self.score_mg -= pesto.material[pt_idx][0];
-            self.score_mg -= pesto.pst[pt_idx][0][index];
-            self.score_eg_mat -= pesto.material[pt_idx][1];
-            self.score_eg_non_mat -= pesto.pst[pt_idx][1][index];
-        }
+        const sign = 1 - 2 * color.asInt(i32);
+        const change_mg = (pesto.material[pt_idx][0] + pesto.pst[pt_idx][0][sq_idx]) * delta_val * sign;
+        const change_eg_mat = pesto.material[pt_idx][1] * delta_val * sign;
+        const change_eg_non_mat = pesto.pst[pt_idx][1][sq_idx] * delta_val * sign;
+
+        self.pesto.score_mg += change_mg;
+        self.pesto.score_eg_mat += change_eg_mat;
+        self.pesto.score_eg_non_mat += change_eg_non_mat;
     }
 
     /// Incrementally updates the evaluation by making a move.
@@ -185,9 +184,9 @@ pub const Evaluator = struct {
         std.debug.assert(stm.valid() and from.valid() and to.valid());
 
         const captured_pt = board.at(water.PieceType, to);
-        const mover = board.at(water.PieceType, from);
-        std.debug.assert(mover != .none);
-        self.updateScore(mover, stm, from, .sub);
+        const moved_piece = board.at(water.PieceType, from);
+        std.debug.assert(moved_piece != .none);
+        self.updateScore(moved_piece, stm, from, .sub);
 
         switch (move.typeOf(water.MoveType)) {
             .normal => {
@@ -199,7 +198,7 @@ pub const Evaluator = struct {
                         .sub,
                     );
                 }
-                self.updateScore(mover, stm, to, .add);
+                self.updateScore(moved_piece, stm, to, .add);
             },
             .promotion => {
                 if (captured_pt != .none) {
@@ -215,7 +214,7 @@ pub const Evaluator = struct {
             .en_passant => {
                 const captured_sq = board.ep_square.ep();
                 std.debug.assert(captured_sq.valid());
-                self.updateScore(mover, stm, to, .add);
+                self.updateScore(moved_piece, stm, to, .add);
                 self.updateScore(.pawn, stm.opposite(), captured_sq, .sub);
             },
             .castling => {
@@ -248,18 +247,18 @@ pub const Evaluator = struct {
         move: water.Move,
         captured_piece: water.Piece,
     ) void {
-        const stm = board.side_to_move.opposite();
+        const stm = board.side_to_move;
         const from = move.from();
         const to = move.to();
         std.debug.assert(stm.valid() and from.valid() and to.valid());
 
-        const mover = board.at(water.PieceType, from);
-        std.debug.assert(mover != .none);
-        self.updateScore(mover, stm, from, .add);
+        const moved_piece = board.at(water.PieceType, from);
+        std.debug.assert(moved_piece != .none);
+        self.updateScore(moved_piece, stm, from, .add);
 
         switch (move.typeOf(water.MoveType)) {
             .normal => {
-                self.updateScore(mover, stm, to, .sub);
+                self.updateScore(moved_piece, stm, to, .sub);
                 if (captured_piece != .none) {
                     self.updateScore(
                         captured_piece.asType(),
@@ -281,10 +280,10 @@ pub const Evaluator = struct {
                 }
             },
             .en_passant => {
-                const captured_sq = water.Square.make(to.rank(), from.file()).ep();
-                std.debug.assert(captured_sq.valid());
+                const captured_sq = to.ep();
+                std.debug.assert(moved_piece == .pawn and captured_sq.valid());
 
-                self.updateScore(mover, stm, to, .sub);
+                self.updateScore(.pawn, stm, to, .sub);
                 self.updateScore(.pawn, stm.opposite(), captured_sq, .add);
             },
             .castling => {
@@ -311,12 +310,6 @@ pub const Evaluator = struct {
     /// Performs a static evaluation for the stm on the given board.
     pub fn evaluate(self: *Evaluator, board: *const water.Board, comptime use_nnue: bool) i32 {
         const color = board.side_to_move;
-
-        // TODO: If the pesto was turned off last evaluation, reload and re-enable
-        if (!self.needs_pesto) {
-            self.needs_pesto = true;
-            self.refresh(board, .pesto);
-        }
 
         // TODO: Integrate NNUE evaluation
         _ = use_nnue;
@@ -524,19 +517,66 @@ test "Board incremental evaluation" {
         incremental_eval.evaluate(board, false),
     );
 
-    // TODO: Midgame position
-    try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ", true));
-    refresh_eval.refresh(board, .pesto);
-    try expectEqual(49, refresh_eval.evaluate(board, false));
+    // Developed position
     try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - ", true));
     refresh_eval.refresh(board, .pesto);
-    try expectEqual(-49, refresh_eval.evaluate(board, false));
+    incremental_eval.refresh(board, .pesto);
 
-    // TODO: Endgame position
-    try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80", true));
+    const midgame = water.uci.uciToMove(board, "a6e2");
+    incremental_eval.makeMove(board, midgame);
+    const capture = board.makeMove(midgame, .{ .return_captured = true });
     refresh_eval.refresh(board, .pesto);
-    try expectEqual(100, refresh_eval.evaluate(board, false));
-    try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 b - - 20 80", true));
+    try expectEqual(
+        refresh_eval.evaluate(board, false),
+        incremental_eval.evaluate(board, false),
+    );
+
+    board.unmakeMove(midgame);
+    incremental_eval.unmakeMove(board, midgame, capture);
     refresh_eval.refresh(board, .pesto);
-    try expectEqual(-100, refresh_eval.evaluate(board, false));
+    try expectEqual(
+        refresh_eval.evaluate(board, false),
+        incremental_eval.evaluate(board, false),
+    );
+}
+
+test "Board incremental evaluation branches" {
+    const allocator = testing.allocator;
+    var board = try water.Board.init(allocator, .{ .fen = "r3k2r/p1ppqpb1/bnP1pnp1/4N3/Pp2P3/2N2Q2/1PPBBPpP/R3K2R b KQkq a3 0 1" });
+    defer board.deinit();
+
+    var refresh_eval = Evaluator{};
+    refresh_eval.refresh(board, .pesto);
+    var incremental_eval = Evaluator{};
+    incremental_eval.refresh(board, .pesto);
+
+    // The above fen is special, black is able to:
+    // - Move normally with capture or not (a6e2 and b6d5)
+    // - Promote with capture or not (g2g1 and g2h1)
+    // - Castle both ways (e8h8 and e8a8)
+    // - Capture en passant (b4a3)
+
+    // To ensure consistent evaluations, go through all legal moves
+    var movelist = water.movegen.Movelist{};
+    water.movegen.legalmoves(board, &movelist, .{});
+
+    for (movelist.items()) |move| {
+        incremental_eval.makeMove(board, move);
+        const capture = board.makeMove(move, .{ .return_captured = true });
+        refresh_eval.refresh(board, .pesto);
+
+        try expectEqual(
+            refresh_eval.evaluate(board, false),
+            incremental_eval.evaluate(board, false),
+        );
+
+        board.unmakeMove(move);
+        incremental_eval.unmakeMove(board, move, capture);
+        refresh_eval.refresh(board, .pesto);
+
+        try expectEqual(
+            refresh_eval.evaluate(board, false),
+            incremental_eval.evaluate(board, false),
+        );
+    }
 }

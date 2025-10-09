@@ -1,7 +1,6 @@
 const std = @import("std");
 const water = @import("water");
 
-const parameters = @import("parameters.zig");
 const search_ = @import("search.zig");
 
 const evaluator_ = @import("../evaluation/evaluator.zig");
@@ -9,6 +8,25 @@ const tt = @import("../evaluation/tt.zig");
 
 pub const max_ply: usize = 128;
 pub const max_game_ply: usize = 1024;
+
+// Tunable parameters
+
+pub var lmr_weight: f64 = 0.429;
+pub var lmr_bias: f64 = 0.769;
+
+pub var rfp_depth: i32 = 8;
+pub var rfp_multiplier: i32 = 58;
+pub var rfp_improving_deduction: i32 = 69;
+
+pub var nmp_improving_margin: i32 = 72;
+pub var nmp_base: usize = 3;
+pub var nmp_depth_divisor: usize = 3;
+pub var nmp_beta_divisor: i32 = 206;
+
+pub var razoring_base: i32 = 68;
+pub var razoring_margin: i32 = 191;
+
+pub var aspiration_window: i32 = 11;
 
 pub const NodeType = enum { root, pv, non_pv };
 
@@ -19,7 +37,7 @@ pub fn reloadQLMR() void {
         for (1..64) |moves| {
             const log_depth = @log(@as(f32, @floatFromInt(depth)));
             const log_moves = @log(@as(f32, @floatFromInt(moves)));
-            const lmr = parameters.lmr_weight * log_depth * log_moves + parameters.lmr_bias;
+            const lmr = lmr_weight * log_depth * log_moves + lmr_bias;
             quiet_lmr[depth][moves] = @intFromFloat(@floor(lmr));
         }
     }
@@ -122,6 +140,7 @@ pub const Searcher = struct {
     pub fn search(self: *Searcher, alloted_time_ns: ?i128, max_depth: ?usize) anyerror!void {
         self.should_stop.store(false, .release);
         self.resetHeuristics(false);
+        self.evaluator.refresh(self.search_board, .pesto);
 
         self.nodes = 0;
         self.best_move = .init();
@@ -149,12 +168,12 @@ pub const Searcher = struct {
 
             // Aspiration window at deeper depths
             if (depth >= 6) {
-                alpha = @max(score - parameters.aspiration_window, -evaluator_.mate_score);
-                beta = @min(score + parameters.aspiration_window, evaluator_.mate_score);
-                delta = parameters.aspiration_window;
+                alpha = @max(score - aspiration_window, -evaluator_.mate_score);
+                beta = @min(score + aspiration_window, evaluator_.mate_score);
+                delta = aspiration_window;
             }
 
-            // Search until the score is between beta and alpha exclusive
+            // Search until the score is between beta and alpha
             while (true) {
                 self.iterative_deepening_depth = @max(depth, self.iterative_deepening_depth);
                 self.nmp_min_ply = 0;
@@ -164,7 +183,7 @@ pub const Searcher = struct {
                     depth,
                     alpha,
                     beta,
-                    comptime .{
+                    .{
                         .is_null = false,
                         .cutnode = false,
                         .node = .root,
@@ -250,7 +269,7 @@ pub const Searcher = struct {
 
             // Compute a cutoff factor for time management
             var factor: f32 = @max(0.5, 1.1 - 0.03 * @as(f32, @floatFromInt(stability)));
-            if (score - prev_score > parameters.aspiration_window) {
+            if (score - prev_score > aspiration_window) {
                 factor *= 1.1;
             }
 

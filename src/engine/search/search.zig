@@ -2,7 +2,6 @@ const std = @import("std");
 const water = @import("water");
 
 const searcher_ = @import("searcher.zig");
-const parameters = @import("parameters.zig");
 
 const tt = @import("../evaluation/tt.zig");
 const evaluator = @import("../evaluation/evaluator.zig");
@@ -143,10 +142,10 @@ pub fn negamax(
         low_estimate = if (!tthit or maybe_entry.?.flag == .lower) static_eval else maybe_entry.?.eval;
 
         // Reverse futility pruning
-        if (@abs(beta_val) < evaluator.mate_score - evaluator.max_mate and depth_val <= parameters.rfp_depth) {
-            var n = @as(i32, @intCast(depth_val)) * parameters.rfp_multiplier;
+        if (@abs(beta_val) < evaluator.mate_score - evaluator.max_mate and depth_val <= searcher_.rfp_depth) {
+            var n = @as(i32, @intCast(depth_val)) * searcher_.rfp_multiplier;
             if (improving) {
-                n -= parameters.rfp_improving_deduction;
+                n -= searcher_.rfp_improving_deduction;
             }
 
             if ((static_eval - n) >= beta_val) {
@@ -157,12 +156,12 @@ pub fn negamax(
         // Null move pruning
         var nmp_static_eval = static_eval;
         if (improving) {
-            nmp_static_eval += parameters.nmp_improving_margin;
+            nmp_static_eval += searcher_.nmp_improving_margin;
         }
 
         if (!flags.is_null and depth_val >= 3 and searcher.ply >= searcher.nmp_min_ply and nmp_static_eval >= beta_val and has_non_pawns) {
-            var r: usize = parameters.nmp_base + @divTrunc(depth_val, parameters.nmp_depth_divisor);
-            r += @min(4, @as(usize, @intCast(@divTrunc(static_eval - beta_val, parameters.nmp_beta_divisor))));
+            var r: usize = searcher_.nmp_base + @divTrunc(depth_val, searcher_.nmp_depth_divisor);
+            r += @min(4, @as(usize, @intCast(@divTrunc(static_eval - beta_val, searcher_.nmp_beta_divisor))));
             r = @min(r, depth_val);
 
             searcher.ply += 1;
@@ -212,7 +211,7 @@ pub fn negamax(
         }
 
         // Razoring
-        if (depth_val <= 3 and (static_eval - parameters.razoring_base + parameters.razoring_margin * @as(i32, @intCast(depth_val))) < alpha_val) {
+        if (depth_val <= 3 and (static_eval - searcher_.razoring_base + searcher_.razoring_margin * @as(i32, @intCast(depth_val))) < alpha_val) {
             return quiescence(searcher, alpha_val, beta_val);
         }
     }
@@ -326,7 +325,11 @@ pub fn negamax(
         searcher.history.moves[searcher.ply] = move;
         searcher.history.moved_pieces[searcher.ply] = searcher.search_board.at(water.Piece, move.from());
         searcher.ply += 1;
-        searcher.search_board.makeMove(move, .{});
+        searcher.evaluator.makeMove(searcher.search_board, move);
+        const captured_piece = searcher.search_board.makeMove(
+            move,
+            .{ .return_captured = true },
+        );
 
         tt.global_tt.prefetch(searcher.search_board.key);
 
@@ -416,6 +419,7 @@ pub fn negamax(
 
         searcher.ply -= 1;
         searcher.search_board.unmakeMove(move);
+        searcher.evaluator.unmakeMove(searcher.search_board, move, captured_piece);
 
         // Check for stopping condition before ab pruning
         if (searcher.shouldStop()) return 0;
@@ -621,11 +625,16 @@ pub fn quiescence(
         searcher.ply += 1;
 
         // Play the move and prefetch the hash for the next iteration
-        searcher.search_board.makeMove(move, .{});
+        searcher.evaluator.makeMove(searcher.search_board, move);
+        const captured_piece = searcher.search_board.makeMove(
+            move,
+            .{ .return_captured = true },
+        );
         tt.global_tt.prefetch(searcher.search_board.key);
         const score = -quiescence(searcher, -beta_val, -alpha_val);
         searcher.ply -= 1;
         searcher.search_board.unmakeMove(move);
+        searcher.evaluator.unmakeMove(searcher.search_board, move, captured_piece);
 
         // Check for a stop signal out of the recursive call before pruning
         if (searcher.shouldStop()) return 0;

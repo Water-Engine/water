@@ -172,22 +172,19 @@ pub fn eval(board: *const water.Board) PeSTOEval {
     var eg_material: i32 = 0;
     var eg_non_material: i32 = 0;
 
-    for (board.mailbox, 0..) |piece, i| {
-        if (piece == .none) continue;
+    inline for (0..64) |i| {
+        const piece = board.mailbox[i];
+        const enabler: usize = @intCast(@intFromBool(piece != .none));
 
-        const pt_idx = piece.asType().index();
+        const color = piece.color();
+        const pt_idx = enabler * piece.asType().index();
+        const sq_idx = i ^ (56 * (1 - enabler * color.asInt(usize)));
+        const sign = @as(i32, @intCast(enabler)) * (1 - 2 * color.asInt(i32));
 
-        if (piece.color().isWhite()) {
-            mg += material[pt_idx][0];
-            mg += pst[pt_idx][0][i ^ 56];
-            eg_material += material[pt_idx][1];
-            eg_non_material += pst[pt_idx][1][i ^ 56];
-        } else if (piece.color().isBlack()) {
-            mg -= material[pt_idx][0];
-            mg -= pst[pt_idx][0][i];
-            eg_material -= material[pt_idx][1];
-            eg_non_material -= pst[pt_idx][1][i];
-        }
+        mg += sign * material[pt_idx][0];
+        mg += sign * pst[pt_idx][0][sq_idx];
+        eg_material += sign * material[pt_idx][1];
+        eg_non_material += sign * pst[pt_idx][1][sq_idx];
     }
 
     return .{

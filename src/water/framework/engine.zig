@@ -281,6 +281,7 @@ pub fn Engine(comptime Searcher: type) type {
 
             // Start the main loop, only exiting with an error if not doing so would result in unrecoverable state
             while (true) {
+                // TODO: Investigate buffer overflow penalty
                 var line = reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
                     error.EndOfStream, error.ReadFailed => break,
                     else => continue,

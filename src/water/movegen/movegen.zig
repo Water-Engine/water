@@ -151,24 +151,30 @@ pub fn checkMask(board: *const Board, color: Color, square: Square) struct {
         square,
         board.occ(),
     ).andBB(opponent_bishops.orBB(opponent_queens));
-    if (bishop_attacks.nonzero()) {
-        _ = mask.orAssign(distance.squares_between[square.index()][bishop_attacks.lsb().index()]);
-        checks += 1;
-    }
+
+    // Since we or the result, we can unconditionally compute with a casted bool
+    const bishop_check_toggle: u64 = @intFromBool(bishop_attacks.nonzero());
+    _ = mask.orAssign(
+        distance.squares_between[square.index()][bishop_attacks.lsb().index()].mulU64Wrapped(bishop_check_toggle),
+    );
+    checks += @intCast(bishop_check_toggle);
 
     const rook_attacks = attacks.rook(
         square,
         board.occ(),
     ).andBB(opponent_rooks.orBB(opponent_queens));
-    if (rook_attacks.nonzero()) {
-        if (rook_attacks.count() > 1) {
-            checks = 2;
-            return .{ .mask = mask, .checks = checks };
-        }
 
-        _ = mask.orAssign(distance.squares_between[square.index()][rook_attacks.lsb().index()]);
-        checks += 1;
+    if (rook_attacks.count() > 1) {
+        checks = 2;
+        return .{ .mask = mask, .checks = checks };
     }
+
+    // Since we or the result, we can unconditionally compute with a casted bool
+    const rook_check_toggle: u64 = @intFromBool(rook_attacks.nonzero());
+    _ = mask.orAssign(
+        distance.squares_between[square.index()][rook_attacks.lsb().index()].mulU64Wrapped(rook_check_toggle),
+    );
+    checks += @intCast(rook_check_toggle);
 
     // selector will be -1 (all bits set) if mask is empty, or 0 otherwise.
     const selector = -@as(i64, @intFromBool(mask.empty()));

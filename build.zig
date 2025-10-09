@@ -61,7 +61,7 @@ fn addPerftStep(b: *std.Build, module: *std.Build.Module, ephemeral: bool) void 
     const perft_exe = b.addExecutable(.{
         .name = "perft",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/chess/perft.zig"),
+            .root_source_file = b.path("src/water/perft.zig"),
             .target = module.resolved_target,
             .optimize = module.optimize,
             .imports = &.{
@@ -85,7 +85,7 @@ fn addBenchStep(b: *std.Build, module: *std.Build.Module, ephemeral: bool) void 
     const bench_exe = b.addExecutable(.{
         .name = "bench",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/chess/bench.zig"),
+            .root_source_file = b.path("src/water/bench.zig"),
             .target = module.resolved_target,
             .optimize = module.optimize,
             .imports = &.{
