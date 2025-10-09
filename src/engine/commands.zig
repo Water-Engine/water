@@ -1,10 +1,11 @@
 const std = @import("std");
 const water = @import("water");
 
+const parameters = @import("parameters.zig");
+
 const tt = @import("evaluation/tt.zig");
 
 const searcher = @import("search/searcher.zig");
-const parameters = @import("search/parameters.zig");
 
 const Engine = water.engine.Engine(searcher.Searcher);
 
@@ -118,29 +119,39 @@ pub const GoCommand = struct {
             return null;
         }
 
-        const overhead: i128 = 25_000;
-        var ideal_time: i128 = 0;
         var movetime: i128 = 0;
+        const overhead = parameters.move_overhead;
 
-        const my_time = if (board.side_to_move == .white) wtime_ns else btime_ns;
-        const my_inc = if (board.side_to_move == .white) winc_ns else binc_ns;
+        const my_time_ns = if (board.side_to_move == .white) wtime_ns else btime_ns;
+        const my_inc_ns = if (board.side_to_move == .white) winc_ns else binc_ns;
 
-        if (self.movestogo) |mtg| {
-            // In the case that we have an explicit number of remaining moves, calculate directly
-            ideal_time = my_inc + @divTrunc(2 * (my_time - overhead), 2 * mtg + 1);
-            movetime = 2 * ideal_time;
-            movetime = @min(movetime, my_time - @min(my_time - overhead, overhead * @min(mtg, 5)));
-        } else {
-            // Otherwise, assume a game is going to last about 50 moves
-            const moves_remaining = @max(10, 50 - board.fullmoves(i128));
-            ideal_time = my_inc + @divTrunc(my_time - overhead, moves_remaining);
-            const movetime_divisor = @max(8, @divTrunc(moves_remaining * 2, 3));
-            movetime = my_inc + @divTrunc(my_time - overhead, movetime_divisor);
+        // Not enough time to even cover overhead, move nearly instantly.
+        if (my_time_ns <= overhead) {
+            return 1_000_000; // 1ms
         }
 
-        ideal_time = @min(ideal_time, my_time - overhead);
-        movetime = @min(movetime, my_time - overhead);
+        const is_panic_mode = my_time_ns < 15_000_000_000;
 
+        if (self.movestogo) |mtg| {
+            const base_time = @divTrunc(my_time_ns - overhead, mtg);
+
+            // If we are in a time scramble, don't use the full increment.
+            if (is_panic_mode) {
+                movetime = base_time + @divTrunc(my_inc_ns, 2);
+            } else {
+                movetime = base_time + my_inc_ns;
+            }
+        } else {
+            var divisor: i128 = 25;
+
+            // In panic mode, use a much larger divisor to conserve time
+            if (is_panic_mode) {
+                divisor = 50;
+            }
+            movetime = my_inc_ns + @divTrunc(my_time_ns - overhead, divisor);
+        }
+
+        movetime = @min(movetime, @divTrunc((my_time_ns - overhead) * 3, 4));
         return movetime;
     }
 
@@ -265,8 +276,7 @@ test "Go think time finding" {
         };
 
         const time_ns = go.chooseThinkTimeNs(board);
-        try expect(time_ns != null);
-        try expectEqual(1_624_218, time_ns);
+        try expectEqual(1_399_800, time_ns);
     }
 
     // Normal timed input with movetime override
@@ -280,7 +290,6 @@ test "Go think time finding" {
         };
 
         const time_ns = go.chooseThinkTimeNs(board);
-        try expect(time_ns != null);
         try expectEqual(10_000_000, time_ns);
     }
 
@@ -310,5 +319,15 @@ test "Go think time finding" {
 
         const time_ns = go.chooseThinkTimeNs(board);
         try expect(time_ns == null);
+    }
+
+    // Thinktime 'go wtime 61000 btime 61000 winc 1000 binc 1000 movestogo 40'
+    {
+        const input = "go wtime 10000 btime 61000 winc 1000 binc 1000 movestogo 40";
+        var tokens = std.mem.tokenizeAny(u8, input, " ");
+        const go = try GoCommand.deserialize(allocator, &tokens);
+
+        const time_ns = go.chooseThinkTimeNs(board);
+        try expectEqual(749_999_750, time_ns);
     }
 }

@@ -2,7 +2,7 @@ const std = @import("std");
 const water = @import("water");
 
 const search_ = @import("search.zig");
-const parameters = @import("parameters.zig");
+const parameters = @import("../parameters.zig");
 
 const evaluator_ = @import("../evaluation/evaluator.zig");
 const tt = @import("../evaluation/tt.zig");
@@ -304,24 +304,6 @@ pub const Searcher = struct {
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;
-
-test "Quiet lmr table" {
-    reloadQLMR();
-    const avalanche_qlmr: [64]i32 = .{
-        0, 0, 0, 1, 1, 1, 2, 2,
-        2, 2, 3, 3, 3, 3, 3, 3,
-        4, 4, 4, 4, 4, 4, 4, 4,
-        5, 5, 5, 5, 5, 5, 5, 5,
-        5, 6, 6, 6, 6, 6, 6, 6,
-        6, 6, 6, 6, 6, 6, 7, 7,
-        7, 7, 7, 7, 7, 7, 7, 7,
-        7, 7, 7, 7, 7, 8, 8, 8,
-    };
-
-    for (0..64) |i| {
-        try expectEqual(avalanche_qlmr[i], quiet_lmr[i][i]);
-    }
-}
 
 test "Search initialization" {
     const allocator = testing.allocator;

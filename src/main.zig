@@ -54,10 +54,10 @@ pub fn main() !void {
 
 test {
     _ = @import("engine/commands.zig");
+    _ = @import("engine/parameters.zig");
 
     _ = @import("engine/search/searcher.zig");
     _ = @import("engine/search/search.zig");
-    _ = @import("engine/search/parameters.zig");
 
     _ = @import("engine/evaluation/evaluator.zig");
     _ = @import("engine/evaluation/orderer.zig");

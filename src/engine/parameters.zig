@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const tt = @import("../evaluation/tt.zig");
+const tt = @import("evaluation/tt.zig");
 
 pub var lmr_weight: f64 = 0.429;
 pub var lmr_bias: f64 = 0.769;
@@ -19,6 +19,11 @@ pub var razoring_base: i32 = 68;
 pub var razoring_margin: i32 = 191;
 
 pub var aspiration_window: i32 = 11;
+
+pub var move_overhead: i32 = 10_000;
+
+// TODO: Set to true when complete
+pub var use_nnue: bool = false;
 
 pub const Default = struct {
     name: []const u8,
@@ -171,6 +176,23 @@ pub const defaults = [_]Default{
         .max_value = "",
         .underlying = bool,
     },
+    .{
+        .name = "Move Overhead",
+        .variant = "spin",
+        .value = "10",
+        .min_value = "0",
+        .max_value = "50",
+        .underlying = i32,
+    },
+    .{
+        .name = "Use NNUE",
+        .variant = "check",
+        // TODO: Set to true when complete
+        .value = "false",
+        .min_value = "",
+        .max_value = "",
+        .underlying = bool,
+    },
 };
 
 /// Prints the supported options out to the writer.
@@ -310,6 +332,7 @@ pub fn setoption(
                         9 => razoring_base = std.math.clamp(val, 1, 999),
                         10 => razoring_margin = std.math.clamp(val, 1, 999),
                         11 => aspiration_window = std.math.clamp(val, 1, 999),
+                        15 => move_overhead = 1000 * std.math.clamp(val, 0, 50),
                         else => unreachable,
                     }
                 },
@@ -342,6 +365,7 @@ pub fn setoption(
 
                     switch (i) {
                         14 => return if (val) error.SilentSearchOutput else error.LoudSearchOutput,
+                        16 => use_nnue = val,
                         else => unreachable,
                     }
                 },
@@ -391,6 +415,8 @@ test "Option printing" {
         \\option name Clear Hash type button
         \\option name Hash type spin default 16 min 1 max {s}
         \\option name Silent type check default false
+        \\option name Move Overhead type spin default 10 min 0 max 50
+        \\option name Use NNUE type check default false
         \\
     , .{tt.MaxHashSize.mb_string});
     defer allocator.free(expected_output);

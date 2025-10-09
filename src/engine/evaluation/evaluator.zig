@@ -4,6 +4,8 @@ const water = @import("water");
 const pesto = @import("pesto.zig");
 const see = @import("see.zig");
 
+const parameters = @import("../parameters.zig");
+
 pub const mate_score: i32 = 888888;
 pub const max_mate: i32 = 256;
 
@@ -308,57 +310,59 @@ pub const Evaluator = struct {
     }
 
     /// Performs a static evaluation for the stm on the given board.
-    pub fn evaluate(self: *Evaluator, board: *const water.Board, comptime use_nnue: bool) i32 {
+    pub fn evaluate(self: *Evaluator, board: *const water.Board) i32 {
         const color = board.side_to_move;
+        const p = phase(board);
+        const has_pawns = board.pieces(.none, .pawn).nonzero();
+        var result: i32 = 0;
+        var half_moves: i32 = 0;
 
         // TODO: Integrate NNUE evaluation
-        _ = use_nnue;
+        if (parameters.use_nnue and (p >= 3 or has_pawns)) {} else {
+            var mg_phase: i32 = 0;
+            var eg_phase: i32 = 0;
+            var mg_score: i32 = 0;
+            var eg_score: i32 = 0;
 
-        const p = phase(board);
-        var result: i32 = 0;
+            // Taper the eval as a starting position is at phase 24
+            mg_phase = @min(p, 24);
+            eg_phase = 24 - mg_phase;
 
-        var mg_phase: i32 = 0;
-        var eg_phase: i32 = 0;
-        var mg_score: i32 = 0;
-        var eg_score: i32 = 0;
+            mg_score = self.pesto.score_mg;
+            eg_score = self.pesto.score_eg_mat;
 
-        // Taper the eval as a starting position is at phase 24
-        mg_phase = @min(p, 24);
-        eg_phase = 24 - mg_phase;
-
-        mg_score = self.pesto.score_mg;
-        eg_score = self.pesto.score_eg_mat;
-
-        const half_moves: i32 = if (board.previous_states.getLastOrNull()) |state| blk: {
-            break :blk @intCast(state.half_moves);
-        } else 0;
-
-        while (true) {
-            // Late endgame consideration only
-            if (p <= 4 and p >= 1 and board.pieces(.none, .pawn).empty()) {
-                // Consider a side winning iff the other side only has a king
-                if (board.pieces(.black, .king).eqBB(board.us(.black))) {
-                    eg_score += distance(board, true);
-                    eg_score += @divTrunc(self.pesto.score_eg_non_mat, 2);
-                    eg_score = @max(100, eg_score - half_moves);
-                    break;
-                } else if (board.pieces(.white, .king).eqBB(board.us(.white))) {
-                    eg_score += distance(board, false);
-                    eg_score += @divTrunc(self.pesto.score_eg_non_mat, 2);
-                    eg_score = @min(-100, eg_score + half_moves);
-                    break;
-                }
+            // TODO: Maybe an off by one error
+            if (board.previous_states.getLastOrNull()) |state| {
+                half_moves = @intCast(state.half_moves);
             }
 
-            eg_score += self.pesto.score_eg_non_mat;
-            break;
-        }
+            while (true) {
+                // Late endgame consideration only
+                if (p <= 4 and p >= 1 and !has_pawns) {
+                    // Consider a side winning iff the other side only has a king
+                    if (board.pieces(.black, .king).eqBB(board.us(.black))) {
+                        eg_score += distance(board, true);
+                        eg_score += @divTrunc(self.pesto.score_eg_non_mat, 2);
+                        eg_score = @max(100, eg_score - half_moves);
+                        break;
+                    } else if (board.pieces(.white, .king).eqBB(board.us(.white))) {
+                        eg_score += distance(board, false);
+                        eg_score += @divTrunc(self.pesto.score_eg_non_mat, 2);
+                        eg_score = @min(-100, eg_score + half_moves);
+                        break;
+                    }
+                }
 
-        // Normalize the score with the determined phases
-        if (color.isWhite()) {
-            result = @divTrunc(mg_score * mg_phase + eg_score * eg_phase, 24);
-        } else {
-            result = -@divTrunc(mg_score * mg_phase + eg_score * eg_phase, 24);
+                eg_score += self.pesto.score_eg_non_mat;
+                break;
+            }
+
+            // Normalize the score with the determined phases
+            if (color.isWhite()) {
+                result = @divTrunc(mg_score * mg_phase + eg_score * eg_phase, 24);
+            } else {
+                result = -@divTrunc(mg_score * mg_phase + eg_score * eg_phase, 24);
+            }
         }
 
         if (p <= 5 and @abs(result) >= 16 and drawish(board)) {
@@ -413,31 +417,32 @@ test "Board distance evaluation" {
     try expectEqual(-15, distance(board, false));
 }
 
-test "Board evaluation" {
+test "Board evaluation w/o NNUE" {
     const allocator = testing.allocator;
+    parameters.use_nnue = false;
     var board = try water.Board.init(allocator, .{});
     defer board.deinit();
 
     var eval = Evaluator{};
 
-    try expectEqual(0, eval.evaluate(board, false));
+    try expectEqual(0, eval.evaluate(board));
     try expect(try board.setFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1", true));
     eval.refresh(board, .pesto);
-    try expectEqual(0, eval.evaluate(board, false));
+    try expectEqual(0, eval.evaluate(board));
 
     try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ", true));
     eval.refresh(board, .pesto);
-    try expectEqual(49, eval.evaluate(board, false));
+    try expectEqual(49, eval.evaluate(board));
     try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - ", true));
     eval.refresh(board, .pesto);
-    try expectEqual(-49, eval.evaluate(board, false));
+    try expectEqual(-49, eval.evaluate(board));
 
     try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80", true));
     eval.refresh(board, .pesto);
-    try expectEqual(100, eval.evaluate(board, false));
+    try expectEqual(100, eval.evaluate(board));
     try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 b - - 20 80", true));
     eval.refresh(board, .pesto);
-    try expectEqual(-100, eval.evaluate(board, false));
+    try expectEqual(-100, eval.evaluate(board));
 }
 
 test "Weak draw detection" {
@@ -497,8 +502,9 @@ test "Weak draw detection" {
     try expect(!drawish(board));
 }
 
-test "Board incremental evaluation" {
+test "Board incremental evaluation w/o NNUE" {
     const allocator = testing.allocator;
+    parameters.use_nnue = false;
     var board = try water.Board.init(allocator, .{});
     defer board.deinit();
 
@@ -513,8 +519,8 @@ test "Board incremental evaluation" {
     board.makeMove(opening, .{});
     refresh_eval.refresh(board, .pesto);
     try expectEqual(
-        refresh_eval.evaluate(board, false),
-        incremental_eval.evaluate(board, false),
+        refresh_eval.evaluate(board),
+        incremental_eval.evaluate(board),
     );
 
     // Developed position
@@ -527,16 +533,16 @@ test "Board incremental evaluation" {
     const capture = board.makeMove(midgame, .{ .return_captured = true });
     refresh_eval.refresh(board, .pesto);
     try expectEqual(
-        refresh_eval.evaluate(board, false),
-        incremental_eval.evaluate(board, false),
+        refresh_eval.evaluate(board),
+        incremental_eval.evaluate(board),
     );
 
     board.unmakeMove(midgame);
     incremental_eval.unmakeMove(board, midgame, capture);
     refresh_eval.refresh(board, .pesto);
     try expectEqual(
-        refresh_eval.evaluate(board, false),
-        incremental_eval.evaluate(board, false),
+        refresh_eval.evaluate(board),
+        incremental_eval.evaluate(board),
     );
 }
 
@@ -566,8 +572,8 @@ test "Board incremental evaluation branches" {
         refresh_eval.refresh(board, .pesto);
 
         try expectEqual(
-            refresh_eval.evaluate(board, false),
-            incremental_eval.evaluate(board, false),
+            refresh_eval.evaluate(board),
+            incremental_eval.evaluate(board),
         );
 
         board.unmakeMove(move);
@@ -575,8 +581,8 @@ test "Board incremental evaluation branches" {
         refresh_eval.refresh(board, .pesto);
 
         try expectEqual(
-            refresh_eval.evaluate(board, false),
-            incremental_eval.evaluate(board, false),
+            refresh_eval.evaluate(board),
+            incremental_eval.evaluate(board),
         );
     }
 }

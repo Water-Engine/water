@@ -2,7 +2,7 @@ const std = @import("std");
 const water = @import("water");
 
 const searcher_ = @import("searcher.zig");
-const parameters = @import("parameters.zig");
+const parameters = @import("../parameters.zig");
 
 const tt = @import("../evaluation/tt.zig");
 const evaluator = @import("../evaluation/evaluator.zig");
@@ -38,7 +38,7 @@ pub fn negamax(
 
     // Check for a ply overflow
     if (searcher.ply == searcher_.max_ply) {
-        return searcher.evaluator.evaluate(searcher.search_board, false);
+        return searcher.evaluator.evaluate(searcher.search_board);
     }
 
     // Check extension only at reasonable depths
@@ -119,7 +119,7 @@ pub fn negamax(
         } else if (searcher.exclude_move[searcher.ply].move != 0) {
             break :blk searcher.history.evaluations[searcher.ply];
         } else {
-            break :blk searcher.evaluator.evaluate(searcher.search_board, false);
+            break :blk searcher.evaluator.evaluate(searcher.search_board);
         }
     };
     var best_score: i32 = static_eval;
@@ -563,7 +563,7 @@ pub fn quiescence(
     if (water.arbiter.insufficientMaterial(searcher.search_board)) {
         return 0;
     } else if (searcher.ply >= searcher_.max_ply) {
-        return searcher.evaluator.evaluate(searcher.search_board, false);
+        return searcher.evaluator.evaluate(searcher.search_board);
     }
 
     searcher.nodes += 1;
@@ -572,7 +572,7 @@ pub fn quiescence(
     var best_score = -evaluator.mate_score + @as(i32, @intCast(searcher.ply));
     var static_eval = best_score;
     if (!in_check) {
-        static_eval = searcher.evaluator.evaluate(searcher.search_board, false);
+        static_eval = searcher.evaluator.evaluate(searcher.search_board);
         best_score = static_eval;
 
         // Standpat pruning
