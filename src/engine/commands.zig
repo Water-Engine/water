@@ -27,17 +27,11 @@ pub const NewGameCommand = struct {
         _ = self;
 
         // Only reset the searcher when we aren't actively searching since this is heavily destructive
-        if (engine.search_thread) |thread| {
-            engine.searcher.should_stop.store(true, .release);
-            thread.join();
-        }
+        engine.notifyStopSearch();
 
         try tt.global_tt.reset(null);
         _ = try engine.searcher.governing_board.setFen(water.board.starting_fen, true);
         _ = try engine.searcher.search_board.setFen(water.board.starting_fen, true);
-
-        try engine.writer.print("readyok\n", .{});
-        try engine.writer.flush();
     }
 };
 
@@ -110,14 +104,14 @@ pub const GoCommand = struct {
         if (self.infinite or self.depth != null) {
             return null;
         } else if (self.movetime) |mt_ms| {
-            return @intCast(1_000_000 * mt_ms);
+            return @intCast(1_000_000 * @as(i128, @intCast(mt_ms)));
         }
 
         // If we made it here then handle time fully
-        const wtime_ns: i128 = @intCast(1_000_000 * (self.wtime orelse 0));
-        const btime_ns: i128 = @intCast(1_000_000 * (self.btime orelse 0));
-        const winc_ns: i128 = @intCast(1_000_000 * (self.winc orelse 0));
-        const binc_ns: i128 = @intCast(1_000_000 * (self.binc orelse 0));
+        const wtime_ns: i128 = @intCast(1_000_000 * @as(i128, @intCast(self.wtime orelse 0)));
+        const btime_ns: i128 = @intCast(1_000_000 * @as(i128, @intCast(self.btime orelse 0)));
+        const winc_ns: i128 = @intCast(1_000_000 * @as(i128, @intCast(self.winc orelse 0)));
+        const binc_ns: i128 = @intCast(1_000_000 * @as(i128, @intCast(self.binc orelse 0)));
 
         // With zero tc it doesn't make sense to calculate, and movestogo means nothing
         if (std.mem.allEqual(i128, &.{ wtime_ns, btime_ns, winc_ns, binc_ns }, 0)) {
@@ -158,6 +152,16 @@ pub const GoCommand = struct {
         if (self.perft) |depth| {
             try engine.searcher.governing_board.divide(depth, engine.writer);
             return;
+        }
+
+        // Check for game over first
+        if (water.arbiter.gameOver(engine.searcher.governing_board, null)) |result| {
+            // Only early return if the result is a checkmate
+            if (result.result == .win) {
+                try engine.writer.print("0000\n", .{});
+                try engine.writer.flush();
+                return;
+            }
         }
 
         const think_time_ns = self.chooseThinkTimeNs(engine.searcher.governing_board);
