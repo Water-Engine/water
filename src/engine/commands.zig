@@ -32,15 +32,11 @@ pub const NewGameCommand = struct {
             thread.join();
         }
 
-        if (engine.searcher.should_stop.load(.acquire)) {
-            try tt.global_tt.reset(null);
+        try tt.global_tt.reset(null);
+        _ = try engine.searcher.governing_board.setFen(water.board.starting_fen, true);
+        _ = try engine.searcher.search_board.setFen(water.board.starting_fen, true);
 
-            engine.searcher.governing_board.deinit();
-            engine.searcher.governing_board = try water.Board.init(engine.allocator, .{});
-            engine.searcher.search_board.deinit();
-            engine.searcher.search_board = try water.Board.init(engine.allocator, .{});
-        }
-
+        try engine.writer.print("readyok\n", .{});
         try engine.writer.flush();
     }
 };
