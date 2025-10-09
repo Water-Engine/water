@@ -1,6 +1,8 @@
 const std = @import("std");
 const water = @import("water");
 
+const tt = @import("evaluation/tt.zig");
+
 const searcher = @import("search/searcher.zig");
 const parameters = @import("search/parameters.zig");
 
@@ -25,12 +27,21 @@ pub const NewGameCommand = struct {
         _ = self;
 
         // Only reset the searcher when we aren't actively searching since this is heavily destructive
+        if (engine.search_thread) |thread| {
+            engine.searcher.should_stop.store(true, .release);
+            thread.join();
+        }
+
         if (engine.searcher.should_stop.load(.acquire)) {
+            try tt.global_tt.reset(null);
+
             engine.searcher.governing_board.deinit();
             engine.searcher.governing_board = try water.Board.init(engine.allocator, .{});
             engine.searcher.search_board.deinit();
             engine.searcher.search_board = try water.Board.init(engine.allocator, .{});
         }
+
+        try engine.writer.flush();
     }
 };
 
@@ -53,41 +64,13 @@ pub const UciCommand = struct {
         _ = self;
         try engine.writer.writeAll(
             \\id name Water 0.0.1
-            \\if author the Water Engine developers (see AUTHORS file)
+            \\id author the Water Engine developers (see AUTHORS file)
             \\
             \\
         );
 
         try parameters.writeOut(engine.writer);
         try engine.writer.print("uciok\n", .{});
-        try engine.writer.flush();
-    }
-};
-
-pub const ReadyCommand = struct {
-    pub const command_name: []const u8 = "isready";
-
-    pub fn deserialize(
-        allocator: std.mem.Allocator,
-        tokens: *std.mem.TokenIterator(u8, .any),
-    ) anyerror!ReadyCommand {
-        _ = allocator;
-        _ = tokens;
-        return .{};
-    }
-
-    pub fn dispatch(
-        self: *const ReadyCommand,
-        engine: *Engine,
-    ) anyerror!void {
-        _ = self;
-
-        // Wait for the engine to stop thinking
-        if (engine.search_thread) |thread| {
-            thread.join();
-        }
-
-        try engine.writer.print("readyok\n", .{});
         try engine.writer.flush();
     }
 };

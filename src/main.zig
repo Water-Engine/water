@@ -44,7 +44,6 @@ pub fn main() !void {
             .go_command = commands.GoCommand,
             .opt_command = commands.OptCommand,
             .uci_command = commands.UciCommand,
-            .ready_command = commands.ReadyCommand,
             .other_commands = &.{
                 commands.NewGameCommand,
                 commands.DebugCommand,

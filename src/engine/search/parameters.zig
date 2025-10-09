@@ -175,7 +175,7 @@ pub const defaults = [_]Default{
 
 /// Prints the supported options out to the writer.
 ///
-/// Flushes at the end of the call.
+/// Does not flush at the end of the call.
 pub fn writeOut(writer: *std.Io.Writer) !void {
     inline for (defaults) |default| {
         try writer.print("option name {s} type {s}", .{
@@ -197,8 +197,6 @@ pub fn writeOut(writer: *std.Io.Writer) !void {
 
         try writer.writeByte('\n');
     }
-
-    try writer.flush();
 }
 
 /// Parses the setoption command and updates the engine's internal state.
