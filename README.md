@@ -37,7 +37,7 @@ _Note: The engine communicates through the UCI protocol. You can read more about
 | `fmt`       | Format all source code excluding `build.zig`.                                         |
 | `cloc`      | Count the total lines of zig code. Requires [cloc](https://github.com/AlDanial/cloc). |
 
-The `perft`, `bench`, and `search` commands are all ephemeral by default, but you can install the binary by appending `-Dephemeral=false` to your build command.
+The `perft`, `bench`, and `search` commands are all ephemeral by default, but you can install all the binaries by appending `-Dephemeral=false` to your build command. This will install every (non-test) binary as implementing step specific ephemeral flags is too much mental overhead and was not found to be useful in the development process.
 
 ## Adding Water to Your Project
 To add water as a dependency to your project, simply run `zig fetch --save git+https://github.com/Water-Engine/water`. This will add water as a dependency to your `build.zig.zon` file.
