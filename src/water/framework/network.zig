@@ -1,14 +1,17 @@
 const std = @import("std");
-const water = @import("water");
-const nets = @import("nets");
+const builtin = @import("builtin");
+
+const board_ = @import("../board/board.zig");
+const Board = board_.Board;
 
 /// Creates a Network type tailored to the provided network architecture.
 ///
-/// Arch must be a struct type, but no other safety checks are performed.
+/// Arch must be a struct type with a well defined memory layout (i.e. extern).
+/// Non-little-endian systems must roll their own Network.
 ///
 /// An example Arch type might look like:
 /// ```
-/// pub const NNUEWeights = struct {
+/// pub const NNUEWeights = extern struct {
 ///     layer_1: [INPUT_SIZE * HIDDEN_SIZE]i16 align(64),
 ///     layer_1_bias: [HIDDEN_SIZE]i16 align(64),
 ///     layer_2: [OUTPUT_SIZE][HIDDEN_SIZE * 2]i16 align(64),
@@ -16,8 +19,14 @@ const nets = @import("nets");
 /// };
 /// ```
 ///
-/// This type factory also exposes bucketing and activation helpers.
+/// The passed Arch must have @sizeOf equal to the Network to encode.
+///
+/// Also exposes an activation function.
 pub fn Network(comptime Arch: type) type {
+    if (builtin.target.cpu.arch.endian() != .little) {
+        @compileError("The target CPU must be little-endian. Other systems cannot use this Factory");
+    }
+
     return struct {
         const Self = @This();
 
@@ -32,17 +41,20 @@ pub fn Network(comptime Arch: type) type {
         /// The source length must be the exact size of the Arch struct.
         ///
         /// The original data is also stored internally.
-        /// The provided source, if allocated externally, can be freed safely.
+        /// The provided source, if allocated externally, can be freed safely after calling this function.
+        ///
+        /// It is recommended to use this over static when opting for a dynamic Network that can change at runtime.
         pub fn init(allocator: std.mem.Allocator, source: []const u8) error{ SizeMismatch, OutOfMemory }!*Self {
             if (@sizeOf(Arch) != source.len) {
                 return error.SizeMismatch;
             }
 
             const net = try allocator.create(Self);
+            const blob = try allocator.dupe(u8, source);
             net.* = .{
                 .allocator = allocator,
-                .data_blob = try allocator.dupe(u8, source),
-                .layers = std.mem.bytesAsValue(Arch, source[0..@sizeOf(Arch)]).*,
+                .data_blob = blob,
+                .layers = std.mem.bytesAsValue(Arch, blob[0..@sizeOf(Arch)]).*,
             };
             return net;
         }
@@ -50,7 +62,7 @@ pub fn Network(comptime Arch: type) type {
         /// Loads and parses a network file for this specific architecture.
         ///
         /// Asserts that the provided source is static with respect to the program.
-        /// The allocator is set to the
+        /// The allocator is set to null when this is used as an initializer, and the source is not stored.
         ///
         /// Can and should be called at compile time.
         pub fn static(comptime source: []const u8) Self {
@@ -60,12 +72,14 @@ pub fn Network(comptime Arch: type) type {
 
             return .{
                 .allocator = null,
-                .data_blob = source,
+                .data_blob = "",
                 .layers = std.mem.bytesAsValue(Arch, source[0..@sizeOf(Arch)]).*,
             };
         }
 
-        // Only frees if the allocator was passed to init. This is a noop otherwise.
+        // Only frees if the allocator was passed to init.
+        ///
+        /// This is a noop for Networks created statically.
         pub fn deinit(self: *Self) void {
             if (self.allocator) |allocator| {
                 allocator.free(self.data_blob);
@@ -73,14 +87,10 @@ pub fn Network(comptime Arch: type) type {
             }
         }
 
-        pub fn bucket(board: *const water.Board) usize {
-            return (board.occ().count() - 2) / 4;
-        }
-
         /// Performs the given function on the input value.
-        /// - .RELU almost always avoided due to potential overflow
-        /// - .CReLU is not as common but can be auto-vectorized
-        /// - .SCReLU produces the strongest network
+        /// - RELU almost always avoided due to potential overflow
+        /// - CReLU is not as common but can be auto-vectorized
+        /// - SCReLU produces the strongest network
         ///
         /// https://www.chessprogramming.org/NNUE
         pub fn activation(
@@ -99,31 +109,4 @@ pub fn Network(comptime Arch: type) type {
             };
         }
     };
-}
-
-// ================ TESTING ================
-const testing = std.testing;
-const expect = testing.expect;
-const expectEqual = testing.expectEqual;
-const expectError = testing.expectError;
-
-test "Network creation with Avalanche's model" {
-    const allocator = testing.allocator;
-
-    const input_size: usize = 768;
-    const hidden_size: usize = 512;
-    const output_size: usize = 8;
-
-    const NNUEWeights = struct {
-        layer_1: [input_size * hidden_size]i16 align(64),
-        layer_1_bias: [hidden_size]i16 align(64),
-        layer_2: [output_size][hidden_size * 2]i16 align(64),
-        layer_2_bias: [output_size]i16 align(64),
-    };
-
-    const mismatch = Network(NNUEWeights).init(allocator, "bingshan");
-    try expectError(error.SizeMismatch, mismatch);
-
-    var valid = try Network(NNUEWeights).init(allocator, nets.bingshan);
-    defer valid.deinit();
 }

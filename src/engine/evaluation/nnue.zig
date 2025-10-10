@@ -1,8 +1,8 @@
 const std = @import("std");
 const water = @import("water");
+const nets = @import("nets");
 
-const parameters = @import("../../parameters.zig");
-const network = @import("network.zig");
+const parameters = @import("../parameters.zig");
 
 // This is a gem https://www.chessprogramming.org/NNUE
 const quantized_a: i32 = 255;
@@ -15,15 +15,15 @@ const input_size: usize = 768;
 const hidden_size: usize = 512;
 const output_size: usize = 8;
 
-const NNUEWeights = struct {
+const NNUEWeights = extern struct {
     layer_1: [input_size * hidden_size]i16 align(64),
     layer_1_bias: [hidden_size]i16 align(64),
     layer_2: [output_size][hidden_size * 2]i16 align(64),
     layer_2_bias: [output_size]i16 align(64),
 };
 
-const Network = network.Network(NNUEWeights);
-const model = Network.static(network);
+const Network = water.network.Network(NNUEWeights);
+const model = Network.static(nets.bingshan);
 
 pub const PiecePair = packed struct {
     white: usize,
@@ -45,7 +45,7 @@ pub const PiecePair = packed struct {
     }
 };
 
-pub const Accumulator = packed struct {
+pub const Accumulator = struct {
     white: [hidden_size]i16,
     black: [hidden_size]i16,
 
@@ -60,6 +60,7 @@ pub const Accumulator = packed struct {
         comptime delta: enum(i32) { add, sub },
     ) void {
         @setEvalBranchQuota(4 * hidden_size);
+        // TODO: Keep inline/comptime structure but move to SIMD
         inline for (0..hidden_size) |i| {
             switch (comptime delta) {
                 .add => {
@@ -79,7 +80,10 @@ pub const Accumulator = packed struct {
 ///
 /// Fully stack allocated, no heap allocations ever.
 pub const NNUE = struct {
-    accumulators: [parameters.max_ply + 2]Accumulator = std.mem.zeroes(Accumulator),
+    accumulators: [parameters.max_ply + 2]Accumulator = @splat(Accumulator{
+        .white = model.layers.layer_1_bias,
+        .black = model.layers.layer_1_bias,
+    }),
     size: usize = 0,
 };
 
@@ -88,3 +92,25 @@ const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 const expectError = testing.expectError;
+
+test "Network creation" {
+    const allocator = testing.allocator;
+
+    const test_input_size: usize = 768;
+    const test_hidden_size: usize = 512;
+    const test_output_size: usize = 8;
+
+    const TestArch = extern struct {
+        layer_1: [test_input_size * test_hidden_size]i16 align(64),
+        layer_1_bias: [test_hidden_size]i16 align(64),
+        layer_2: [test_output_size][test_hidden_size * 2]i16 align(64),
+        layer_2_bias: [test_output_size]i16 align(64),
+    };
+    const TestNetwork = water.network.Network(TestArch);
+
+    const mismatch = TestNetwork.init(allocator, "bingshan");
+    try expectError(error.SizeMismatch, mismatch);
+
+    var valid = try TestNetwork.init(allocator, nets.bingshan);
+    defer valid.deinit();
+}

@@ -45,6 +45,7 @@ pub const movegen = @import("water/movegen/movegen.zig");
 pub const engine = @import("water/framework/engine.zig");
 pub const type_validators = @import("water/framework/type_validators.zig");
 pub const dispatcher = @import("water/framework/dispatcher.zig");
+pub const network = @import("water/framework/network.zig");
 
 // ================ TESTING ================
 

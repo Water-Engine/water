@@ -61,6 +61,5 @@ test {
     _ = @import("engine/evaluation/pesto.zig");
     _ = @import("engine/evaluation/see.zig");
     _ = @import("engine/evaluation/tt.zig");
-
-    _ = @import("engine/evaluation//nnue/network.zig");
+    _ = @import("engine/evaluation/nnue.zig");
 }

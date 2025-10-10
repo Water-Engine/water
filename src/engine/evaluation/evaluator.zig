@@ -3,6 +3,7 @@ const water = @import("water");
 
 const pesto = @import("pesto.zig");
 const see = @import("see.zig");
+const nnue = @import("nnue.zig");
 
 const parameters = @import("../parameters.zig");
 
@@ -132,6 +133,7 @@ pub fn distance(board: *const water.Board, comptime white_winning: bool) i32 {
 /// A dynamic evaluator for managing pesto and NNUE evaluations.
 pub const Evaluator = struct {
     pesto: pesto.PeSTOEval = .{},
+    nnue: nnue.NNUE = .{},
 
     /// Reloads the PeSTO evaluation terms from the board.
     ///
