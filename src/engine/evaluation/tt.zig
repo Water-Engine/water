@@ -4,7 +4,6 @@ const water = @import("water");
 
 pub const megabytes: usize = 1 << 20;
 
-pub var lock_global_tt = false;
 pub var global_tt: TranspositionTable = undefined;
 
 /// Max hash size for the target architecture.

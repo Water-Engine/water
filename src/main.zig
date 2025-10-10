@@ -54,7 +54,7 @@ test {
     _ = @import("engine/parameters.zig");
 
     _ = @import("engine/search/searcher.zig");
-    _ = @import("engine/search/search.zig");
+    _ = @import("engine/search/algorithm.zig");
 
     _ = @import("engine/evaluation/evaluator.zig");
     _ = @import("engine/evaluation/orderer.zig");

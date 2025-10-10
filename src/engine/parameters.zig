@@ -24,8 +24,7 @@ pub var aspiration_window: i32 = 11;
 
 pub var move_overhead: i32 = 10_000;
 
-// TODO: Set to true when complete
-pub var use_nnue: bool = false;
+pub var use_nnue: bool = true;
 
 pub const Default = struct {
     name: []const u8,
@@ -189,8 +188,7 @@ pub const defaults = [_]Default{
     .{
         .name = "Use NNUE",
         .variant = "check",
-        // TODO: Set to true when complete
-        .value = "false",
+        .value = "true",
         .min_value = "",
         .max_value = "",
         .underlying = bool,
@@ -418,7 +416,7 @@ test "Option printing" {
         \\option name Hash type spin default 16 min 1 max {s}
         \\option name Silent type check default false
         \\option name Move Overhead type spin default 10 min 0 max 50
-        \\option name Use NNUE type check default false
+        \\option name Use NNUE type check default true
         \\
     , .{tt.MaxHashSize.mb_string});
     defer allocator.free(expected_output);

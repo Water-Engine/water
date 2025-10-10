@@ -159,40 +159,40 @@ pub const PeSTOEval = struct {
     score_mg: i32 = 0,
     score_eg_mat: i32 = 0,
     score_eg_non_mat: i32 = 0,
-};
 
-/// Gathers data related to PeSTO's evaluation function.
-///
-/// Using SIMD here loses performance. See benchmark at bottom of containing file.
-/// Average performance of this function is 20ns.
-///
-/// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-pub fn eval(board: *const water.Board) PeSTOEval {
-    var mg: i32 = 0;
-    var eg_material: i32 = 0;
-    var eg_non_material: i32 = 0;
+    /// Refreshes the evaluation data.
+    /// Does not use SIMD as benchmarking showed loss in performance.
+    ///
+    /// Expensive, prefer incremental updates!
+    ///
+    /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+    pub fn refresh(self: *PeSTOEval, board: *const water.Board) void {
+        var mg: i32 = 0;
+        var eg_material: i32 = 0;
+        var eg_non_material: i32 = 0;
 
-    inline for (0..64) |i| {
-        const piece = board.mailbox[i];
-        const enabler: usize = @intCast(@intFromBool(piece != .none));
+        inline for (0..64) |i| {
+            const piece = board.mailbox[i];
+            const enabler: usize = @intCast(@intFromBool(piece != .none));
 
-        const color = piece.color();
-        const pt_idx = enabler * piece.asType().index();
-        const sq_idx = i ^ (56 * (1 - enabler * color.asInt(usize)));
-        const sign = @as(i32, @intCast(enabler)) * (1 - 2 * color.asInt(i32));
+            const color = piece.color();
+            const pt_idx = enabler * piece.asType().index();
+            const sq_idx = i ^ (56 * (1 - enabler * color.asInt(usize)));
+            const sign = @as(i32, @intCast(enabler)) * (1 - 2 * color.asInt(i32));
 
-        mg += sign * material[pt_idx][0];
-        mg += sign * pst[pt_idx][0][sq_idx];
-        eg_material += sign * material[pt_idx][1];
-        eg_non_material += sign * pst[pt_idx][1][sq_idx];
+            mg += sign * material[pt_idx][0];
+            mg += sign * pst[pt_idx][0][sq_idx];
+            eg_material += sign * material[pt_idx][1];
+            eg_non_material += sign * pst[pt_idx][1][sq_idx];
+        }
+
+        self.* = .{
+            .score_mg = mg,
+            .score_eg_mat = eg_material,
+            .score_eg_non_mat = eg_non_material,
+        };
     }
-
-    return .{
-        .score_mg = mg,
-        .score_eg_mat = eg_material,
-        .score_eg_non_mat = eg_non_material,
-    };
-}
+};
 
 // ================ TESTING ================
 const testing = std.testing;
@@ -205,21 +205,24 @@ test "PeSTO evaluation" {
     defer board.deinit();
 
     const expected_starting: [3]i32 = .{ 0, 0, 0 };
-    const actual_starting = eval(board);
+    var actual_starting = PeSTOEval{};
+    actual_starting.refresh(board);
     try expectEqual(expected_starting[0], actual_starting.score_mg);
     try expectEqual(expected_starting[1], actual_starting.score_eg_mat);
     try expectEqual(expected_starting[2], actual_starting.score_eg_non_mat);
 
     try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80", true));
     const expected_mid: [3]i32 = .{ 198, 94, 9 };
-    const actual_mid = eval(board);
+    var actual_mid = PeSTOEval{};
+    actual_mid.refresh(board);
     try expectEqual(expected_mid[0], actual_mid.score_mg);
     try expectEqual(expected_mid[1], actual_mid.score_eg_mat);
     try expectEqual(expected_mid[2], actual_mid.score_eg_non_mat);
 
     try expect(try board.setFen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 ", true));
     const expected_end: [3]i32 = .{ 70, 0, 31 };
-    const actual_end = eval(board);
+    var actual_end = PeSTOEval{};
+    actual_end.refresh(board);
     try expectEqual(expected_end[0], actual_end.score_mg);
     try expectEqual(expected_end[1], actual_end.score_eg_mat);
     try expectEqual(expected_end[2], actual_end.score_eg_non_mat);

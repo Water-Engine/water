@@ -1,7 +1,7 @@
 const std = @import("std");
 const water = @import("water");
 
-const search_ = @import("search.zig");
+const algorithm = @import("algorithm.zig");
 const parameters = @import("../parameters.zig");
 
 const evaluator_ = @import("../evaluation/evaluator.zig");
@@ -119,7 +119,7 @@ pub const Searcher = struct {
     pub fn search(self: *Searcher, alloted_time_ns: ?i128, max_depth: ?usize) anyerror!void {
         self.should_stop.store(false, .release);
         self.resetHeuristics(false);
-        self.evaluator.refresh(self.search_board, .pesto);
+        self.evaluator.refresh(self.search_board, .full);
 
         self.nodes = 0;
         self.best_move = .init();
@@ -157,7 +157,7 @@ pub const Searcher = struct {
                 self.iterative_deepening_depth = @max(depth, self.iterative_deepening_depth);
                 self.nmp_min_ply = 0;
 
-                const negamax = search_.negamax(
+                const negamax = algorithm.negamax(
                     self,
                     depth,
                     alpha,
