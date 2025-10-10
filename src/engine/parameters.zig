@@ -3,6 +3,8 @@ const builtin = @import("builtin");
 
 const tt = @import("evaluation/tt.zig");
 
+pub const max_ply: usize = 128;
+
 pub var lmr_weight: f64 = 0.429;
 pub var lmr_bias: f64 = 0.769;
 

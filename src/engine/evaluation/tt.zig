@@ -106,37 +106,27 @@ pub const TranspositionTable = struct {
         self.age +%= 1;
     }
 
-    pub inline fn index(self: *TranspositionTable, hash: u64) u64 {
+    pub inline fn index(self: *TranspositionTable, hash: u64) usize {
         return @intCast(hash & self.mask);
     }
 
+    /// Sets an entry in the table.
+    ///
+    /// This is the most mitigative of race conditions, but it's still possible.
+    /// If a race condition occurs, it's ok because the table is not the searcher's governor.
     pub inline fn set(self: *TranspositionTable, entry: TTEntry) void {
         const p = &self.data[self.index(entry.hash)];
         const p_val = @as(*TTEntry, @ptrCast(p)).*;
 
-        // We overwrite entry if:
-        // 1. It's empty
-        // 2. New entry is exact
-        // 3. Previous entry is from older search
-        // 4. It is a different position
-        // 5. Previous entry is from same search but has lower depth
-        if (p.* == 0 or entry.flag == .exact or p_val.age != self.age or p_val.hash != entry.hash or p_val.depth <= entry.depth + 4) {
-            // Wizardry, do not modify!
-            _ = @atomicRmw(
-                i64,
-                @as(*i64, @ptrFromInt(@intFromPtr(p))),
-                .Xchg,
-                @as(*const i64, @ptrFromInt(@intFromPtr(&entry))).*,
-                .acquire,
-            );
-
-            _ = @atomicRmw(
-                i64,
-                @as(*i64, @ptrFromInt(@intFromPtr(p) + 8)),
-                .Xchg,
-                @as(*const i64, @ptrFromInt(@intFromPtr(&entry) + 8)).*,
-                .acquire,
-            );
+        // zig fmt: off
+        if (p.* == 0
+            or entry.flag == .exact
+            or p_val.age != self.age
+            or p_val.hash != entry.hash
+            or p_val.depth <= entry.depth + 4
+        ) {
+        // zig fmt: on
+            @atomicStore(i128, p, @bitCast(entry), .release);
         }
     }
 

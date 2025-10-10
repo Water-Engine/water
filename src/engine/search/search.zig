@@ -37,7 +37,7 @@ pub fn negamax(
     const on_pv: bool = flags.node != .non_pv;
 
     // Check for a ply overflow
-    if (searcher.ply == searcher_.max_ply) {
+    if (searcher.ply == parameters.max_ply) {
         return searcher.evaluator.evaluate(searcher.search_board);
     }
 
@@ -562,7 +562,7 @@ pub fn quiescence(
     // Check for material draw and ply overflow
     if (water.arbiter.insufficientMaterial(searcher.search_board)) {
         return 0;
-    } else if (searcher.ply >= searcher_.max_ply) {
+    } else if (searcher.ply >= parameters.max_ply) {
         return searcher.evaluator.evaluate(searcher.search_board);
     }
 
@@ -618,6 +618,9 @@ pub fn quiescence(
             if (move.score < orderer.winning_capture_bonus - 2048) {
                 continue;
             }
+        } else if (in_check and !is_capture) {
+            // TODO: Static evaluation might be better here
+            continue;
         }
 
         // Update the searcher's state

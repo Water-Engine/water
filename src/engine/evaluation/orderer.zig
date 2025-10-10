@@ -92,7 +92,6 @@ pub fn orderMoves(
                 if (comptime !is_null) {
                     if (searcher.ply >= 1) {
                         inline for ([_]usize{ 0, 1, 3 }) |plies_ago| {
-                            const divider: i32 = 1;
                             if (searcher.ply >= plies_ago + 1) {
                                 const prev = searcher.history.moves[searcher.ply - plies_ago - 1];
                                 const moved_piece = searcher.history.moved_pieces[searcher.ply - plies_ago - 1];
@@ -106,7 +105,7 @@ pub fn orderMoves(
                                 const continuation_ptr: [*]const i32 = @ptrCast(searcher.continuation);
                                 const continuation_value = continuation_ptr[continuation_offset];
 
-                                score += @intFromBool(prev.valid()) * @divTrunc(continuation_value, divider);
+                                score += @intFromBool(prev.valid()) * continuation_value;
                             }
                         }
                     }

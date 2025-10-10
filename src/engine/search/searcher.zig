@@ -7,9 +7,6 @@ const parameters = @import("../parameters.zig");
 const evaluator_ = @import("../evaluation/evaluator.zig");
 const tt = @import("../evaluation/tt.zig");
 
-pub const max_ply: usize = 128;
-pub const max_game_ply: usize = 1024;
-
 pub const NodeType = enum { root, pv, non_pv };
 
 pub var quiet_lmr: [64][64]i32 = undefined;
@@ -48,20 +45,20 @@ pub const Searcher = struct {
     ply: usize = 0,
     seldepth: usize = 0,
 
-    exclude_move: [max_ply]water.Move = @splat(water.Move.init()),
+    exclude_move: [parameters.max_ply]water.Move = @splat(water.Move.init()),
     nmp_min_ply: usize = 0,
 
-    killers: [max_ply][2]water.Move = @splat(@splat(water.Move.init())),
+    killers: [parameters.max_ply][2]water.Move = @splat(@splat(water.Move.init())),
     history: struct {
         heuristic: [2][64][64]i32 = std.mem.zeroes([2][64][64]i32),
-        evaluations: [max_ply]i32 = @splat(0),
-        moves: [max_ply]water.Move = @splat(water.Move.init()),
-        moved_pieces: [max_ply]water.Piece = @splat(water.Piece.init()),
+        evaluations: [parameters.max_ply]i32 = @splat(0),
+        moves: [parameters.max_ply]water.Move = @splat(water.Move.init()),
+        moved_pieces: [parameters.max_ply]water.Piece = @splat(water.Piece.init()),
     } = .{},
 
     best_move: water.Move = .init(),
-    pv: [max_ply][max_ply]water.Move = @splat(@splat(water.Move.init())),
-    pv_size: [max_ply]usize = @splat(0),
+    pv: [parameters.max_ply][parameters.max_ply]water.Move = @splat(@splat(water.Move.init())),
+    pv_size: [parameters.max_ply]usize = @splat(0),
 
     counter_moves: [2][64][64]water.Move = @splat(@splat(@splat(water.Move.init()))),
     continuation: *[12][64][64][64]i32,
@@ -136,7 +133,7 @@ pub const Searcher = struct {
         var stability: usize = 0;
 
         var tdepth: usize = 1;
-        var bound = if (max_depth) |md| md else max_ply - 2;
+        var bound = if (max_depth) |md| md else parameters.max_ply - 2;
 
         outer: while (tdepth <= bound) {
             self.ply = 0;
@@ -219,7 +216,7 @@ pub const Searcher = struct {
                     const perspective: i32 = if (score > 0) 1 else -1;
                     try self.writer.print("mate {} pv", .{perspective * mate_in});
 
-                    if (bound == max_ply - 1) {
+                    if (bound == parameters.max_ply - 1) {
                         bound = depth + 2;
                     }
                 } else {

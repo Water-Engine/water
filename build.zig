@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const bingshan = @embedFile("assets/nnue/avalanche/bingshan.nnue");
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{
@@ -24,6 +26,10 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    // Neural nets will be comptime only, and are restricted to the exe
+    var options = b.addOptions();
+    options.addOption([]const u8, "bingshan", bingshan);
+    exe.root_module.addOptions("nets", options);
     b.installArtifact(exe);
 
     const ephemeral = b.option(
@@ -35,6 +41,7 @@ pub fn build(b: *std.Build) void {
     addRunStep(b, exe);
     addPerftStep(b, mod, ephemeral);
     addBenchStep(b, mod, ephemeral);
+    addSearchStep(b, mod, ephemeral);
 
     addFmtStep(b);
     addLintStep(b);
@@ -77,7 +84,7 @@ fn addPerftStep(b: *std.Build, module: *std.Build.Module, ephemeral: bool) void 
     const run_perft = b.addRunArtifact(perft_exe);
     run_perft.step.dependOn(b.getInstallStep());
 
-    const perft_step = b.step("perft", "Run perft suite");
+    const perft_step = b.step("perft", "Run the perft suite");
     perft_step.dependOn(&run_perft.step);
 }
 
@@ -101,7 +108,31 @@ fn addBenchStep(b: *std.Build, module: *std.Build.Module, ephemeral: bool) void 
     const run_bench = b.addRunArtifact(bench_exe);
     run_bench.step.dependOn(b.getInstallStep());
 
-    const bench_step = b.step("bench", "Run benchmarking suite");
+    const bench_step = b.step("bench", "Run the benchmarking suite");
+    bench_step.dependOn(&run_bench.step);
+}
+
+fn addSearchStep(b: *std.Build, module: *std.Build.Module, ephemeral: bool) void {
+    const bench_exe = b.addExecutable(.{
+        .name = "search",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/engine/bench.zig"),
+            .target = module.resolved_target,
+            .optimize = module.optimize,
+            .imports = &.{
+                .{ .name = "water", .module = module },
+            },
+        }),
+    });
+
+    if (!ephemeral) {
+        b.installArtifact(bench_exe);
+    }
+
+    const run_bench = b.addRunArtifact(bench_exe);
+    run_bench.step.dependOn(b.getInstallStep());
+
+    const bench_step = b.step("search", "Run the search benchmarking suite");
     bench_step.dependOn(&run_bench.step);
 }
 

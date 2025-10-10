@@ -154,22 +154,26 @@ pub const Evaluator = struct {
         piece_type: water.PieceType,
         color: water.Color,
         square: water.Square,
-        comptime delta: enum(i32) { add = 1, sub = -1 },
+        comptime delta: enum(i32) { add, sub },
     ) void {
         std.debug.assert(piece_type.valid() and color.valid() and square.valid());
 
         const pt_idx = piece_type.index();
         const sq_idx = square.index() ^ (56 * (1 - color.asInt(usize)));
-        const delta_val: i32 = comptime @intFromEnum(delta);
 
         const sign = 1 - 2 * color.asInt(i32);
-        const change_mg = (pesto.material[pt_idx][0] + pesto.pst[pt_idx][0][sq_idx]) * delta_val * sign;
-        const change_eg_mat = pesto.material[pt_idx][1] * delta_val * sign;
-        const change_eg_non_mat = pesto.pst[pt_idx][1][sq_idx] * delta_val * sign;
-
-        self.pesto.score_mg += change_mg;
-        self.pesto.score_eg_mat += change_eg_mat;
-        self.pesto.score_eg_non_mat += change_eg_non_mat;
+        switch (comptime delta) {
+            .add => {
+                self.pesto.score_mg += (pesto.material[pt_idx][0] + pesto.pst[pt_idx][0][sq_idx]) * sign;
+                self.pesto.score_eg_mat += pesto.material[pt_idx][1] * sign;
+                self.pesto.score_eg_non_mat += pesto.pst[pt_idx][1][sq_idx] * sign;
+            },
+            .sub => {
+                self.pesto.score_mg -= (pesto.material[pt_idx][0] + pesto.pst[pt_idx][0][sq_idx]) * sign;
+                self.pesto.score_eg_mat -= pesto.material[pt_idx][1] * sign;
+                self.pesto.score_eg_non_mat -= pesto.pst[pt_idx][1][sq_idx] * sign;
+            },
+        }
     }
 
     /// Incrementally updates the evaluation by making a move.
@@ -318,7 +322,7 @@ pub const Evaluator = struct {
         var half_moves: i32 = 0;
 
         // TODO: Integrate NNUE evaluation
-        if (parameters.use_nnue and (p >= 3 or has_pawns)) {} else {
+        if (false and parameters.use_nnue and (p >= 3 or has_pawns)) {} else {
             var mg_phase: i32 = 0;
             var eg_phase: i32 = 0;
             var mg_score: i32 = 0;

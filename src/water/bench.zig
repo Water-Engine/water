@@ -56,7 +56,11 @@ fn benchmark(board: *water.Board, test_cases: []const TestCase, writer: *std.Io.
         }
 
         const avg_ms: f64 = @as(f64, @floatFromInt(total_ms)) / @as(f64, @floatFromInt(num_runs));
-        const avg_nps: f64 = if (avg_ms == 0) 0 else (@as(f64, @floatFromInt(nodes)) * 1000.0) / avg_ms;
+        const avg_nps: f64 = blk: {
+            if (avg_ms == 0) break :blk 0 else {
+                break :blk (@as(f64, @floatFromInt(nodes)) * @as(f64, @floatFromInt(std.time.ms_per_s))) / avg_ms;
+            }
+        };
 
         try writer.print(
             "depth {d:<2} nodes {d:<12} | avg time: {d:>5.1}ms (min: {d:>4}, max: {d:>4}) | avg nps: {d:>9.0} | fen: {s}\n",

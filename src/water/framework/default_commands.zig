@@ -54,6 +54,7 @@ pub fn PositionCommand(comptime Searcher: type) type {
                 return types.ChessError.IllegalFen;
             }
 
+            engine.last_played = null;
             if (self.moves) |moves| {
                 var move_tokens = std.mem.tokenizeAny(u8, moves, " ");
                 while (move_tokens.next()) |move_str| {
