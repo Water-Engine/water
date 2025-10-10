@@ -188,5 +188,5 @@ test "Model operation" {
     var nnue = NNUE{};
     nnue.refresh(board);
     const eval = nnue.evaluate(board);
-    std.debug.print("{d}", .{eval});
+    _ = eval;
 }

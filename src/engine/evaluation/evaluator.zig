@@ -590,9 +590,9 @@ test "Board incremental evaluation branches" {
     defer board.deinit();
 
     var refresh_eval = Evaluator{};
-    refresh_eval.refresh(board, .pesto);
+    refresh_eval.refresh(board, .full);
     var incremental_eval = Evaluator{};
-    incremental_eval.refresh(board, .pesto);
+    incremental_eval.refresh(board, .full);
 
     // The above fen is special, black is able to:
     // - Move normally with capture or not (a6e2 and b6d5)
@@ -607,7 +607,7 @@ test "Board incremental evaluation branches" {
     for (movelist.items()) |move| {
         incremental_eval.makeMove(board, move);
         const capture = board.makeMove(move, .{ .return_captured = true });
-        refresh_eval.refresh(board, .pesto);
+        refresh_eval.refresh(board, .full);
 
         try expectEqual(
             refresh_eval.evaluate(board),
@@ -616,7 +616,7 @@ test "Board incremental evaluation branches" {
 
         board.unmakeMove(move);
         incremental_eval.unmakeMove(board, move, capture);
-        refresh_eval.refresh(board, .pesto);
+        refresh_eval.refresh(board, .full);
 
         try expectEqual(
             refresh_eval.evaluate(board),
