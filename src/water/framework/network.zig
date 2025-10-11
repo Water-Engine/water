@@ -21,7 +21,7 @@ const Board = board_.Board;
 ///
 /// The passed Arch must have @sizeOf equal to the Network to encode.
 ///
-/// Also exposes an activation function.
+/// Also exposes an activation function, though actual implementations likely want a SIMD catered one.
 pub fn Network(comptime Arch: type) type {
     if (builtin.target.cpu.arch.endian() != .little) {
         @compileError("The target CPU must be little-endian. Other systems cannot use this Factory");
@@ -59,6 +59,16 @@ pub fn Network(comptime Arch: type) type {
             return net;
         }
 
+        // Only frees if the allocator was passed to init.
+        ///
+        /// This is a noop for Networks created statically.
+        pub fn deinit(self: *Self) void {
+            if (self.allocator) |allocator| {
+                allocator.free(self.data_blob);
+                allocator.destroy(self);
+            }
+        }
+
         /// Loads and parses a network file for this specific architecture.
         ///
         /// Asserts that the provided source is static with respect to the program.
@@ -75,16 +85,6 @@ pub fn Network(comptime Arch: type) type {
                 .data_blob = "",
                 .layers = std.mem.bytesAsValue(Arch, source[0..@sizeOf(Arch)]).*,
             };
-        }
-
-        // Only frees if the allocator was passed to init.
-        ///
-        /// This is a noop for Networks created statically.
-        pub fn deinit(self: *Self) void {
-            if (self.allocator) |allocator| {
-                allocator.free(self.data_blob);
-                allocator.destroy(self);
-            }
         }
 
         /// Performs the given function on the input value.

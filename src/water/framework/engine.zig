@@ -281,29 +281,25 @@ pub fn Engine(comptime Searcher: type) type {
 
             // Start the main loop, only exiting with an error if not doing so would result in unrecoverable state
             while (true) {
-                // TODO: Investigate buffer overflow penalty
-                var line = reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
+                const line = reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
                     error.EndOfStream, error.ReadFailed => break,
                     else => continue,
                 };
 
-                // Handle the carriage return if present
-                if (line.len > 0 and line[line.len - 1] == '\r') {
-                    line = line[0 .. line.len - 1];
-                }
+                const trimmed = std.mem.trim(u8, line, " \r\n\t");
 
                 // Manually handle the quit and stop commands as they are constants
-                if (line.len == 4) {
-                    if (std.mem.startsWith(u8, line, "quit")) {
+                if (trimmed.len == 4) {
+                    if (std.mem.startsWith(u8, trimmed, "quit")) {
                         self.notifyStopSearch();
                         break;
-                    } else if (std.mem.startsWith(u8, line, "stop")) {
+                    } else if (std.mem.startsWith(u8, trimmed, "stop")) {
                         self.notifyStopSearch();
                         continue;
                     }
                 }
 
-                var tokens = std.mem.tokenizeAny(u8, line, " ");
+                var tokens = std.mem.tokenizeAny(u8, trimmed, " ");
                 Dispatcher.dispatch(&tokens, self) catch continue;
             }
         }

@@ -164,25 +164,25 @@ pub const NNUE = struct {
     }
 
     fn activation(
-        values: @Vector(16, i16),
+        values: VecI16_16,
         comptime min: i16,
         comptime max: i16,
         comptime func: enum { relu, crelu, screlu },
-    ) @Vector(16, i32) {
+    ) VecI32_16 {
         return switch (comptime func) {
-            .relu => @max(values, @as(@Vector(16, i16), @splat(0))),
+            .relu => @max(values, @as(VecI16_16, @splat(0))),
             .crelu => std.math.clamp(
                 values,
-                @as(@Vector(16, i32), @splat(min)),
-                @as(@Vector(16, i32), @splat(max)),
+                @as(VecI32_16, @splat(min)),
+                @as(VecI32_16, @splat(max)),
             ),
             .screlu => blk: {
                 const clamped = std.math.clamp(
                     values,
-                    @as(@Vector(16, i32), @splat(min)),
-                    @as(@Vector(16, i32), @splat(max)),
+                    @as(VecI32_16, @splat(min)),
+                    @as(VecI32_16, @splat(max)),
                 );
-                const extended = @as(@Vector(16, i32), clamped);
+                const extended = @as(VecI32_16, clamped);
                 break :blk extended * extended;
             },
         };
