@@ -33,6 +33,7 @@ pub const Default = struct {
     min_value: []const u8,
     max_value: []const u8,
     underlying: type,
+    id: usize,
 };
 
 pub const OptParseError = error{
@@ -60,6 +61,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "999",
         .underlying = f64,
+        .id = 0,
     },
     .{
         .name = "LMRBias",
@@ -68,6 +70,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "9999",
         .underlying = f64,
+        .id = 1,
     },
     .{
         .name = "RFPDepth",
@@ -76,6 +79,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "16",
         .underlying = i32,
+        .id = 2,
     },
     .{
         .name = "RFPMultiplier",
@@ -84,6 +88,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "999",
         .underlying = i32,
+        .id = 3,
     },
     .{
         .name = "RFPImprovingDeduction",
@@ -92,6 +97,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "999",
         .underlying = i32,
+        .id = 4,
     },
     .{
         .name = "NMPImprovingMargin",
@@ -100,6 +106,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "999",
         .underlying = i32,
+        .id = 5,
     },
     .{
         .name = "NMPBase",
@@ -108,6 +115,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "16",
         .underlying = usize,
+        .id = 6,
     },
     .{
         .name = "NMPDepthDivisor",
@@ -116,6 +124,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "16",
         .underlying = usize,
+        .id = 7,
     },
     .{
         .name = "NMPBetaDivisor",
@@ -124,6 +133,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "999",
         .underlying = i32,
+        .id = 8,
     },
     .{
         .name = "RazoringBase",
@@ -132,6 +142,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "999",
         .underlying = i32,
+        .id = 9,
     },
     .{
         .name = "RazoringMargin",
@@ -140,6 +151,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "999",
         .underlying = i32,
+        .id = 10,
     },
     .{
         .name = "AspirationWindow",
@@ -148,6 +160,7 @@ pub const defaults = [_]Default{
         .min_value = "1",
         .max_value = "999",
         .underlying = i32,
+        .id = 11,
     },
 
     // Transposition table specific options
@@ -158,6 +171,7 @@ pub const defaults = [_]Default{
         .min_value = "",
         .max_value = "",
         .underlying = void,
+        .id = 12,
     },
     .{
         .name = "Hash",
@@ -165,7 +179,8 @@ pub const defaults = [_]Default{
         .value = "16",
         .min_value = "1",
         .max_value = tt.MaxHashSize.mb_string,
-        .underlying = i32,
+        .underlying = usize,
+        .id = 13,
     },
 
     // Other options
@@ -176,6 +191,7 @@ pub const defaults = [_]Default{
         .min_value = "",
         .max_value = "",
         .underlying = bool,
+        .id = 14,
     },
     .{
         .name = "Move Overhead",
@@ -184,6 +200,7 @@ pub const defaults = [_]Default{
         .min_value = "0",
         .max_value = "50",
         .underlying = i32,
+        .id = 15,
     },
     .{
         .name = "Use NNUE",
@@ -192,6 +209,7 @@ pub const defaults = [_]Default{
         .min_value = "",
         .max_value = "",
         .underlying = bool,
+        .id = 16,
     },
 };
 

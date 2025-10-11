@@ -98,12 +98,12 @@ pub fn Network(comptime Arch: type) type {
             comptime min: i16,
             comptime max: i16,
             comptime func: enum { relu, crelu, screlu },
-        ) i16 {
+        ) i32 {
             return switch (comptime func) {
                 .relu => @max(value, 0),
                 .crelu => std.math.clamp(value, min, max),
                 .screlu => blk: {
-                    const clamped = std.math.clamp(value, min, max);
+                    const clamped = @as(i32, std.math.clamp(value, min, max));
                     break :blk clamped * clamped;
                 },
             };

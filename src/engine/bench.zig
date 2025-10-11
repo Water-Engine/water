@@ -3,6 +3,7 @@ const water = @import("water");
 
 const searcher_ = @import("search/searcher.zig");
 const tt = @import("evaluation/tt.zig");
+const parameters = @import("parameters.zig");
 
 const TestCase = struct {
     fen: []const u8,

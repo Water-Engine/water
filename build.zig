@@ -41,7 +41,7 @@ pub fn build(b: *std.Build) void {
     addRunStep(b, exe);
     addPerftStep(b, mod, ephemeral);
     addBenchStep(b, mod, ephemeral);
-    addSearchStep(b, mod, ephemeral);
+    addSearchStep(b, mod, ephemeral, options);
 
     addFmtStep(b);
     addLintStep(b);
@@ -112,7 +112,7 @@ fn addBenchStep(b: *std.Build, module: *std.Build.Module, ephemeral: bool) void 
     bench_step.dependOn(&run_bench.step);
 }
 
-fn addSearchStep(b: *std.Build, module: *std.Build.Module, ephemeral: bool) void {
+fn addSearchStep(b: *std.Build, module: *std.Build.Module, ephemeral: bool, nets: *std.Build.Step.Options) void {
     const bench_exe = b.addExecutable(.{
         .name = "search",
         .root_module = b.createModule(.{
@@ -124,6 +124,7 @@ fn addSearchStep(b: *std.Build, module: *std.Build.Module, ephemeral: bool) void
             },
         }),
     });
+    bench_exe.root_module.addOptions("nets", nets);
 
     if (!ephemeral) {
         b.installArtifact(bench_exe);

@@ -620,7 +620,7 @@ pub fn quiescence(
             }
         } else if (in_check and !is_capture) {
             // TODO: Static evaluation might be better here
-            continue;
+            // continue;
         }
 
         // Update the searcher's state

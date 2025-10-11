@@ -1,0 +1,4 @@
+CPU: AMD Ryzen 7 7800X3D 8-Core Processor
+Performed: October 10th 2025
+Iterations/FEN: 5
+Conditions: Search benchmark with NNUE SIMD optimizations

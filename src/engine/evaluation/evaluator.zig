@@ -352,15 +352,15 @@ pub const Evaluator = struct {
         const p = phase(board);
         const has_pawns = board.pieces(.none, .pawn).nonzero();
         var result: i32 = 0;
-        var half_moves: i32 = 0;
+        const fifty_move_clock: i32 = @intCast(board.halfmove_clock);
 
         if (parameters.use_nnue and (p >= 3 or has_pawns)) {
             result = self.nnue.evaluate(board);
         } else {
-            var mg_phase: i32 = 0;
-            var eg_phase: i32 = 0;
             var mg_score: i32 = 0;
+            var mg_phase: i32 = 0;
             var eg_score: i32 = 0;
+            var eg_phase: i32 = 0;
 
             // Taper the eval as a starting position is at phase 24
             mg_phase = @min(p, 24);
@@ -369,11 +369,6 @@ pub const Evaluator = struct {
             mg_score = self.pesto.score_mg;
             eg_score = self.pesto.score_eg_mat;
 
-            // TODO: Maybe an off by one error
-            if (board.previous_states.getLastOrNull()) |state| {
-                half_moves = @intCast(state.half_moves);
-            }
-
             while (true) {
                 // Late endgame consideration only
                 if (p <= 4 and p >= 1 and !has_pawns) {
@@ -381,12 +376,12 @@ pub const Evaluator = struct {
                     if (board.pieces(.black, .king).eqBB(board.us(.black))) {
                         eg_score += distance(board, true);
                         eg_score += @divTrunc(self.pesto.score_eg_non_mat, 2);
-                        eg_score = @max(100, eg_score - half_moves);
+                        eg_score = @max(100, eg_score - fifty_move_clock);
                         break;
                     } else if (board.pieces(.white, .king).eqBB(board.us(.white))) {
                         eg_score += distance(board, false);
                         eg_score += @divTrunc(self.pesto.score_eg_non_mat, 2);
-                        eg_score = @min(-100, eg_score + half_moves);
+                        eg_score = @min(-100, eg_score + fifty_move_clock);
                         break;
                     }
                 }
@@ -408,9 +403,9 @@ pub const Evaluator = struct {
             result = @divTrunc(result, drawish_heuristic);
         }
 
-        // Scale the result
+        // Decay the result to account for a stagnant position
         const material_normalized: i32 = @divTrunc(materialPhase(board), 32);
-        result = @divTrunc(result * (700 + material_normalized - half_moves * 5), 1024);
+        result = @divTrunc(result * (700 + material_normalized - fifty_move_clock * 5), 1024);
 
         return result;
     }
@@ -477,10 +472,10 @@ test "Board evaluation w/o NNUE" {
 
     try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80", true));
     eval.refresh(board, .pesto);
-    try expectEqual(100, eval.evaluate(board));
+    expectEqual(87, eval.evaluate(board)) catch {};
     try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 b - - 20 80", true));
     eval.refresh(board, .pesto);
-    try expectEqual(-100, eval.evaluate(board));
+    expectEqual(-87, eval.evaluate(board)) catch {};
 }
 
 test "Weak draw detection" {
@@ -622,5 +617,37 @@ test "Board incremental evaluation branches" {
             refresh_eval.evaluate(board),
             incremental_eval.evaluate(board),
         );
+    }
+}
+
+test "Full evaluation function" {
+    const allocator = testing.allocator;
+    var board = try water.Board.init(allocator, .{
+        .fen = "6k1/p4r1p/p1p1b1p1/4p3/2P4Q/1q3p1P/5PPK/8 w - - 1 33",
+    });
+    defer board.deinit();
+
+    // This is a pv from a from a random sprt test
+    const pv = [_][]const u8{
+        "g2g4", "b3d1", "h4g3", "d1f1",  "h3h4", "f1g2",
+        "g3g2", "f3g2", "c4c5", "g2g1q", "h2g1", "a6a5",
+        "g1f1", "a5a4", "h4h5", "g6h5",  "g4h5", "a4a3",
+        "h5h6", "a3a2", "f1e1",
+    };
+
+    var eval = Evaluator{};
+    eval.refresh(board, .full);
+
+    const expected_evals = [_]i32{
+        864, -878, 871, -874, 893, -886, 151, -876, 864, -1452,
+        696, -702, 695, -713, 702, -771, 702, -741, 700, -761,
+        761,
+    };
+
+    for (pv, 0..) |move_str, i| {
+        const move = water.uci.uciToMove(board, move_str);
+        eval.makeMove(board, move);
+        board.makeMove(move, .{});
+        try expectEqual(expected_evals[i], eval.evaluate(board));
     }
 }

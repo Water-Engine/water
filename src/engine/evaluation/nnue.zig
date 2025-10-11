@@ -32,11 +32,12 @@ pub const PiecePair = packed struct {
 
     /// Builds the white and black indices in the net for the piece on the given square.
     pub fn init(piece: water.Piece, square: usize) PiecePair {
+        std.debug.assert(piece.valid() and water.Square.fromInt(usize, square).valid());
         const p = piece.asType().index();
         const color = piece.color();
 
         const white = color.index() * 64 * 6 + p * 64 + square;
-        const black = color.opposite().index() * 64 * 6 + p * 64 + square ^ 56;
+        const black = color.opposite().index() * 64 * 6 + p * 64 + (square ^ 56);
 
         return .{
             .white = white * hidden_size,
@@ -121,25 +122,25 @@ pub const NNUE = struct {
         @setEvalBranchQuota(4 * hidden_size);
         // TODO: Keep inline/comptime structure but move to SIMD
         inline for (0..hidden_size) |i| {
-            const crelu_white = Network.activation(
+            const screlu_white = Network.activation(
                 self.accumulator.white[i],
                 0,
                 quantized_a,
-                .crelu,
+                .screlu,
             );
 
-            const crelu_black = Network.activation(
+            const screlu_black = Network.activation(
                 self.accumulator.black[i],
                 0,
                 quantized_a,
-                .crelu,
+                .screlu,
             );
 
             const hl_half_1_val = hl_half_1[i];
             const hl_half_2_val = hl_half_2[i];
 
-            res += (inv_color_selector * crelu_white + inv_color_selector * crelu_black) * hl_half_1_val;
-            res += (color_selector * crelu_white + color_selector * crelu_black) * hl_half_2_val;
+            res += (inv_color_selector * screlu_white + color_selector * screlu_black) * hl_half_1_val;
+            res += (color_selector * screlu_white + inv_color_selector * screlu_black) * hl_half_2_val;
         }
 
         return blk: {
@@ -180,13 +181,120 @@ test "Network creation" {
     defer valid.deinit();
 }
 
-test "Model operation" {
+test "Model creation" {
     const allocator = testing.allocator;
     const board = try water.Board.init(allocator, .{});
     defer board.deinit();
 
     var nnue = NNUE{};
     nnue.refresh(board);
-    const eval = nnue.evaluate(board);
-    _ = eval;
+    _ = nnue.evaluate(board);
+
+    // First 50 expected values for each layer of the model
+    const layers = model.layers;
+
+    // First layer
+    const l1_expected = [_]i16{
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    };
+
+    for (0..50) |i| {
+        try expectEqual(l1_expected[i], layers.layer_1[i]);
+    }
+
+    // First layer bias
+    const l1_bias_expected = [_]i16{
+        35,  -19, -43, 15,  -40, -31, -46, 6,   -74,
+        -7,  -54, -10, -11, 33,  -11, 96,  53,  -79,
+        19,  -57, -34, 35,  -27, -21, -28, -2,  -35,
+        -3,  -36, -12, -17, 23,  76,  -86, -8,  -45,
+        101, -8,  41,  38,  -59, -22, -10, -25, -12,
+        -47, -46, 0,   -51, -13,
+    };
+
+    for (0..50) |i| {
+        try expectEqual(l1_bias_expected[i], layers.layer_1_bias[i]);
+    }
+
+    // Second layer
+    const l2_expected = [_]i16{
+        -55, 9,   24,  7,  20,  0,   -1,  2,  -28, -8,  0,    -5,
+        -2,  103, -3,  29, -39, -55, -33, -1, -10, 6,   -101, 17,
+        -7,  0,   0,   -3, -60, 22,  -73, 3,  46,  -13, 11,   -3,
+        -4,  -10, -41, 26, 4,   25,  0,   3,  -2,  11,  -10,  -22,
+        -17, -5,  6,
+    };
+
+    for (0..50) |i| {
+        try expectEqual(l2_expected[i], layers.layer_2[0][i]);
+    }
+
+    // Second layer bias
+    const l2_bias_expected = [_]i16{
+        -585, -139, 278, 711, 960, 878, 671, 292,
+    };
+
+    for (0..8) |i| {
+        try expectEqual(l2_bias_expected[i], layers.layer_2_bias[i]);
+    }
+}
+
+test "NNUE evaluation correctness" {
+    const allocator = testing.allocator;
+    const board = try water.Board.init(allocator, .{});
+    defer board.deinit();
+
+    var net = NNUE{};
+
+    // Random FEN strings from http://bernd.bplaced.net/fengenerator/fengenerator.html
+    // Expected evaluations from Avalanche using bingshan model
+    const short_fens = [_][]const u8{
+        "8/4k3/8/2K5/8/P5P1/6B1/8 w - - 0 1",
+        "8/2k5/6P1/3K2p1/6n1/8/8/8 w - - 0 1",
+        "6Q1/8/7k/2b5/3N4/8/8/5K2 w - - 0 1",
+        "8/3P1p2/3b4/8/5k2/8/3K4/8 w - - 0 1",
+        "1N6/4p3/6K1/8/8/4Bk2/8/8 w - - 0 1",
+        "8/8/K7/8/B7/Q7/6k1/7b w - - 0 1",
+        "8/8/4P3/4kp2/1K6/8/1p6/8 w - - 0 1",
+        "8/8/1k1n4/5p2/5p2/8/4K3/8 w - - 0 1",
+        "8/1p6/7K/8/3k4/P7/1r6/8 w - - 0 1",
+        "6K1/p7/p7/6k1/8/8/4p3/8 w - - 0 1",
+    };
+
+    const nnue_evals_short = [_]i32{
+        1101, -292, 654, -483, 207, 633, -99, -901, -1104, -1189,
+    };
+
+    for (short_fens, 0..) |fen, i| {
+        try expect(try board.setFen(fen, true));
+        net.refresh(board);
+        try expectEqual(nnue_evals_short[i], net.evaluate(board));
+    }
+
+    const long_fens = [_][]const u8{
+        "r1N1R3/pPb3R1/q4BNP/PPpK4/b1rP2P1/pP2Pn1n/k1ppp1pp/5B1Q w - - 0 1",
+        "R6N/RbBp1Pp1/1p1n1k1p/1P1B2qp/P1PP2Pn/1p2NP1K/1p2pPQ1/1r2b1r1 w - - 0 1",
+        "b3NBK1/R4pp1/1PqPR1NP/4p3/2rPPpnb/2k1PP1P/p1p2prp/nQ5B w - - 0 1",
+        "2q2n1b/p1P2BQP/p1PN1p1K/5PP1/N1Rprppn/2B3P1/1pPpb2P/1R4rk w - - 0 1",
+        "8/1pP2bRP/P1rppp1P/PP1kp2p/p1N2nNb/1PqPnp1Q/1Br4R/3B3K w - - 0 1",
+        "7K/1N1Qpr2/p1PB1rPk/pPp5/q2n1Rpp/P1PPPbpB/p1P5/bR1N3n w - - 0 1",
+        "BR1n3Q/1P1pbr1P/Pp2p3/1NrpPP2/p2PR2p/Bn1ppk2/KP5P/1N2q2b w - - 0 1",
+        "1R1q4/n2bP1rR/1BNP1n1p/PPpp3p/kP3PP1/br4p1/BpP1p2p/1K2QN2 w - - 0 1",
+        "2N3N1/pnR2BP1/P1b2PpQ/1p1R1PKP/q3P2p/1Pb1nr1p/k1pp1pP1/4B1r1 w - - 0 1",
+        "B6N/QP2pPbR/2q1p2p/2PRp2p/Pk2p1r1/nP1PPr2/1Kpp2PN/1bB3n1 w - - 0 1",
+    };
+
+    const nnue_evals_long = [_]i32{
+        -1461, -57, 10, 217, 581, -314, 583, 259, -174, 114,
+    };
+
+    for (long_fens, 0..) |fen, i| {
+        try expect(try board.setFen(fen, true));
+        net.refresh(board);
+        try expectEqual(nnue_evals_long[i], net.evaluate(board));
+    }
 }
