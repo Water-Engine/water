@@ -46,9 +46,30 @@ pub const PiecePair = packed struct {
     }
 };
 
+const VecI16_16 = @Vector(16, i16);
+const vec16_len = @typeInfo(VecI16_16).vector.len;
+const VecI32_8 = @Vector(8, i32);
+const VecI32_16 = @Vector(16, i32);
+
+pub const vec16_iter = blk: {
+    if (vec16_len % hidden_size == 0) {
+        @compileError("Hidden size must be a multiple of 16");
+    }
+
+    const count = (hidden_size / 16);
+
+    var indices: [count]usize = undefined;
+    for (0..count) |i| {
+        indices[i] = i * 16;
+    }
+
+    const s_indices = indices;
+    break :blk s_indices;
+};
+
 pub const Accumulator = struct {
-    white: [hidden_size]i16 = model.layers.layer_1_bias,
-    black: [hidden_size]i16 = model.layers.layer_1_bias,
+    white: [hidden_size]i16 align(32) = model.layers.layer_1_bias,
+    black: [hidden_size]i16 align(32) = model.layers.layer_1_bias,
 
     pub inline fn clear(self: *Accumulator) void {
         self.white = model.layers.layer_1_bias;
@@ -61,18 +82,40 @@ pub const Accumulator = struct {
         comptime delta: enum(i32) { add, sub },
     ) void {
         @setEvalBranchQuota(4 * hidden_size);
-        // TODO: Keep inline/comptime structure but move to SIMD
-        inline for (0..hidden_size) |i| {
-            switch (comptime delta) {
-                .add => {
-                    self.white[i] += model.layers.layer_1[data.white + i];
-                    self.black[i] += model.layers.layer_1[data.black + i];
-                },
-                .sub => {
-                    self.white[i] -= model.layers.layer_1[data.white + i];
-                    self.black[i] -= model.layers.layer_1[data.black + i];
-                },
-            }
+        if (vec16_len % hidden_size == 0) {
+            @compileError("Hidden size must be a multiple of 16");
+        }
+
+        inline for (vec16_iter) |i| {
+            // White accumulator operation
+            const white_acc_ptr = @as(*VecI16_16, @alignCast(self.white[i .. i + 16]));
+            const white_weights_ptr = @as(
+                *const VecI16_16,
+                @ptrCast(@alignCast(model.layers.layer_1[data.white + i .. data.white + i + 16])),
+            );
+
+            const white_acc_vec = white_acc_ptr.*;
+            const white_weights_vec = white_weights_ptr.*;
+
+            white_acc_ptr.* = switch (comptime delta) {
+                .add => white_acc_vec + white_weights_vec,
+                .sub => white_acc_vec - white_weights_vec,
+            };
+
+            // Black accumulator operation
+            const black_acc_ptr = @as(*VecI16_16, @alignCast(self.black[i .. i + 16]));
+            const black_weights_ptr = @as(
+                *const VecI16_16,
+                @ptrCast(@alignCast(model.layers.layer_1[data.black + i .. data.black + i + 16])),
+            );
+
+            const black_acc_vec = black_acc_ptr.*;
+            const black_weights_vec = black_weights_ptr.*;
+
+            black_acc_ptr.* = switch (comptime delta) {
+                .add => black_acc_vec + black_weights_vec,
+                .sub => black_acc_vec - black_weights_vec,
+            };
         }
     }
 };
@@ -108,40 +151,93 @@ pub const NNUE = struct {
         return (board.occ().count() - 2) / 4;
     }
 
+    fn widenLow(comptime Vec: type, v: *const Vec) VecI32_8 {
+        var res: VecI32_8 = undefined;
+        inline for (0..8) |i| res[i] = @intCast(v[i]);
+        return res;
+    }
+
+    fn widenHigh(comptime Vec: type, v: *const Vec) VecI32_8 {
+        var res: VecI32_8 = undefined;
+        inline for (0..8) |i| res[i] = @intCast(v[i + 8]);
+        return res;
+    }
+
+    fn activation(
+        values: @Vector(16, i16),
+        comptime min: i16,
+        comptime max: i16,
+        comptime func: enum { relu, crelu, screlu },
+    ) @Vector(16, i32) {
+        return switch (comptime func) {
+            .relu => @max(values, @as(@Vector(16, i16), @splat(0))),
+            .crelu => std.math.clamp(
+                values,
+                @as(@Vector(16, i32), @splat(min)),
+                @as(@Vector(16, i32), @splat(max)),
+            ),
+            .screlu => blk: {
+                const clamped = std.math.clamp(
+                    values,
+                    @as(@Vector(16, i32), @splat(min)),
+                    @as(@Vector(16, i32), @splat(max)),
+                );
+                const extended = @as(@Vector(16, i32), clamped);
+                break :blk extended * extended;
+            },
+        };
+    }
+
     pub fn evaluate(self: *NNUE, board: *const water.Board) i32 {
         std.debug.assert(board.side_to_move.valid());
-        const color_selector = board.side_to_move.asInt(i32);
-        const inv_color_selector = 1 - color_selector;
+        const color_selector: VecI32_8 = @splat(board.side_to_move.asInt(i32));
+        const inv_color_selector = @as(VecI32_8, @splat(1)) - color_selector;
 
         const bucket = getBucket(board);
-        var res: i32 = @intCast(model.layers.layer_2_bias[bucket]);
-
-        const hl_half_1 = model.layers.layer_2[bucket];
-        const hl_half_2 = model.layers.layer_2[bucket][hidden_size..];
+        const initial_bias: i32 = @intCast(model.layers.layer_2_bias[bucket]);
+        var res_vec: VecI32_8 = @splat(0);
 
         @setEvalBranchQuota(4 * hidden_size);
-        // TODO: Keep inline/comptime structure but move to SIMD
-        inline for (0..hidden_size) |i| {
-            const screlu_white = Network.activation(
-                self.accumulator.white[i],
-                0,
-                quantized_a,
-                .screlu,
-            );
+        inline for (vec16_iter) |i| {
+            const white_acc_ptr = @as(*const VecI16_16, @alignCast(self.accumulator.white[i .. i + 16]));
+            const black_acc_ptr = @as(*const VecI16_16, @alignCast(self.accumulator.black[i .. i + 16]));
+            const hidden_layer_1 = @as(*const VecI16_16, @alignCast(model.layers.layer_2[bucket][i .. i + 16]));
+            const hidden_layer_2 = @as(*const VecI16_16, @alignCast(model.layers.layer_2[bucket][hidden_size + i .. hidden_size + i + 16]));
 
-            const screlu_black = Network.activation(
-                self.accumulator.black[i],
-                0,
-                quantized_a,
-                .screlu,
-            );
+            const screlu_white = activation(white_acc_ptr.*, 0, quantized_a, .screlu);
+            const screlu_black = activation(black_acc_ptr.*, 0, quantized_a, .screlu);
 
-            const hl_half_1_val = hl_half_1[i];
-            const hl_half_2_val = hl_half_2[i];
+            // Low 8 lane accumulate
+            {
+                const screlu_white_low = widenLow(VecI32_16, &screlu_white);
+                const screlu_black_low = widenLow(VecI32_16, &screlu_black);
+                const hidden_layer_1_low = widenLow(VecI16_16, hidden_layer_1);
+                const hidden_layer_2_low = widenLow(VecI16_16, hidden_layer_2);
 
-            res += (inv_color_selector * screlu_white + color_selector * screlu_black) * hl_half_1_val;
-            res += (color_selector * screlu_white + inv_color_selector * screlu_black) * hl_half_2_val;
+                const term_a = inv_color_selector * screlu_white_low + color_selector * screlu_black_low;
+                const term_b = color_selector * screlu_white_low + inv_color_selector * screlu_black_low;
+
+                res_vec = term_a * hidden_layer_1_low + res_vec;
+                res_vec = term_b * hidden_layer_2_low + res_vec;
+            }
+
+            // High 8 lane accumulate
+            {
+                const screlu_white_high = widenHigh(VecI32_16, &screlu_white);
+                const screlu_black_high = widenHigh(VecI32_16, &screlu_black);
+                const hidden_layer_1_high = widenHigh(VecI16_16, hidden_layer_1);
+                const hidden_layer_2_high = widenHigh(VecI16_16, hidden_layer_2);
+
+                const term_a = inv_color_selector * screlu_white_high + color_selector * screlu_black_high;
+                const term_b = color_selector * screlu_white_high + inv_color_selector * screlu_black_high;
+
+                res_vec = term_a * hidden_layer_1_high + res_vec;
+                res_vec = term_b * hidden_layer_2_high + res_vec;
+            }
         }
+
+        const reduced: i32 = @reduce(.Add, res_vec);
+        const res = initial_bias + reduced;
 
         return blk: {
             if (comptime squared_activation) {

@@ -90,7 +90,7 @@ pub fn Network(comptime Arch: type) type {
         /// Performs the given function on the input value.
         /// - RELU almost always avoided due to potential overflow
         /// - CReLU is not as common but can be auto-vectorized
-        /// - SCReLU produces the strongest network
+        /// - SCReLU produces the strongest network, though it should be used with SIMD
         ///
         /// https://www.chessprogramming.org/NNUE
         pub fn activation(

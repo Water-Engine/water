@@ -352,7 +352,7 @@ pub const Evaluator = struct {
         const p = phase(board);
         const has_pawns = board.pieces(.none, .pawn).nonzero();
         var result: i32 = 0;
-        const fifty_move_clock: i32 = @intCast(board.halfmove_clock);
+        const halfmove_clock: i32 = @intCast(board.halfmove_clock);
 
         if (parameters.use_nnue and (p >= 3 or has_pawns)) {
             result = self.nnue.evaluate(board);
@@ -376,12 +376,12 @@ pub const Evaluator = struct {
                     if (board.pieces(.black, .king).eqBB(board.us(.black))) {
                         eg_score += distance(board, true);
                         eg_score += @divTrunc(self.pesto.score_eg_non_mat, 2);
-                        eg_score = @max(100, eg_score - fifty_move_clock);
+                        eg_score = @max(100, eg_score - halfmove_clock);
                         break;
                     } else if (board.pieces(.white, .king).eqBB(board.us(.white))) {
                         eg_score += distance(board, false);
                         eg_score += @divTrunc(self.pesto.score_eg_non_mat, 2);
-                        eg_score = @min(-100, eg_score + fifty_move_clock);
+                        eg_score = @min(-100, eg_score + halfmove_clock);
                         break;
                     }
                 }
@@ -405,7 +405,7 @@ pub const Evaluator = struct {
 
         // Decay the result to account for a stagnant position
         const material_normalized: i32 = @divTrunc(materialPhase(board), 32);
-        result = @divTrunc(result * (700 + material_normalized - fifty_move_clock * 5), 1024);
+        result = @divTrunc(result * (700 + material_normalized - halfmove_clock * 5), 1024);
 
         return result;
     }
