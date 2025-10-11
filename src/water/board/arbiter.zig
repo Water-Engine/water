@@ -1,3 +1,5 @@
+//! Provides core functions capable of determining the current state of a board.
+
 const std = @import("std");
 
 const types = @import("../core/types.zig");
