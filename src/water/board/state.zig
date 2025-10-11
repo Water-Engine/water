@@ -255,22 +255,22 @@ fn generateCastlingKey(index: usize) u64 {
 
 pub const Zobrist = struct {
     pub fn piece(p: Piece, s: Square) u64 {
-        std.debug.assert(p.index() < 12);
+        std.debug.assert(p.valid());
         return zobrist_randoms[64 * map_hash_piece[p.index()] + s.index()];
     }
 
     pub fn enPassant(f: File) u64 {
-        std.debug.assert(f.index() < 8);
+        std.debug.assert(f.valid());
         return zobrist_randoms[772 + f.index()];
     }
 
     pub fn castling(c: usize) u64 {
-        std.debug.assert(c >= 0 and c < 16);
+        std.debug.assert(c < 16);
         return castling_keys[c];
     }
 
     pub fn castlingIdx(idx: usize) u64 {
-        std.debug.assert(idx >= 0 and idx < 4);
+        std.debug.assert(idx < 4);
         return zobrist_randoms[768 + idx];
     }
 

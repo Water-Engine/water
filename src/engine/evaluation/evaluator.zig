@@ -42,71 +42,50 @@ pub fn materialPhase(board: *const water.Board) i32 {
 /// Performs a weasily check if the board is a draw.
 ///
 /// Will return true more frequently than water's arbiter.
-///
-/// Directly from https://github.com/SnowballSH/Avalanche
 pub fn drawish(board: *const water.Board) bool {
     const all = board.occ().bits;
     const kings = board.pieces(.none, .king).bits;
+    const non_kings = all ^ kings;
 
-    if (kings == all) {
+    // Early exit: if no other pieces, K vs K
+    if (non_kings == 0) return true;
+
+    // Extract once - de-abstract from BB for readability
+    const wb = board.pieces(.white, .bishop).bits;
+    const bb = board.pieces(.black, .bishop).bits;
+    const wn = board.pieces(.white, .knight).bits;
+    const bn = board.pieces(.black, .knight).bits;
+
+    const wb_c = @popCount(wb);
+    const bb_c = @popCount(bb);
+    const wn_c = @popCount(wn);
+    const bn_c = @popCount(bn);
+
+    const total_minor = wb_c + bb_c + wn_c + bn_c;
+
+    // Quick discard: too much material
+    if (total_minor > 3) return false;
+
+    // K + (up to 2 knights)
+    if ((wn_c <= 2 and non_kings == wn) or (bn_c <= 2 and non_kings == bn))
         return true;
-    }
 
-    const white_bishops = board.pieces(.white, .bishop).bits;
-    const black_bishops = board.pieces(.black, .bishop).bits;
-    const white_knights = board.pieces(.white, .knight).bits;
-    const black_knights = board.pieces(.black, .knight).bits;
-
-    const white_bishop_count: usize = @popCount(white_bishops);
-    const black_bishop_count: usize = @popCount(black_bishops);
-    const white_knight_count: usize = @popCount(white_knights);
-    const black_knight_count: usize = @popCount(black_knights);
-
-    // KN vs K or KNN vs K
-    if (white_knight_count <= 2 and white_knights | kings == all) {
+    // K + (one minor each)
+    if ((wn_c == 1 and bn_c == 1 and non_kings == wn | bn) or
+        (wb_c == 1 and bb_c == 1 and non_kings == wb | bb) or
+        (wb_c == 1 and bn_c == 1 and non_kings == wb | bn) or
+        (bb_c == 1 and wn_c == 1 and non_kings == bb | wn))
         return true;
-    }
-
-    if (black_knight_count <= 2 and black_knights | kings == all) {
-        return true;
-    }
-
-    // KN vs KN
-    if (white_knight_count == 1 and black_knight_count == 1 and white_knights | black_knights | kings == all) {
-        return true;
-    }
-
-    // KB vs KB
-    if (white_bishop_count == 1 and black_bishop_count == 1 and white_bishops | black_bishops | kings == all) {
-        return true;
-    }
-
-    // KB vs KN
-    if (white_bishop_count == 1 and black_knight_count == 1 and white_bishops | black_knights | kings == all) {
-        return true;
-    }
-
-    if (black_bishop_count == 1 and white_knight_count == 1 and black_bishops | white_knights | kings == all) {
-        return true;
-    }
 
     // KNN vs KB
-    if (white_knight_count == 2 and black_bishop_count == 1 and white_knights | black_bishops | kings == all) {
+    if ((wn_c == 2 and bb_c == 1 and non_kings == wn | bb) or
+        (bn_c == 2 and wb_c == 1 and non_kings == bn | wb))
         return true;
-    }
-
-    if (black_knight_count == 2 and white_bishop_count == 1 and black_knights | white_bishops | kings == all) {
-        return true;
-    }
 
     // KBN vs KB
-    if (white_bishop_count == 1 and white_knight_count == 1 and black_bishop_count == 1 and white_bishops | white_knights | black_bishops | kings == all) {
+    if ((wb_c == 1 and wn_c == 1 and bb_c == 1 and non_kings == wb | wn | bb) or
+        (bb_c == 1 and bn_c == 1 and wb_c == 1 and non_kings == bb | bn | wb))
         return true;
-    }
-
-    if (black_bishop_count == 1 and black_knight_count == 1 and white_bishop_count == 1 and black_bishops | black_knights | white_bishops | kings == all) {
-        return true;
-    }
 
     return false;
 }
@@ -354,7 +333,7 @@ pub const Evaluator = struct {
         var result: i32 = 0;
         const halfmove_clock: i32 = @intCast(board.halfmove_clock);
 
-        if (parameters.use_nnue and (p >= 3 or has_pawns)) {
+        if (p >= 3 or has_pawns) {
             result = self.nnue.evaluate(board);
         } else {
             var mg_score: i32 = 0;
@@ -450,133 +429,31 @@ test "Board distance evaluation" {
     try expectEqual(-15, distance(board, false));
 }
 
-test "Board evaluation w/o NNUE" {
-    const allocator = testing.allocator;
-    parameters.use_nnue = false;
-    var board = try water.Board.init(allocator, .{});
-    defer board.deinit();
-
-    var eval = Evaluator{};
-
-    try expectEqual(0, eval.evaluate(board));
-    try expect(try board.setFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1", true));
-    eval.refresh(board, .pesto);
-    try expectEqual(0, eval.evaluate(board));
-
-    try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ", true));
-    eval.refresh(board, .pesto);
-    try expectEqual(49, eval.evaluate(board));
-    try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - ", true));
-    eval.refresh(board, .pesto);
-    try expectEqual(-49, eval.evaluate(board));
-
-    try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80", true));
-    eval.refresh(board, .pesto);
-    expectEqual(87, eval.evaluate(board)) catch {};
-    try expect(try board.setFen("8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 b - - 20 80", true));
-    eval.refresh(board, .pesto);
-    expectEqual(-87, eval.evaluate(board)) catch {};
-}
-
 test "Weak draw detection" {
     const allocator = testing.allocator;
     var board = try water.Board.init(allocator, .{});
     defer board.deinit();
 
-    // Start position
-    try expect(!drawish(board));
+    const positions = [_]struct { fen: []const u8, kind_of_draw: bool }{
+        .{ .fen = water.board.starting_fen, .kind_of_draw = false },
+        .{ .fen = "8/8/8/8/8/8/8/K6k w - - 0 1", .kind_of_draw = true },
+        .{ .fen = "8/8/7k/8/8/8/8/Kn6 w - - 0 1", .kind_of_draw = true },
+        .{ .fen = "8/8/7k/8/8/8/8/KNn5 w - - 0 1", .kind_of_draw = true },
+        .{ .fen = "8/8/8/8/8/8/8/KNkn4 w - - 0 1", .kind_of_draw = true },
+        .{ .fen = "8/8/8/8/8/8/8/KBkb4 w - - 0 1", .kind_of_draw = true },
+        .{ .fen = "8/8/8/8/8/8/8/KBkn4 w - - 0 1", .kind_of_draw = true },
+        .{ .fen = "8/8/8/8/8/8/8/KNkb4 w - - 0 1", .kind_of_draw = true },
+        .{ .fen = "8/8/8/8/8/8/8/KNNkb3 w - - 0 1", .kind_of_draw = true },
+        .{ .fen = "8/8/8/8/8/8/8/K1Bnnk3 w - - 0 1", .kind_of_draw = true },
+        .{ .fen = "8/8/8/8/8/8/8/KNBkb3 w - - 0 1", .kind_of_draw = true },
+        .{ .fen = "8/8/8/8/8/8/8/KBnkn4 w - - 0 1", .kind_of_draw = true },
+        .{ .fen = "8/8/8/8/8/8/8/KBkq4 w - - 0 1", .kind_of_draw = false },
+    };
 
-    // K vs K
-    try expect(try board.setFen("8/8/8/8/8/8/8/K6k w - - 0 1", true));
-    try expect(drawish(board));
-
-    // KN vs K
-    try expect(try board.setFen("8/8/7k/8/8/8/8/Kn6 w - - 0 1", true));
-    try expect(drawish(board));
-
-    // KNN vs K
-    try expect(try board.setFen("8/8/7k/8/8/8/8/KNn5 w - - 0 1", true));
-    try expect(drawish(board));
-
-    // KN vs KN
-    try expect(try board.setFen("8/8/8/8/8/8/8/KNkn4 w - - 0 1", true));
-    try expect(drawish(board));
-
-    // KB vs KB
-    try expect(try board.setFen("8/8/8/8/8/8/8/KBkb4 w - - 0 1", true));
-    try expect(drawish(board));
-
-    // KB vs KN
-    try expect(try board.setFen("8/8/8/8/8/8/8/KBkn4 w - - 0 1", true));
-    try expect(drawish(board));
-
-    // KN vs KB
-    try expect(try board.setFen("8/8/8/8/8/8/8/KNkb4 w - - 0 1", true));
-    try expect(drawish(board));
-
-    // KNN vs KB
-    try expect(try board.setFen("8/8/8/8/8/8/8/KNNkb3 w - - 0 1", true));
-    try expect(drawish(board));
-
-    // KB vs KNN
-    try expect(try board.setFen("8/8/8/8/8/8/8/K1Bnnk3 w - - 0 1", true));
-    try expect(drawish(board));
-
-    // KBN vs KB
-    try expect(try board.setFen("8/8/8/8/8/8/8/KNBkb3 w - - 0 1", true));
-    try expect(drawish(board));
-
-    // KB vs KBN
-    try expect(try board.setFen("8/8/8/8/8/8/8/KBnkn4 w - - 0 1", true));
-    try expect(drawish(board));
-
-    // Not drawish example
-    try expect(try board.setFen("8/8/8/8/8/8/8/KBkq4 w - - 0 1", true));
-    try expect(!drawish(board));
-}
-
-test "Board incremental evaluation w/o NNUE" {
-    const allocator = testing.allocator;
-    parameters.use_nnue = false;
-    var board = try water.Board.init(allocator, .{});
-    defer board.deinit();
-
-    var refresh_eval = Evaluator{};
-    refresh_eval.refresh(board, .pesto);
-    var incremental_eval = Evaluator{};
-    incremental_eval.refresh(board, .pesto);
-
-    // Opening position
-    const opening = water.uci.uciToMove(board, "e2e4");
-    incremental_eval.makeMove(board, opening);
-    board.makeMove(opening, .{});
-    refresh_eval.refresh(board, .pesto);
-    try expectEqual(
-        refresh_eval.evaluate(board),
-        incremental_eval.evaluate(board),
-    );
-
-    // Developed position
-    try expect(try board.setFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - ", true));
-    refresh_eval.refresh(board, .pesto);
-    incremental_eval.refresh(board, .pesto);
-
-    const midgame = water.uci.uciToMove(board, "a6e2");
-    incremental_eval.makeMove(board, midgame);
-    const capture = board.makeMove(midgame, .{ .return_captured = true });
-    refresh_eval.refresh(board, .pesto);
-    try expectEqual(
-        refresh_eval.evaluate(board),
-        incremental_eval.evaluate(board),
-    );
-
-    board.unmakeMove(midgame);
-    incremental_eval.unmakeMove(board, midgame, capture);
-    refresh_eval.refresh(board, .pesto);
-    try expectEqual(
-        refresh_eval.evaluate(board),
-        incremental_eval.evaluate(board),
-    );
+    for (positions) |pos| {
+        try expect(try board.setFen(pos.fen, true));
+        try expectEqual(pos.kind_of_draw, drawish(board));
+    }
 }
 
 test "Board incremental evaluation branches" {
@@ -639,9 +516,9 @@ test "Full evaluation function" {
     eval.refresh(board, .full);
 
     const expected_evals = [_]i32{
-        864, -878, 871, -874, 893, -886, 151, -876, 864, -1452,
-        696, -702, 695, -713, 702, -771, 702, -741, 700, -761,
-        761,
+        687,   -708,  701,  -684, 752,  -691, -79,   -776, 799,
+        -1750, 757,   -808, 805,  -817, 848,  -1094, 1081, -1118,
+        1156,  -1165, 1149,
     };
 
     for (pv, 0..) |move_str, i| {

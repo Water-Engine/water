@@ -44,7 +44,7 @@ pub const CastlingRights = struct {
     /// The index is returned as an int `T`.
     pub fn pop(self: *CastlingRights, comptime T: type, color: Color, side: Side) T {
         self.rooks[color.index()][side.index()] = .none;
-        return color.asInt(T) * 2 + side.asInt(T);
+        return color.asInt(T) * 2 + (1 - side.asInt(T));
     }
 
     /// Determines if a color has the side's right
@@ -157,12 +157,12 @@ test "CastlingRights" {
     // Pop castling rights
     const white_king_pop = cr.pop(u8, .white, .king);
     try expectEqualSlices(u8, "Qkq", cr.asStr());
-    try expectEqual(@as(u8, 1), white_king_pop);
+    try expectEqual(0, white_king_pop);
     try expect(!cr.hasSide(.white, .king));
 
     const black_queen_pop = cr.pop(u8, .black, .queen);
     try expectEqualSlices(u8, "Qk", cr.asStr());
-    try expectEqual(@as(u8, 2), black_queen_pop);
+    try expectEqual(3, black_queen_pop);
     try expect(!cr.hasSide(.black, .queen));
 
     // Clearing all rights

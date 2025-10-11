@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const water = @import("water");
 
 const tt = @import("engine/evaluation/tt.zig");
@@ -25,6 +26,10 @@ pub fn main() !void {
     );
     engine.welcome = "Water by the Water Engine developers (see AUTHORS file)";
 
+    // Resetting here instead of head of waiting for go allows the eval command to be accurate
+    engine.searcher.resetHeuristics(true);
+    engine.searcher.evaluator.refresh(engine.searcher.search_board, .full);
+
     // The writer must flush after engine deinitializes to prevent a concurrency issue
     defer {
         engine.deinit(.{});
@@ -35,18 +40,18 @@ pub fn main() !void {
     var stdin_reader = std.fs.File.stdin().reader(&stdin_buffer);
     const stdin = &stdin_reader.interface;
 
-    try engine.launch(
-        stdin,
-        .{
-            .go_command = commands.GoCommand,
-            .opt_command = commands.OptCommand,
-            .uci_command = commands.UciCommand,
-            .other_commands = &.{
-                commands.NewGameCommand,
-                commands.DebugCommand,
-            },
+    try engine.launch(stdin, .{
+        .go_command = commands.GoCommand,
+        .opt_command = commands.OptCommand,
+        .uci_command = commands.UciCommand,
+        .other_commands = &.{
+            commands.NewGameCommand,
+            commands.DebugCommand,
+            commands.EvalCommand,
         },
-    );
+    }, .{
+        .windows_pread_workaround = builtin.os.tag == .windows,
+    });
 }
 
 test {

@@ -84,7 +84,7 @@ pub const Searcher = struct {
     }
 
     /// Resets the searcher's heuristics. The history heuristic is halved if `total_reset` is false.
-    fn resetHeuristics(self: *Searcher, comptime total_reset: bool) void {
+    pub fn resetHeuristics(self: *Searcher, comptime total_reset: bool) void {
         self.nmp_min_ply = 0;
 
         // Only reset the history heuristic fully if requested
@@ -118,8 +118,6 @@ pub const Searcher = struct {
 
     pub fn search(self: *Searcher, alloted_time_ns: ?i128, max_depth: ?usize) anyerror!void {
         self.should_stop.store(false, .release);
-        self.resetHeuristics(false);
-        self.evaluator.refresh(self.search_board, .full);
 
         self.nodes = 0;
         self.best_move = .init();
@@ -263,7 +261,7 @@ pub const Searcher = struct {
         self.should_stop.store(true, .release);
         self.alloted_time_ns = null;
 
-        // The uci spec has a specific requirement about null moves, a single heap allocation here is fine
+        // The uci spec has a specific requirement about null moves, a couple heap allocations here is fine
         const bm_str = try water.uci.moveToUci(
             self.allocator,
             self.best_move,
@@ -274,6 +272,7 @@ pub const Searcher = struct {
         try self.writer.print("bestmove {s}\n", .{
             if (std.mem.eql(u8, bm_str, "a1a1")) "0000" else bm_str,
         });
+
         try self.writer.flush();
     }
 

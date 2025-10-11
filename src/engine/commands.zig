@@ -27,9 +27,7 @@ pub const NewGameCommand = struct {
     ) anyerror!void {
         _ = self;
 
-        // Only reset the searcher when we aren't actively searching since this is heavily destructive
         engine.notifyStopSearch();
-
         try tt.global_tt.reset(null);
         _ = try engine.searcher.governing_board.setFen(water.board.starting_fen, true);
         _ = try engine.searcher.search_board.setFen(water.board.starting_fen, true);
@@ -63,6 +61,74 @@ pub const UciCommand = struct {
         try parameters.writeOut(engine.writer);
         try engine.writer.print("uciok\n", .{});
         try engine.writer.flush();
+    }
+};
+
+pub const PositionCommand = struct {
+    pub const command_name: []const u8 = "position";
+
+    fen: []const u8 = water.board.starting_fen,
+    startpos: ?bool = false,
+
+    moves: ?[]const u8 = null,
+
+    pub fn deserialize(
+        allocator: std.mem.Allocator,
+        tokens: *std.mem.TokenIterator(u8, .any),
+    ) anyerror!PositionCommand {
+        _ = allocator;
+        var parsed = try water.dispatcher.deserializeFields(
+            PositionCommand,
+            tokens,
+            &.{"startpos"},
+            &.{"moves"},
+        );
+
+        // Handle ambiguity with the fen/startpos
+        if (parsed.startpos) |sp| {
+            if (sp) parsed.fen = water.board.starting_fen;
+        } else if (parsed.fen.len == 0) {
+            parsed.fen = water.board.starting_fen;
+        }
+
+        // Collect the moves and return
+        parsed.moves = water.dispatcher.tokensAfter(tokens, "moves");
+        return parsed;
+    }
+
+    pub fn dispatch(
+        self: *const PositionCommand,
+        engine: *Engine,
+    ) anyerror!void {
+        if (!engine.searcher.should_stop.load(.acquire)) return;
+        if (!try engine.searcher.governing_board.setFen(self.fen, true)) {
+            return water.ChessError.IllegalFen;
+        }
+
+        engine.last_played = null;
+        if (self.moves) |moves| {
+            var move_tokens = std.mem.tokenizeAny(u8, moves, " ");
+            while (move_tokens.next()) |move_str| {
+                const move = water.uci.uciToMove(engine.searcher.governing_board, move_str);
+
+                // Robustly verify the legality of the move before making the move
+                var movelist = water.movegen.Movelist{};
+                water.movegen.legalmoves(engine.searcher.governing_board, &movelist, .{});
+
+                if (movelist.find(move)) |_| {
+                    engine.searcher.governing_board.makeMove(move, .{});
+                    engine.last_played = move;
+                }
+            }
+        }
+
+        // Force an update to the searcher's search_board
+        engine.searcher.search_board.deinit();
+        engine.searcher.search_board = try engine.searcher.governing_board.clone(engine.allocator);
+
+        // Resetting here instead of head of search saves time and allows the eval command to be accurate
+        engine.searcher.resetHeuristics(false);
+        engine.searcher.evaluator.refresh(engine.searcher.search_board, .full);
     }
 };
 
@@ -165,16 +231,6 @@ pub const GoCommand = struct {
             return;
         }
 
-        // Check for game over first
-        if (water.arbiter.gameOver(engine.searcher.governing_board, null)) |result| {
-            // Only early return if the result is a checkmate
-            if (result.result == .win) {
-                try engine.writer.print("0000\n", .{});
-                try engine.writer.flush();
-                return;
-            }
-        }
-
         const think_time_ns = self.chooseThinkTimeNs(engine.searcher.governing_board);
         engine.searcher.max_nodes = self.nodes;
         engine.searcher.soft_max_nodes = self.nodes;
@@ -253,6 +309,29 @@ pub const DebugCommand = struct {
                 engine.searcher.silent_output = true;
             }
         }
+    }
+};
+
+pub const EvalCommand = struct {
+    pub const command_name: []const u8 = "eval";
+
+    pub fn deserialize(
+        allocator: std.mem.Allocator,
+        tokens: *std.mem.TokenIterator(u8, .any),
+    ) anyerror!EvalCommand {
+        _ = allocator;
+        _ = tokens;
+        return .{};
+    }
+
+    pub fn dispatch(
+        self: *const EvalCommand,
+        engine: *Engine,
+    ) anyerror!void {
+        _ = self;
+        const eval = engine.searcher.evaluator.evaluate(engine.searcher.governing_board);
+        try engine.writer.print("info string eval {d}\n", .{eval});
+        try engine.writer.flush();
     }
 };
 

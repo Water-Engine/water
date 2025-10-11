@@ -63,7 +63,8 @@ Water-Main.json
 full_dataset.bin
 larger_book.bin
 
-assets/nnue/stockfish/
+benchmarks/sprt/water-**
+benchmarks/sprt/**.json
 
 release/
 tb/

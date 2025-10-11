@@ -61,7 +61,9 @@ fn benchmark(board: *water.Board, test_cases: []const TestCase, writer: *std.Io.
         const avg_ms: f64 = @as(f64, @floatFromInt(total_ms)) / @as(f64, @floatFromInt(num_runs));
         const avg_nodes: f64 = @as(f64, @floatFromInt(total_nodes)) / @as(f64, @floatFromInt(num_runs));
         const avg_nps: f64 = blk: {
-            if (avg_ms == 0) break :blk 0 else {
+            if (avg_ms == 0) {
+                break :blk 0;
+            } else {
                 break :blk (avg_nodes * @as(f64, @floatFromInt(std.time.ms_per_s))) / avg_ms;
             }
         };

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const bingshan = @embedFile("assets/nnue/avalanche/bingshan.nnue");
+const bingshan = @embedFile("assets/nnue/bingshan.nnue");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});

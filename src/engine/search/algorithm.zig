@@ -45,7 +45,7 @@ pub fn negamax(
 
     searcher.seldepth = @max(searcher.seldepth, searcher.ply);
     const is_root = flags.node == .root;
-    const on_pv: bool = flags.node != .non_pv;
+    const on_pv = flags.node != .non_pv;
 
     // Check for a ply overflow
     if (searcher.ply == parameters.max_ply) {
@@ -110,7 +110,7 @@ pub fn negamax(
 
     // All pruning
     if (!in_check and !on_pv and searcher.exclude_move[searcher.ply].move == 0) {
-        if (pruning(
+        if (prunings(
             searcher,
             depth_val,
             alpha_val,
@@ -142,7 +142,7 @@ pub fn negamax(
     var best_move = water.Move.init();
     best_score = -evaluator.mate_score + @as(i32, @intCast(searcher.ply));
     var skip_quiet = false;
-    var legals: usize = 0;
+    var contending_legals: usize = 0;
 
     for (movelist.moves[0..movelist.size], 0..) |move, i| {
         if (move.order(searcher.exclude_move[searcher.ply], .mv) == .eq) {
@@ -175,7 +175,7 @@ pub fn negamax(
             }
         }
 
-        legals += 1;
+        contending_legals += 1;
         var extension: i32 = 0;
 
         // Singular extension
@@ -244,9 +244,8 @@ pub fn negamax(
         var score: i32 = 0;
         const min_lmr_move: usize = if (on_pv) 5 else 3;
         const is_winning_capture = is_capture and movelist.moves[i].score >= orderer.winning_capture_bonus - 200;
-        var do_full_search = false;
 
-        if (on_pv and legals == 1) {
+        if (on_pv and contending_legals == 1) {
             score = -negamax(
                 searcher,
                 new_depth,
@@ -259,70 +258,23 @@ pub fn negamax(
                 },
             );
         } else {
-            if (!in_check and depth_val >= 3 and i >= min_lmr_move and (!is_capture or !is_winning_capture)) {
-                // Late move reduction
-                var reduction = searcher_.quiet_lmr[@min(63, depth_val)][@min(63, i)];
-                reduction -= 1;
-
-                if (improving) reduction -= 1;
-                if (!on_pv) reduction += 1;
-
-                const move_from_idx = move.from().index();
-                const move_to_idx = move.to().index();
-
-                // History heuristic
-                const heuristic_offset = (color.index() << 12) | (move_from_idx << 6) | move_to_idx;
-                const heuristic_ptr: [*]const i32 = @ptrCast(&searcher.history.heuristic);
-                const heuristic_value = heuristic_ptr[heuristic_offset];
-
-                reduction -= @divTrunc(heuristic_value, 6144);
-
-                const casted_new_depth = @as(i32, @intCast(new_depth));
-                const rd: usize = @intCast(std.math.clamp(casted_new_depth - reduction, 1, casted_new_depth + 1));
-                score = -negamax(
-                    searcher,
-                    rd,
-                    -alpha_val - 1,
-                    -alpha_val,
-                    .{
-                        .cutnode = true,
-                        .is_null = false,
-                        .node = .non_pv,
-                    },
-                );
-
-                do_full_search = score > alpha_val and rd < new_depth;
-            } else {
-                do_full_search = !on_pv or i > 0;
-            }
-
-            if (do_full_search) {
-                score = -negamax(
-                    searcher,
-                    new_depth,
-                    -alpha_val - 1,
-                    -alpha_val,
-                    .{
-                        .cutnode = !flags.cutnode,
-                        .is_null = false,
-                        .node = .non_pv,
-                    },
-                );
-            }
-
-            if (on_pv and ((score > alpha_val and score < beta_val) or i == 0)) {
-                score = -negamax(
-                    searcher,
-                    new_depth,
-                    -beta_val,
-                    -alpha_val,
-                    .{
-                        .cutnode = false,
-                        .is_null = false,
-                        .node = .pv,
-                    },
-                );
-            }
+            score = reductions(
+                searcher,
+                depth_val,
+                alpha_val,
+                beta_val,
+                in_check,
+                color,
+                move,
+                i,
+                min_lmr_move,
+                is_capture,
+                is_winning_capture,
+                improving,
+                on_pv,
+                new_depth,
+                flags,
+            );
         }
 
         searcher.ply -= 1;
@@ -475,7 +427,7 @@ inline fn ttProbeEval(
     return result;
 }
 
-inline fn pruning(
+inline fn prunings(
     searcher: *searcher_.Searcher,
     depth: usize,
     alpha: i32,
@@ -560,6 +512,94 @@ inline fn pruning(
     }
 
     return null;
+}
+
+inline fn reductions(
+    searcher: *searcher_.Searcher,
+    depth: usize,
+    alpha: i32,
+    beta: i32,
+    in_check: bool,
+    stm: water.Color,
+    ordered_move: water.Move,
+    ordered_idx: usize,
+    min_lmr_idx: usize,
+    is_capture: bool,
+    is_winning_capture: bool,
+    improving: bool,
+    on_pv: bool,
+    new_depth: usize,
+    comptime flags: SearchFlags,
+) i32 {
+    var score: i32 = 0;
+    var do_full_search = false;
+
+    if (!in_check and depth >= 3 and ordered_idx >= min_lmr_idx and (!is_capture or !is_winning_capture)) {
+        // Late move reduction
+        var reduction = searcher_.quiet_lmr[@min(63, depth)][@min(63, ordered_idx)];
+        reduction -= 1;
+
+        if (improving) reduction -= 1;
+        if (!on_pv) reduction += 1;
+
+        const move_from_idx = ordered_move.from().index();
+        const move_to_idx = ordered_move.to().index();
+
+        // History heuristic
+        const heuristic_offset = (stm.index() << 12) | (move_from_idx << 6) | move_to_idx;
+        const heuristic_ptr: [*]const i32 = @ptrCast(&searcher.history.heuristic);
+        const heuristic_value = heuristic_ptr[heuristic_offset];
+
+        reduction -= @divTrunc(heuristic_value, 6144);
+
+        const casted_new_depth = @as(i32, @intCast(new_depth));
+        const rd: usize = @intCast(std.math.clamp(casted_new_depth - reduction, 1, casted_new_depth + 1));
+        score = -negamax(
+            searcher,
+            rd,
+            -alpha - 1,
+            -alpha,
+            .{
+                .cutnode = true,
+                .is_null = false,
+                .node = .non_pv,
+            },
+        );
+
+        do_full_search = score > alpha and rd < new_depth;
+    } else {
+        do_full_search = !on_pv or ordered_idx > 0;
+    }
+
+    if (do_full_search) {
+        score = -negamax(
+            searcher,
+            new_depth,
+            -alpha - 1,
+            -alpha,
+            .{
+                .cutnode = !flags.cutnode,
+                .is_null = false,
+                .node = .non_pv,
+            },
+        );
+    }
+
+    if (on_pv and ((score > alpha and score < beta) or ordered_idx == 0)) {
+        score = -negamax(
+            searcher,
+            new_depth,
+            -beta,
+            -alpha,
+            .{
+                .cutnode = false,
+                .is_null = false,
+                .node = .pv,
+            },
+        );
+    }
+
+    return score;
 }
 
 inline fn updateHeuristics(
@@ -711,8 +751,11 @@ pub fn quiescence(
                 continue;
             }
         } else if (in_check and !is_capture) {
-            // TODO: Static evaluation might be better here
-            // continue;
+            // Skip low-value extensions
+            const local_eval = searcher.evaluator.evaluate(searcher.search_board);
+            if (local_eval + 200 < alpha_val) {
+                continue;
+            }
         }
 
         // Update the searcher's state

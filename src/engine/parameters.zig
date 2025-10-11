@@ -24,8 +24,6 @@ pub var aspiration_window: i32 = 11;
 
 pub var move_overhead: i32 = 10_000;
 
-pub var use_nnue: bool = true;
-
 pub const Default = struct {
     name: []const u8,
     variant: []const u8,
@@ -202,15 +200,6 @@ pub const defaults = [_]Default{
         .underlying = i32,
         .id = 15,
     },
-    .{
-        .name = "Use NNUE",
-        .variant = "check",
-        .value = "true",
-        .min_value = "",
-        .max_value = "",
-        .underlying = bool,
-        .id = 16,
-    },
 };
 
 /// Prints the supported options out to the writer.
@@ -383,7 +372,6 @@ pub fn setoption(
 
                     switch (i) {
                         14 => return if (val) error.SilentSearchOutput else error.LoudSearchOutput,
-                        16 => use_nnue = val,
                         else => unreachable,
                     }
                 },
@@ -434,7 +422,6 @@ test "Option printing" {
         \\option name Hash type spin default 16 min 1 max {s}
         \\option name Silent type check default false
         \\option name Move Overhead type spin default 10 min 0 max 50
-        \\option name Use NNUE type check default true
         \\
     , .{tt.MaxHashSize.mb_string});
     defer allocator.free(expected_output);

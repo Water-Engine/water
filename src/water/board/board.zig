@@ -69,11 +69,14 @@ fn entryAfter(
     return null;
 }
 
-/// A chess board representation, valid for standard chess only.
+/// A chess board representation, valid for Classical and Fischer Random Chess only.
 ///
 /// The internal 'original_fen' and 'previous_states' are heap allocated.
 /// They are assumed to be owned by the instance and are freed with deinit.
-/// Directly assigning values to these fields is unsafe.
+/// Directly assigning values to these two fields is unsafe, but mutating them is acceptable.
+///
+/// While 'previous_states' is heap allocated, it is capped at a size of 2048 entries
+/// and will never request any other amount of memory.
 pub const Board = struct {
     allocator: std.mem.Allocator,
 
@@ -600,7 +603,6 @@ pub const Board = struct {
         self.mailbox[index] = piece;
     }
 
-    /// For internal use only, opts for errors instead of assertions for explicit handling.
     fn placePieceNAssert(self: *Board, piece: Piece, square: Square) !void {
         var success = true;
         if (!(square.valid() and self.mailbox[square.index()] == .none)) success = false;
@@ -646,7 +648,6 @@ pub const Board = struct {
         return self.pieces(color, .king).lsb();
     }
 
-    /// For internal use only, opts for errors instead of assertions for explicit handling.
     fn kingSqNAssert(self: *const Board, color: Color) !Square {
         if (!(color.valid() and self.pieces(color, .king).bits != 0)) {
             return types.ChessError.IllegalFenState;
@@ -1013,9 +1014,10 @@ pub const Board = struct {
 
     /// Perform a perft test to the given depth.
     ///
-    /// Indicating `check_checks` tests `givesCheck` against `inCheck`.
-    pub fn perft(self: *Board, depth: usize, comptime options: struct {
+    /// In testing, `test_options` can be used to verify certain implementations.
+    pub fn perft(self: *Board, depth: usize, comptime test_options: struct {
         check_checks: bool = false,
+        check_hash: bool = false,
     }) usize {
         var movelist = movegen.Movelist{};
         movegen.legalmoves(self, &movelist, .{});
@@ -1027,27 +1029,29 @@ pub const Board = struct {
         var nodes: usize = 0;
         for (movelist.moves[0..movelist.size]) |move| {
             // Verify alignment of checks if asked
-            if (comptime options.check_checks) {
+            if (comptime test_options.check_checks) {
                 const gives_check = self.givesCheck(move).check();
                 self.makeMove(move, .{});
                 const in_check = self.inCheck(.{});
 
-                if (gives_check != in_check) {
-                    std.log.err(
-                        "Move: {d}, givesCheck(...) = {} but inCheck(...) = {}",
-                        .{ move.move, gives_check, in_check },
-                    );
-                    unreachable;
-                }
+                expectEqual(gives_check, in_check) catch unreachable;
 
-                nodes += self.perft(depth - 1, options);
+                nodes += self.perft(depth - 1, test_options);
                 self.unmakeMove(move);
+
+                const recomp = Zobrist.fromBoard(self);
+                if (recomp != self.key) {
+                    std.debug.panic(
+                        "Hashes do not match! Depth = {d} RE = {d} INC = {d}\n",
+                        .{ depth, recomp, self.key },
+                    );
+                }
                 continue;
             }
 
             // Otherwise just perform normal perft
             self.makeMove(move, .{});
-            nodes += self.perft(depth - 1, options);
+            nodes += self.perft(depth - 1, test_options);
             self.unmakeMove(move);
         }
 
@@ -1121,7 +1125,6 @@ pub const Board = struct {
         return attacks.isAttacked(self, color.opposite(), self.kingSq(color));
     }
 
-    /// For internal use only, opts for errors instead of assertions for explicit handling.
     fn inCheckNAssert(self: *const Board, comptime options: struct {
         color: ?Color = null,
     }) !bool {
@@ -1767,7 +1770,13 @@ test "Shallow perft and check alignment" {
     };
 
     for (expected_nodes, 1..5) |expected, i| {
-        try expectEqual(expected, board.perft(i, .{ .check_checks = true }));
+        try expectEqual(expected, board.perft(
+            i,
+            .{
+                .check_checks = true,
+                .check_hash = true,
+            },
+        ));
     }
 }
 

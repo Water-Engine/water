@@ -15,28 +15,31 @@ const movegen = @import("../movegen/movegen.zig");
 
 const uci = @import("../core/uci.zig");
 
-pub const ResultType = enum {
-    win,
-    draw,
-};
-
-pub const ResultReason = enum {
-    checkmate,
-    stalemate,
-    insufficient_material,
-    fifty_move_rule,
-    threefold_repetition,
-};
-
+/// A games result, indicating the outcome and reason for said outcome.
+///
+/// Games that are not fit for adjudication are not handled by this struct
+/// and an optional value value should be used instead.
+///
+/// For semantic reasons, a result can either be a win or a draw, with the winner's
+/// color being returned in a separate field, defaulting to none for draws.
 pub const Result = struct {
-    result: ResultType,
-    reason: ResultReason,
+    result: enum {
+        win,
+        draw,
+    },
+    reason: enum {
+        checkmate,
+        stalemate,
+        insufficient_material,
+        fifty_move_rule,
+        threefold_repetition,
+    },
     winner: Color = .none,
 };
 
 /// Determines the halfmove draw type, or null if the 50 move rule is not met.
 ///
-/// Passing a precomputed movelist will greatly improve performance.
+/// Passing a precomputed movelist will greatly improve performance and should be used by engines.
 pub fn halfmove(board: *const Board, precomputed_movelist: ?*const movegen.Movelist) ?Result {
     if (board.halfmove_clock < 100) return null;
 
@@ -108,7 +111,7 @@ pub fn insufficientMaterial(board: *const Board) bool {
 
 /// Determines if the game is over, or null if the game is not.
 ///
-/// Passing a precomputed movelist will greatly improve performance.
+/// Passing a precomputed movelist will greatly improve performance and should be used by engines.
 pub fn gameOver(board: *const Board, precomputed_movelist: ?*const movegen.Movelist) ?Result {
     var movelist = movegen.Movelist{};
     const moves = precomputed_movelist orelse blk: {
