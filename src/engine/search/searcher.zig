@@ -118,6 +118,8 @@ pub const Searcher = struct {
 
     pub fn search(self: *Searcher, alloted_time_ns: ?i128, max_depth: ?usize) anyerror!void {
         self.should_stop.store(false, .release);
+        self.resetHeuristics(false);
+        self.evaluator.refresh(self.search_board, .full);
 
         self.nodes = 0;
         self.best_move = .init();

@@ -29,11 +29,7 @@ pub fn negamax(
     depth: usize,
     alpha: i32,
     beta: i32,
-    comptime flags: struct {
-        is_null: bool,
-        node: searcher_.NodeType,
-        cutnode: bool,
-    },
+    comptime flags: SearchFlags,
 ) i32 {
     const color = searcher.search_board.side_to_move;
     var alpha_val = alpha;
@@ -89,56 +85,15 @@ pub fn negamax(
     }
 
     // Transposition table probing
-    var hashmove = water.Move.init();
-    var tthit = false;
-    var tt_eval: i32 = 0;
-    const maybe_entry = tt.global_tt.get(searcher.search_board.key);
-    if (maybe_entry) |entry| {
-        tthit = true;
-        tt_eval = entry.eval;
-        if (tt_eval > evaluator.mate_score - evaluator.max_mate and tt_eval <= evaluator.mate_score) {
-            tt_eval -= @intCast(searcher.ply);
-        } else if (tt_eval < -evaluator.mate_score + evaluator.max_mate and tt_eval >= -evaluator.mate_score) {
-            tt_eval += @intCast(searcher.ply);
-        }
+    const probe = ttProbeEval(searcher, depth_val, &alpha_val, &beta_val, in_check, flags);
+    if (probe.early_exit_score) |score| return score;
 
-        // Only set the internal bestmove to the tt move at the root
-        hashmove = water.Move.fromMove(entry.bestmove);
-        if (is_root) {
-            searcher.best_move = hashmove;
-        }
-
-        if (!flags.is_null and !on_pv and !is_root and entry.depth >= depth_val) {
-            const last = searcher.search_board.previous_states.getLastOrNull();
-            const fifty = if (last) |l| l.half_moves else 0;
-            if (fifty < 90 and (depth_val == 0 or !on_pv)) {
-                switch (entry.flag) {
-                    .exact => return tt_eval,
-                    .lower => alpha_val = @max(alpha_val, tt_eval),
-                    .upper => beta_val = @min(beta_val, tt_eval),
-                    .none => {},
-                }
-
-                if (alpha_val >= beta_val) return tt_eval;
-            }
-        }
-    }
-
-    const static_eval = blk: {
-        if (in_check) {
-            break :blk -evaluator.mate_score + @as(i32, @intCast(searcher.ply));
-        } else if (tthit) {
-            break :blk maybe_entry.?.eval;
-        } else if (flags.is_null) {
-            break :blk -searcher.history.evaluations[searcher.ply - 1];
-        } else if (searcher.exclude_move[searcher.ply].move != 0) {
-            break :blk searcher.history.evaluations[searcher.ply];
-        } else {
-            break :blk searcher.evaluator.evaluate(searcher.search_board);
-        }
-    };
+    const static_eval = probe.static_eval;
+    const hashmove = probe.hashmove;
+    const tthit = probe.tthit;
+    const tt_eval = probe.tt_eval;
+    const maybe_entry = probe.entry;
     var best_score: i32 = static_eval;
-    var low_estimate: i32 = -evaluator.mate_score - 1;
 
     searcher.history.evaluations[searcher.ply] = static_eval;
 
@@ -155,80 +110,17 @@ pub fn negamax(
 
     // All pruning
     if (!in_check and !on_pv and searcher.exclude_move[searcher.ply].move == 0) {
-        low_estimate = if (!tthit or maybe_entry.?.flag == .lower) static_eval else maybe_entry.?.eval;
-
-        // Reverse futility pruning
-        if (@abs(beta_val) < evaluator.mate_score - evaluator.max_mate and depth_val <= parameters.rfp_depth) {
-            var n = @as(i32, @intCast(depth_val)) * parameters.rfp_multiplier;
-            if (improving) {
-                n -= parameters.rfp_improving_deduction;
-            }
-
-            if ((static_eval - n) >= beta_val) {
-                return beta_val;
-            }
-        }
-
-        // Null move pruning
-        var nmp_static_eval = static_eval;
-        if (improving) {
-            nmp_static_eval += parameters.nmp_improving_margin;
-        }
-
-        if (!flags.is_null and depth_val >= 3 and searcher.ply >= searcher.nmp_min_ply and nmp_static_eval >= beta_val and has_non_pawns) {
-            var r: usize = parameters.nmp_base + @divTrunc(depth_val, parameters.nmp_depth_divisor);
-            r += @min(4, @as(usize, @intCast(@divTrunc(static_eval - beta_val, parameters.nmp_beta_divisor))));
-            r = @min(r, depth_val);
-
-            searcher.ply += 1;
-            searcher.search_board.makeNullMove();
-            var null_score = -negamax(
-                searcher,
-                depth_val - r,
-                -beta_val,
-                -beta_val + 1,
-                .{
-                    .cutnode = !flags.cutnode,
-                    .is_null = true,
-                    .node = .non_pv,
-                },
-            );
-            searcher.ply -= 1;
-            searcher.search_board.unmakeNullMove();
-
-            if (searcher.shouldStop()) return 0;
-
-            if (null_score >= beta_val) {
-                if (null_score >= evaluator.mate_score - evaluator.max_mate) {
-                    null_score = beta_val;
-                }
-
-                if (depth_val < 12 or searcher.nmp_min_ply > 0) {
-                    return null_score;
-                }
-
-                searcher.nmp_min_ply = searcher.ply + @divFloor((depth_val - r) * 3, 4);
-                const verify_score = negamax(
-                    searcher,
-                    depth_val - r,
-                    beta_val - 1,
-                    beta_val,
-                    .{
-                        .cutnode = false,
-                        .is_null = false,
-                        .node = .non_pv,
-                    },
-                );
-                searcher.nmp_min_ply = 0;
-
-                if (searcher.shouldStop()) return 0;
-                if (verify_score >= beta_val) return verify_score;
-            }
-        }
-
-        // Razoring
-        if (depth_val <= 3 and (static_eval - parameters.razoring_base + parameters.razoring_margin * @as(i32, @intCast(depth_val))) < alpha_val) {
-            return quiescence(searcher, alpha_val, beta_val);
+        if (prunings(
+            searcher,
+            depth_val,
+            alpha_val,
+            beta_val,
+            has_non_pawns,
+            static_eval,
+            improving,
+            flags,
+        )) |prune_score| {
+            return prune_score;
         }
     }
 
@@ -250,7 +142,7 @@ pub fn negamax(
     var best_move = water.Move.init();
     best_score = -evaluator.mate_score + @as(i32, @intCast(searcher.ply));
     var skip_quiet = false;
-    var legals: usize = 0;
+    var contending_legals: usize = 0;
 
     for (movelist.moves[0..movelist.size], 0..) |move, i| {
         if (move.order(searcher.exclude_move[searcher.ply], .mv) == .eq) {
@@ -283,7 +175,7 @@ pub fn negamax(
             }
         }
 
-        legals += 1;
+        contending_legals += 1;
         var extension: i32 = 0;
 
         // Singular extension
@@ -352,9 +244,8 @@ pub fn negamax(
         var score: i32 = 0;
         const min_lmr_move: usize = if (on_pv) 5 else 3;
         const is_winning_capture = is_capture and movelist.moves[i].score >= orderer.winning_capture_bonus - 200;
-        var do_full_search = false;
 
-        if (on_pv and legals == 1) {
+        if (on_pv and contending_legals == 1) {
             score = -negamax(
                 searcher,
                 new_depth,
@@ -367,70 +258,23 @@ pub fn negamax(
                 },
             );
         } else {
-            if (!in_check and depth_val >= 3 and i >= min_lmr_move and (!is_capture or !is_winning_capture)) {
-                // Late move reduction
-                var reduction = searcher_.quiet_lmr[@min(63, depth_val)][@min(63, i)];
-                reduction -= 1;
-
-                if (improving) reduction -= 1;
-                if (!on_pv) reduction += 1;
-
-                const move_from_idx = move.from().index();
-                const move_to_idx = move.to().index();
-
-                // History heuristic
-                const heuristic_offset = (color.index() << 12) | (move_from_idx << 6) | move_to_idx;
-                const heuristic_ptr: [*]const i32 = @ptrCast(&searcher.history.heuristic);
-                const heuristic_value = heuristic_ptr[heuristic_offset];
-
-                reduction -= @divTrunc(heuristic_value, 6144);
-
-                const casted_new_depth = @as(i32, @intCast(new_depth));
-                const rd: usize = @intCast(std.math.clamp(casted_new_depth - reduction, 1, casted_new_depth + 1));
-                score = -negamax(
-                    searcher,
-                    rd,
-                    -alpha_val - 1,
-                    -alpha_val,
-                    .{
-                        .cutnode = true,
-                        .is_null = false,
-                        .node = .non_pv,
-                    },
-                );
-
-                do_full_search = score > alpha_val and rd < new_depth;
-            } else {
-                do_full_search = !on_pv or i > 0;
-            }
-
-            if (do_full_search) {
-                score = -negamax(
-                    searcher,
-                    new_depth,
-                    -alpha_val - 1,
-                    -alpha_val,
-                    .{
-                        .cutnode = !flags.cutnode,
-                        .is_null = false,
-                        .node = .non_pv,
-                    },
-                );
-            }
-
-            if (on_pv and ((score > alpha_val and score < beta_val) or i == 0)) {
-                score = -negamax(
-                    searcher,
-                    new_depth,
-                    -beta_val,
-                    -alpha_val,
-                    .{
-                        .cutnode = false,
-                        .is_null = false,
-                        .node = .pv,
-                    },
-                );
-            }
+            score = reductions(
+                searcher,
+                depth_val,
+                alpha_val,
+                beta_val,
+                in_check,
+                color,
+                move,
+                i,
+                min_lmr_move,
+                is_capture,
+                is_winning_capture,
+                improving,
+                on_pv,
+                new_depth,
+                flags,
+            );
         }
 
         searcher.ply -= 1;
@@ -467,73 +311,22 @@ pub fn negamax(
         }
     }
 
+    // Heuristic updates
     if (alpha_val > beta_val and !searcher.search_board.isCapture(
         best_move,
     ) and best_move.typeOf(
         water.MoveType,
     ) != .promotion) {
-        const temp = searcher.killers[searcher.ply][0];
-        if (temp.order(best_move, .mv) != .eq) {
-            searcher.killers[searcher.ply][0] = best_move;
-            searcher.killers[searcher.ply][1] = temp;
-        }
-
-        if (!flags.is_null and searcher.ply >= 1) {
-            const last = searcher.history.moves[searcher.ply - 1];
-            searcher.counter_moves[color.index()][last.from().index()][last.to().index()] = best_move;
-        }
-
-        const bm = best_move;
-        const max_history: i32 = 16384;
-        for (quiets.moves[0..quiets.size]) |move| {
-            const move_from_idx = move.from().index();
-            const move_to_idx = move.to().index();
-
-            // History heuristic
-            const heuristic_offset = (color.index() << 12) | (move_from_idx << 6) | move_to_idx;
-            const heuristic_ptr: [*]i32 = @ptrCast(&searcher.history.heuristic);
-
-            const is_best = move.order(bm, .mv) == .eq;
-            const current_heuristic: i64 = heuristic_ptr[heuristic_offset];
-            const bonus: i64 = @intCast(@min(1536, (if (static_eval <= alpha_val) depth_val + 1 else depth_val) * 384 - 384));
-            const hist_decay: i64 = @divTrunc(current_heuristic * bonus, @as(i64, @intCast(max_history)));
-
-            var new_val: i64 = 0;
-            if (is_best) {
-                new_val = current_heuristic + bonus - hist_decay;
-            } else {
-                new_val = current_heuristic - bonus - hist_decay;
-            }
-
-            heuristic_ptr[heuristic_offset] = @as(i32, @intCast(new_val));
-
-            // Continuation heuristic
-            if (!flags.is_null and searcher.ply >= 1) {
-                const plies: [3]usize = .{ 0, 1, 3 };
-                for (plies) |plies_ago| {
-                    if (searcher.ply >= plies_ago + 1) {
-                        const prev = searcher.history.moves[searcher.ply - plies_ago - 1];
-                        if (!prev.valid()) continue;
-
-                        const moved_piece_idx = searcher.history.moved_pieces[searcher.ply - plies_ago - 1].index();
-                        const prev_idx = prev.to().index();
-                        const offset = (moved_piece_idx << 18) | (prev_idx << 12) | (move_from_idx << 6) | move_to_idx;
-                        const continuation_ptr: [*]i32 = @ptrCast(searcher.continuation);
-
-                        const current_val: i64 = continuation_ptr[offset];
-                        const decay: i64 = @divTrunc(current_val * bonus, @as(i64, @intCast(max_history)));
-
-                        if (is_best) {
-                            new_val = current_val + bonus - decay;
-                        } else {
-                            new_val = current_val - bonus - decay;
-                        }
-
-                        continuation_ptr[offset] = @as(i32, @intCast(new_val));
-                    }
-                }
-            }
-        }
+        updateHeuristics(
+            searcher,
+            best_move,
+            static_eval,
+            color,
+            &quiets,
+            alpha,
+            depth,
+            flags,
+        );
     }
 
     // Transposition table update
@@ -557,6 +350,330 @@ pub fn negamax(
     }
 
     return best_score;
+}
+
+inline fn ttProbeEval(
+    searcher: *searcher_.Searcher,
+    depth: usize,
+    alpha: *i32,
+    beta: *i32,
+    in_check: bool,
+    comptime flags: SearchFlags,
+) ProbeResult {
+    var result: ProbeResult = .{
+        .early_exit_score = null,
+        .static_eval = 0,
+        .hashmove = water.Move.init(),
+        .entry = null,
+        .tthit = false,
+        .tt_eval = 0,
+    };
+    const is_root = flags.node == .root;
+    const on_pv: bool = flags.node != .non_pv;
+
+    const maybe_entry = tt.global_tt.get(searcher.search_board.key);
+    if (maybe_entry) |entry| {
+        result.entry = entry;
+        result.tthit = true;
+        result.tt_eval = entry.eval;
+        if (result.tt_eval > evaluator.mate_score - evaluator.max_mate and result.tt_eval <= evaluator.mate_score) {
+            result.tt_eval -= @intCast(searcher.ply);
+        } else if (result.tt_eval < -evaluator.mate_score + evaluator.max_mate and result.tt_eval >= -evaluator.mate_score) {
+            result.tt_eval += @intCast(searcher.ply);
+        }
+
+        // Only set the internal bestmove to the tt move at the root
+        result.hashmove = water.Move.fromMove(entry.bestmove);
+        if (is_root) {
+            searcher.best_move = result.hashmove;
+        }
+
+        if (!flags.is_null and !on_pv and !is_root and entry.depth >= depth) {
+            const last = searcher.search_board.previous_states.getLastOrNull();
+            const fifty = if (last) |l| l.half_moves else 0;
+            if (fifty < 90 and (depth == 0 or !on_pv)) {
+                switch (entry.flag) {
+                    .exact => {
+                        result.early_exit_score = result.tt_eval;
+                        return result;
+                    },
+                    .lower => alpha.* = @max(alpha.*, result.tt_eval),
+                    .upper => beta.* = @min(beta.*, result.tt_eval),
+                    .none => {},
+                }
+
+                if (alpha.* >= beta.*) {
+                    result.early_exit_score = result.tt_eval;
+                    return result;
+                }
+            }
+        }
+    }
+
+    result.static_eval = blk: {
+        if (in_check) {
+            break :blk -evaluator.mate_score + @as(i32, @intCast(searcher.ply));
+        } else if (result.tthit) {
+            break :blk maybe_entry.?.eval;
+        } else if (flags.is_null) {
+            break :blk -searcher.history.evaluations[searcher.ply - 1];
+        } else if (searcher.exclude_move[searcher.ply].move != 0) {
+            break :blk searcher.history.evaluations[searcher.ply];
+        } else {
+            break :blk searcher.evaluator.evaluate(searcher.search_board);
+        }
+    };
+
+    return result;
+}
+
+inline fn prunings(
+    searcher: *searcher_.Searcher,
+    depth: usize,
+    alpha: i32,
+    beta: i32,
+    has_non_pawns: bool,
+    static_eval: i32,
+    improving: bool,
+    comptime flags: SearchFlags,
+) ?i32 {
+    // Reverse futility pruning
+    if (@abs(beta) < evaluator.mate_score - evaluator.max_mate and depth <= parameters.rfp_depth) {
+        var n = @as(i32, @intCast(depth)) * parameters.rfp_multiplier;
+        if (improving) {
+            n -= parameters.rfp_improving_deduction;
+        }
+
+        if ((static_eval - n) >= beta) {
+            return beta;
+        }
+    }
+
+    // Null move pruning
+    var nmp_static_eval = static_eval;
+    if (improving) {
+        nmp_static_eval += parameters.nmp_improving_margin;
+    }
+
+    if (!flags.is_null and depth >= 3 and searcher.ply >= searcher.nmp_min_ply and nmp_static_eval >= beta and has_non_pawns) {
+        var r: usize = parameters.nmp_base + @divTrunc(depth, parameters.nmp_depth_divisor);
+        r += @min(4, @as(usize, @intCast(@divTrunc(static_eval - beta, parameters.nmp_beta_divisor))));
+        r = @min(r, depth);
+
+        searcher.ply += 1;
+        searcher.search_board.makeNullMove();
+        var null_score = -negamax(
+            searcher,
+            depth - r,
+            -beta,
+            -beta + 1,
+            .{
+                .cutnode = !flags.cutnode,
+                .is_null = true,
+                .node = .non_pv,
+            },
+        );
+        searcher.ply -= 1;
+        searcher.search_board.unmakeNullMove();
+
+        if (searcher.shouldStop()) return 0;
+
+        if (null_score >= beta) {
+            if (null_score >= evaluator.mate_score - evaluator.max_mate) {
+                null_score = beta;
+            }
+
+            if (depth < 12 or searcher.nmp_min_ply > 0) {
+                return null_score;
+            }
+
+            searcher.nmp_min_ply = searcher.ply + @divFloor((depth - r) * 3, 4);
+            const verify_score = negamax(
+                searcher,
+                depth - r,
+                beta - 1,
+                beta,
+                .{
+                    .cutnode = false,
+                    .is_null = false,
+                    .node = .non_pv,
+                },
+            );
+            searcher.nmp_min_ply = 0;
+
+            if (searcher.shouldStop()) return 0;
+            if (verify_score >= beta) return verify_score;
+        }
+    }
+
+    // Razoring
+    if (depth <= 3 and (static_eval - parameters.razoring_base + parameters.razoring_margin * @as(i32, @intCast(depth))) < alpha) {
+        return quiescence(searcher, alpha, beta);
+    }
+
+    return null;
+}
+
+inline fn reductions(
+    searcher: *searcher_.Searcher,
+    depth: usize,
+    alpha: i32,
+    beta: i32,
+    in_check: bool,
+    stm: water.Color,
+    ordered_move: water.Move,
+    ordered_idx: usize,
+    min_lmr_idx: usize,
+    is_capture: bool,
+    is_winning_capture: bool,
+    improving: bool,
+    on_pv: bool,
+    new_depth: usize,
+    comptime flags: SearchFlags,
+) i32 {
+    var score: i32 = 0;
+    var do_full_search = false;
+
+    if (!in_check and depth >= 3 and ordered_idx >= min_lmr_idx and (!is_capture or !is_winning_capture)) {
+        // Late move reduction
+        var reduction = searcher_.quiet_lmr[@min(63, depth)][@min(63, ordered_idx)];
+        reduction -= 1;
+
+        if (improving) reduction -= 1;
+        if (!on_pv) reduction += 1;
+
+        const move_from_idx = ordered_move.from().index();
+        const move_to_idx = ordered_move.to().index();
+
+        // History heuristic
+        const heuristic_offset = (stm.index() << 12) | (move_from_idx << 6) | move_to_idx;
+        const heuristic_ptr: [*]const i32 = @ptrCast(&searcher.history.heuristic);
+        const heuristic_value = heuristic_ptr[heuristic_offset];
+
+        reduction -= @divTrunc(heuristic_value, 6144);
+
+        const casted_new_depth = @as(i32, @intCast(new_depth));
+        const rd: usize = @intCast(std.math.clamp(casted_new_depth - reduction, 1, casted_new_depth + 1));
+        score = -negamax(
+            searcher,
+            rd,
+            -alpha - 1,
+            -alpha,
+            .{
+                .cutnode = true,
+                .is_null = false,
+                .node = .non_pv,
+            },
+        );
+
+        do_full_search = score > alpha and rd < new_depth;
+    } else {
+        do_full_search = !on_pv or ordered_idx > 0;
+    }
+
+    if (do_full_search) {
+        score = -negamax(
+            searcher,
+            new_depth,
+            -alpha - 1,
+            -alpha,
+            .{
+                .cutnode = !flags.cutnode,
+                .is_null = false,
+                .node = .non_pv,
+            },
+        );
+    }
+
+    if (on_pv and ((score > alpha and score < beta) or ordered_idx == 0)) {
+        score = -negamax(
+            searcher,
+            new_depth,
+            -beta,
+            -alpha,
+            .{
+                .cutnode = false,
+                .is_null = false,
+                .node = .pv,
+            },
+        );
+    }
+
+    return score;
+}
+
+inline fn updateHeuristics(
+    searcher: *searcher_.Searcher,
+    best_move: water.Move,
+    eval: i32,
+    color: water.Color,
+    quiet_moves: *const water.movegen.Movelist,
+    alpha: i32,
+    depth: usize,
+    comptime flags: SearchFlags,
+) void {
+    const temp = searcher.killers[searcher.ply][0];
+    if (temp.order(best_move, .mv) != .eq) {
+        searcher.killers[searcher.ply][0] = best_move;
+        searcher.killers[searcher.ply][1] = temp;
+    }
+
+    const adj: i32 = @min(1536, (if (eval <= alpha) depth + 1 else depth) * 384 - 384);
+    if (!flags.is_null and searcher.ply >= 1) {
+        const last = searcher.history.moves[searcher.ply - 1];
+        searcher.counter_moves[color.index()][last.from().index()][last.to().index()] = best_move;
+    }
+
+    const bm = best_move;
+    const max_history: i32 = 16384;
+    for (quiet_moves.moves[0..quiet_moves.size]) |move| {
+        const move_from_idx = move.from().index();
+        const move_to_idx = move.to().index();
+
+        // History heuristic
+        const heuristic_offset = (color.index() << 12) | (move_from_idx << 6) | move_to_idx;
+        const heuristic_ptr: [*]i32 = @ptrCast(&searcher.history.heuristic);
+
+        const is_best = move.order(bm, .mv) == .eq;
+        const hist = heuristic_ptr[heuristic_offset] * adj;
+        if (is_best) {
+            heuristic_ptr[heuristic_offset] += adj - @divTrunc(hist, max_history);
+        } else {
+            heuristic_ptr[heuristic_offset] += -adj - @divTrunc(hist, max_history);
+        }
+
+        // Continuation heuristic
+        if (!flags.is_null and searcher.ply >= 1) {
+            const plies: [3]usize = .{ 0, 1, 3 };
+            for (plies) |plies_ago| {
+                if (searcher.ply >= plies_ago + 1) {
+                    const prev = searcher.history.moves[searcher.ply - plies_ago - 1];
+                    if (!prev.valid()) continue;
+
+                    // Perform pointer arithmetic to index continuation
+                    const moved_piece_idx = searcher.history.moved_pieces[searcher.ply - plies_ago - 1].index();
+                    const prev_idx = prev.to().index();
+
+                    // Not using a many-item pointer here results in about 78% of performance being spent on 12 MiB copy!
+                    const offset = (moved_piece_idx << 18) | (prev_idx << 12) | (move_from_idx << 6) | move_to_idx;
+                    const continuation_ptr: [*]i32 = @ptrCast(searcher.continuation);
+
+                    const cont = continuation_ptr[offset] * adj;
+                    if (is_best) {
+                        continuation_ptr[offset] += adj - @divTrunc(
+                            cont,
+                            max_history,
+                        );
+                    } else {
+                        continuation_ptr[offset] += -adj - @divTrunc(
+                            cont,
+                            max_history,
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub fn quiescence(
@@ -631,6 +748,12 @@ pub fn quiescence(
         // SEE pruning
         if (is_capture and i > 0) {
             if (move.score < orderer.winning_capture_bonus - 2048) {
+                continue;
+            }
+        } else if (in_check and !is_capture) {
+            // Skip low-value extensions
+            const local_eval = searcher.evaluator.evaluate(searcher.search_board);
+            if (local_eval + 200 < alpha_val) {
                 continue;
             }
         }

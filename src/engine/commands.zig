@@ -4,6 +4,7 @@ const water = @import("water");
 const parameters = @import("parameters.zig");
 
 const tt = @import("evaluation/tt.zig");
+const evaluator = @import("evaluation/evaluator.zig");
 
 const searcher = @import("search/searcher.zig");
 
@@ -61,70 +62,6 @@ pub const UciCommand = struct {
         try parameters.writeOut(engine.writer);
         try engine.writer.print("uciok\n", .{});
         try engine.writer.flush();
-    }
-};
-
-pub const PositionCommand = struct {
-    pub const command_name: []const u8 = "position";
-
-    fen: []const u8 = water.board.starting_fen,
-    startpos: ?bool = false,
-
-    moves: ?[]const u8 = null,
-
-    pub fn deserialize(
-        allocator: std.mem.Allocator,
-        tokens: *std.mem.TokenIterator(u8, .any),
-    ) anyerror!PositionCommand {
-        _ = allocator;
-        var parsed = try water.dispatcher.deserializeFields(
-            PositionCommand,
-            tokens,
-            &.{"startpos"},
-            &.{"moves"},
-        );
-
-        // Handle ambiguity with the fen/startpos
-        if (parsed.startpos) |sp| {
-            if (sp) parsed.fen = water.board.starting_fen;
-        } else if (parsed.fen.len == 0) {
-            parsed.fen = water.board.starting_fen;
-        }
-
-        // Collect the moves and return
-        parsed.moves = water.dispatcher.tokensAfter(tokens, "moves");
-        return parsed;
-    }
-
-    pub fn dispatch(
-        self: *const PositionCommand,
-        engine: *Engine,
-    ) anyerror!void {
-        if (!engine.searcher.should_stop.load(.acquire)) return;
-        if (!try engine.searcher.governing_board.setFen(self.fen, true)) {
-            return water.ChessError.IllegalFen;
-        }
-
-        engine.last_played = null;
-        if (self.moves) |moves| {
-            var move_tokens = std.mem.tokenizeAny(u8, moves, " ");
-            while (move_tokens.next()) |move_str| {
-                const move = water.uci.uciToMove(engine.searcher.governing_board, move_str);
-
-                if (engine.searcher.governing_board.isMoveLegal(move)) {
-                    engine.searcher.governing_board.makeMove(move, .{});
-                    engine.last_played = move;
-                }
-            }
-        }
-
-        // Force an update to the searcher's search_board
-        engine.searcher.search_board.deinit();
-        engine.searcher.search_board = try engine.searcher.governing_board.clone(engine.allocator);
-
-        // Resetting here instead of head of search saves time and allows the eval command to be accurate
-        engine.searcher.resetHeuristics(false);
-        engine.searcher.evaluator.refresh(engine.searcher.search_board, .full);
     }
 };
 
@@ -325,8 +262,11 @@ pub const EvalCommand = struct {
         engine: *Engine,
     ) anyerror!void {
         _ = self;
-        const eval = engine.searcher.evaluator.evaluate(engine.searcher.governing_board);
-        try engine.writer.print("info string eval {d}\n", .{eval});
+        var eval = evaluator.Evaluator{};
+        eval.refresh(engine.searcher.governing_board, .full);
+        try engine.writer.print("info string eval {d}\n", .{
+            eval.evaluate(engine.searcher.governing_board),
+        });
         try engine.writer.flush();
     }
 };

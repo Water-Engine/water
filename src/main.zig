@@ -26,10 +26,6 @@ pub fn main() !void {
     );
     engine.welcome = "Water by the Water Engine developers (see AUTHORS file)";
 
-    // Resetting here instead of head of waiting for go allows the eval command to be accurate
-    engine.searcher.resetHeuristics(true);
-    engine.searcher.evaluator.refresh(engine.searcher.search_board, .full);
-
     // The writer must flush after engine deinitializes to prevent a concurrency issue
     defer {
         engine.deinit(.{});
