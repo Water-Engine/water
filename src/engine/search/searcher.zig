@@ -50,7 +50,7 @@ pub const Searcher = struct {
 
     killers: [parameters.max_ply][2]water.Move = @splat(@splat(water.Move.init())),
     history: struct {
-        heuristic: [2][64][64]i32 = std.mem.zeroes([2][64][64]i32),
+        heuristic: [2 * 64 * 64]i32 = @splat(0),
         evaluations: [parameters.max_ply]i32 = @splat(0),
         moves: [parameters.max_ply]water.Move = @splat(water.Move.init()),
         moved_pieces: [parameters.max_ply]water.Piece = @splat(water.Piece.init()),
@@ -61,7 +61,7 @@ pub const Searcher = struct {
     pv_size: [parameters.max_ply]usize = @splat(0),
 
     counter_moves: [2][64][64]water.Move = @splat(@splat(@splat(water.Move.init()))),
-    continuation: *[12][64][64][64]i32,
+    continuation: *[12 * 64 * 64 * 64]i32,
 
     pub fn init(allocator: std.mem.Allocator, board: *water.Board, writer: *std.Io.Writer) anyerror!*Searcher {
         const searcher = try allocator.create(Searcher);
@@ -70,7 +70,7 @@ pub const Searcher = struct {
             .writer = writer,
             .governing_board = board,
             .search_board = try board.clone(allocator),
-            .continuation = try allocator.create([12][64][64][64]i32),
+            .continuation = try allocator.create([12 * 64 * 64 * 64]i32),
         };
 
         searcher.resetHeuristics(true);
@@ -89,13 +89,14 @@ pub const Searcher = struct {
 
         // Only reset the history heuristic fully if requested
         if (total_reset) {
-            self.history.heuristic = std.mem.zeroes([2][64][64]i32);
+            self.history.heuristic = @splat(0);
         } else {
             for (0..64) |j| {
                 for (0..64) |k| {
                     for (0..2) |i| {
-                        self.history.heuristic[i][j][k] = @divTrunc(
-                            self.history.heuristic[i][j][k],
+                        const offset = (i << 12) | (j << 6) | k;
+                        self.history.heuristic[offset] = @divTrunc(
+                            self.history.heuristic[offset],
                             2,
                         );
                     }
@@ -109,7 +110,7 @@ pub const Searcher = struct {
 
         self.killers = @splat(@splat(water.Move.init()));
         self.exclude_move = @splat(water.Move.init());
-        self.continuation.* = @splat(@splat(@splat(@splat(0))));
+        self.continuation.* = @splat(0);
         self.counter_moves = @splat(@splat(@splat(water.Move.init())));
 
         self.pv = @splat(@splat(water.Move.init()));

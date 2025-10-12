@@ -32,6 +32,8 @@ pub const NewGameCommand = struct {
         try tt.global_tt.reset(null);
         _ = try engine.searcher.governing_board.setFen(water.board.starting_fen, true);
         _ = try engine.searcher.search_board.setFen(water.board.starting_fen, true);
+        engine.searcher.resetHeuristics(true);
+        engine.searcher.evaluator.refresh(engine.searcher.governing_board, .full);
     }
 };
 

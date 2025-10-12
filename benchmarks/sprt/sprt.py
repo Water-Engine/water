@@ -17,10 +17,11 @@ beta = 0.05
 cmd = [
     fastchess,
     "-engine",
-    f"name=Water cmd={engine_test} option.Hash=64",
+    f"name=Water cmd={engine_test}",
     # "-engine", f"name=SebLague cmd={engine_baseline}",
     "-engine", f"name=Stockfish cmd={engine_baseline} option.UCI_Elo={elo0} option.UCI_LimitStrength=true",
     "-each",
+    "option.Hash=64",
     "proto=uci", 
     "tc=40/60+0.1",
     "-rounds 100",
@@ -32,9 +33,9 @@ cmd = [
     "-event",
     "\"Water v1 vs. Stockfish 2600 ELO\"",
     "-pgnout",
-    "water-v1_Dixed.pgn",
+    "water-v1_FIX.pgn",
     "-recover",
-    "-log", "file=water-v1_Fixed.log", "engine=true"
+    # "-log", "file=water-v1_FIX.log", "engine=true"
 ]
 
 subprocess.run(" ".join(cmd), shell=True, check=True)

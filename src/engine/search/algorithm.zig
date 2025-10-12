@@ -323,8 +323,8 @@ pub fn negamax(
             static_eval,
             color,
             &quiets,
-            alpha,
-            depth,
+            alpha_val,
+            depth_val,
             flags,
         );
     }
@@ -547,8 +547,7 @@ inline fn reductions(
 
         // History heuristic
         const heuristic_offset = (stm.index() << 12) | (move_from_idx << 6) | move_to_idx;
-        const heuristic_ptr: [*]const i32 = @ptrCast(&searcher.history.heuristic);
-        const heuristic_value = heuristic_ptr[heuristic_offset];
+        const heuristic_value = searcher.history.heuristic[heuristic_offset];
 
         reduction -= @divTrunc(heuristic_value, 6144);
 
@@ -618,7 +617,6 @@ inline fn updateHeuristics(
         searcher.killers[searcher.ply][1] = temp;
     }
 
-    const adj: i32 = @min(1536, (if (eval <= alpha) depth + 1 else depth) * 384 - 384);
     if (!flags.is_null and searcher.ply >= 1) {
         const last = searcher.history.moves[searcher.ply - 1];
         searcher.counter_moves[color.index()][last.from().index()][last.to().index()] = best_move;
@@ -630,16 +628,26 @@ inline fn updateHeuristics(
         const move_from_idx = move.from().index();
         const move_to_idx = move.to().index();
 
+        const is_best = move.order(bm, .mv) == .eq;
+        const bonus: i64 = @intCast(@min(1536, (if (eval <= alpha) depth + 1 else depth) * 384 - 384));
+        var new_val: i64 = 0;
+
         // History heuristic
         const heuristic_offset = (color.index() << 12) | (move_from_idx << 6) | move_to_idx;
-        const heuristic_ptr: [*]i32 = @ptrCast(&searcher.history.heuristic);
+        if (heuristic_offset < searcher.history.heuristic.len) {
+            @branchHint(.likely);
+            const heuristic_value = searcher.history.heuristic[heuristic_offset];
 
-        const is_best = move.order(bm, .mv) == .eq;
-        const hist = heuristic_ptr[heuristic_offset] * adj;
-        if (is_best) {
-            heuristic_ptr[heuristic_offset] += adj - @divTrunc(hist, max_history);
-        } else {
-            heuristic_ptr[heuristic_offset] += -adj - @divTrunc(hist, max_history);
+            const current_heuristic: i64 = @intCast(heuristic_value);
+            const hist_decay: i64 = @divTrunc(current_heuristic * bonus, @as(i64, @intCast(max_history)));
+
+            if (is_best) {
+                new_val = current_heuristic + bonus - hist_decay;
+            } else {
+                new_val = current_heuristic - bonus - hist_decay;
+            }
+
+            searcher.history.heuristic[heuristic_offset] = @as(i32, @intCast(new_val));
         }
 
         // Continuation heuristic
@@ -650,26 +658,24 @@ inline fn updateHeuristics(
                     const prev = searcher.history.moves[searcher.ply - plies_ago - 1];
                     if (!prev.valid()) continue;
 
-                    // Perform pointer arithmetic to index continuation
                     const moved_piece_idx = searcher.history.moved_pieces[searcher.ply - plies_ago - 1].index();
                     const prev_idx = prev.to().index();
-
-                    // Not using a many-item pointer here results in about 78% of performance being spent on 12 MiB copy!
                     const offset = (moved_piece_idx << 18) | (prev_idx << 12) | (move_from_idx << 6) | move_to_idx;
-                    const continuation_ptr: [*]i32 = @ptrCast(searcher.continuation);
-
-                    const cont = continuation_ptr[offset] * adj;
-                    if (is_best) {
-                        continuation_ptr[offset] += adj - @divTrunc(
-                            cont,
-                            max_history,
-                        );
-                    } else {
-                        continuation_ptr[offset] += -adj - @divTrunc(
-                            cont,
-                            max_history,
-                        );
+                    if (offset >= searcher.continuation.len) {
+                        @branchHint(.unlikely);
+                        continue;
                     }
+
+                    const current_val: i64 = @intCast(searcher.continuation[offset]);
+                    const decay: i64 = @divTrunc(current_val * bonus, @as(i64, @intCast(max_history)));
+
+                    if (is_best) {
+                        new_val = current_val + bonus - decay;
+                    } else {
+                        new_val = current_val - bonus - decay;
+                    }
+
+                    searcher.continuation[offset] = @as(i32, @intCast(new_val));
                 }
             }
         }
