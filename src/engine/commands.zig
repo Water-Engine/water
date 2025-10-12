@@ -111,11 +111,7 @@ pub const PositionCommand = struct {
             while (move_tokens.next()) |move_str| {
                 const move = water.uci.uciToMove(engine.searcher.governing_board, move_str);
 
-                // Robustly verify the legality of the move before making the move
-                var movelist = water.movegen.Movelist{};
-                water.movegen.legalmoves(engine.searcher.governing_board, &movelist, .{});
-
-                if (movelist.find(move)) |_| {
+                if (engine.searcher.governing_board.isMoveLegal(move)) {
                     engine.searcher.governing_board.makeMove(move, .{});
                     engine.last_played = move;
                 }

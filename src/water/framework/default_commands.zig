@@ -60,11 +60,7 @@ pub fn PositionCommand(comptime Searcher: type) type {
                 while (move_tokens.next()) |move_str| {
                     const move = uci.uciToMove(engine.searcher.governing_board, move_str);
 
-                    // Robustly verify the legality of the move before making the move
-                    var movelist = movegen.Movelist{};
-                    movegen.legalmoves(engine.searcher.governing_board, &movelist, .{});
-
-                    if (movelist.find(move)) |_| {
+                    if (engine.searcher.governing_board.isMoveLegal(move)) {
                         engine.searcher.governing_board.makeMove(move, .{});
                         engine.last_played = move;
                     }

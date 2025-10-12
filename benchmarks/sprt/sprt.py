@@ -7,8 +7,8 @@ engine_test = "C:/dev/chess/sprt/water.exe"
 engine_baseline = "C:/dev/chess/sprt/stockfish.exe"
 
 # SPRT parameters
-elo0 = 2750  # baseline elo
-elo1 = 2800  # minimum elo to consider baseline weaker
+elo0 = 2700  # baseline elo
+elo1 = 2750  # minimum elo to consider baseline weaker
 alpha = 0.05
 beta = 0.05
 

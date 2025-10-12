@@ -85,7 +85,7 @@ pub const Board = struct {
 
     pieces_bbs: [6]Bitboard = @splat(Bitboard.init()),
     occ_bbs: [2]Bitboard = @splat(Bitboard.init()),
-    mailbox: [64]Piece = @splat(Piece.init()),
+    mailbox: [64]Piece = @splat(Piece.none),
 
     key: u64 = 0,
     castling_rights: CastlingRights = .{},
@@ -1014,10 +1014,10 @@ pub const Board = struct {
 
     /// Perform a perft test to the given depth.
     ///
-    /// In testing, `test_options` can be used to verify certain implementations.
+    /// `test_options` can be used to verify certain implementations via panic messages.
     pub fn perft(self: *Board, depth: usize, comptime test_options: struct {
         check_checks: bool = false,
-        check_hash: bool = false,
+        check_hashes: bool = false,
     }) usize {
         var movelist = movegen.Movelist{};
         movegen.legalmoves(self, &movelist, .{});
@@ -1029,23 +1029,30 @@ pub const Board = struct {
         var nodes: usize = 0;
         for (movelist.moves[0..movelist.size]) |move| {
             // Verify alignment of checks if asked
-            if (comptime test_options.check_checks) {
+            if (comptime test_options.check_checks or test_options.check_hashes) {
                 const gives_check = self.givesCheck(move).check();
                 self.makeMove(move, .{});
                 const in_check = self.inCheck(.{});
 
-                expectEqual(gives_check, in_check) catch unreachable;
+                if (comptime test_options.check_checks) {
+                    if (gives_check != in_check) {
+                        @panic("givesCheck(...) and inCheck(...) do not agree!");
+                    }
+                }
 
                 nodes += self.perft(depth - 1, test_options);
                 self.unmakeMove(move);
 
-                const recomp = Zobrist.fromBoard(self);
-                if (recomp != self.key) {
-                    std.debug.panic(
-                        "Hashes do not match! Depth = {d} RE = {d} INC = {d}\n",
-                        .{ depth, recomp, self.key },
-                    );
+                if (comptime test_options.check_hashes) {
+                    const recomp = Zobrist.fromBoard(self);
+                    if (recomp != self.key) {
+                        std.debug.panic(
+                            "Hashes do not match! Depth = {d} RE = {d} INC = {d}\n",
+                            .{ depth, recomp, self.key },
+                        );
+                    }
                 }
+
                 continue;
             }
 
@@ -1252,7 +1259,14 @@ pub const Board = struct {
         };
     }
 
-    // TODO: Robust fen validation
+    /// Determines if a move is valid based on the current legal moves in the position.
+    ///
+    /// This should only ever be used when validating external moves, as its wildly inefficient for most other purposes.
+    pub fn isMoveLegal(self: *const Board, move: Move) bool {
+        var movelist = movegen.Movelist{};
+        movegen.legalmoves(self, &movelist, .{});
+        return move.valid() and movelist.find(move) != null;
+    }
 };
 
 // ================ TESTING ================
@@ -1774,7 +1788,7 @@ test "Shallow perft and check alignment" {
             i,
             .{
                 .check_checks = true,
-                .check_hash = true,
+                .check_hashes = true,
             },
         ));
     }
@@ -1834,4 +1848,18 @@ test "Non-pawn material calculation" {
     try expect(try board.setFen("8/8/8/8/8/7K/8/7k b - - 0 1", true));
     try expectEqual(0, board.nonPawnMaterial(.white));
     try expectEqual(0, board.nonPawnMaterial(.black));
+}
+
+test "Legal move detection" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+    defer board.deinit();
+
+    const ok_move = uci.uciToMove(board, "a2a3");
+    const null_move = uci.uciToMove(board, "a1a1");
+    const bad_move = uci.uciToMove(board, "h4h6");
+
+    try expect(board.isMoveLegal(ok_move));
+    try expect(!board.isMoveLegal(null_move));
+    try expect(!board.isMoveLegal(bad_move));
 }

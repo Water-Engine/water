@@ -2,6 +2,9 @@ const std = @import("std");
 
 const Color = @import("../core/types.zig").Color;
 
+/// All possible piece types for classical and fischer random chess.
+///
+/// Includes a sentinel `none` value in favor of using optionals.
 pub const PieceType = enum(u3) {
     pawn = 0,
     knight = 1,
@@ -12,11 +15,8 @@ pub const PieceType = enum(u3) {
 
     none = 6,
 
+    /// All of the valid PieceType, especially useful in for loops.
     pub const all: [6]PieceType = .{ .pawn, .knight, .bishop, .rook, .queen, .king };
-
-    pub fn init() PieceType {
-        return .none;
-    }
 
     pub fn valid(self: *const PieceType) bool {
         return self.* != .none;
@@ -88,6 +88,9 @@ pub const PieceType = enum(u3) {
     }
 };
 
+/// All possible pieces for classical and fischer random chess.
+///
+/// Includes a sentinel `none` value in favor of using optionals.
 pub const Piece = enum(u8) {
     white_pawn = 0,
     white_knight = 1,
@@ -105,10 +108,16 @@ pub const Piece = enum(u8) {
 
     none = 12,
 
+    /// Alias for using `Piece.none`.
+    ///
+    /// Only included for unity with other more useful `init` functions.
     pub fn init() Piece {
         return .none;
     }
 
+    /// Makes a Piece with the given color and type.
+    ///
+    /// No assertions are made.
     pub fn make(piece_color: Color, piece_type: PieceType) Piece {
         return Piece.fromInt(
             usize,
@@ -116,6 +125,7 @@ pub const Piece = enum(u8) {
         );
     }
 
+    /// Checks if the Piece is `none`.
     pub fn valid(self: *const Piece) bool {
         return self.* != .none;
     }
@@ -222,19 +232,9 @@ test "PieceType" {
         try expectEqual(expected, actual);
     }
 
-    // ================ INIT / VALID =================
-    var pt = PieceType.init();
-    try expect(pt == .none);
-    try expect(!pt.valid());
-    pt = .pawn;
-    try expect(pt.valid());
-
     // ================ FROM / AS INT =================
     try expectEqual(PieceType.pawn, PieceType.fromInt(u8, 0));
     try expectEqual(PieceType.knight, PieceType.fromInt(u8, 1));
-
-    try expectEqual(0, pt.asInt(u8));
-    try expectEqual(0, pt.asInt(i32));
 
     // ================ FROM / AS CHAR =================
     try expectEqual(PieceType.pawn, PieceType.fromChar('p'));

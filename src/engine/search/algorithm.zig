@@ -635,11 +635,14 @@ inline fn updateHeuristics(
         const heuristic_ptr: [*]i32 = @ptrCast(&searcher.history.heuristic);
 
         const is_best = move.order(bm, .mv) == .eq;
-        const hist = heuristic_ptr[heuristic_offset] * adj;
+        const hist = @as(i64, heuristic_ptr[heuristic_offset]) * @as(i64, adj);
+
         if (is_best) {
-            heuristic_ptr[heuristic_offset] += adj - @divTrunc(hist, max_history);
+            const new_val = heuristic_ptr[heuristic_offset] + adj - @as(i32, @intCast(@divTrunc(hist, max_history)));
+            heuristic_ptr[heuristic_offset] = std.math.clamp(new_val, -max_history, max_history);
         } else {
-            heuristic_ptr[heuristic_offset] += -adj - @divTrunc(hist, max_history);
+            const new_val = heuristic_ptr[heuristic_offset] - adj - @as(i32, @intCast(@divTrunc(hist, max_history)));
+            heuristic_ptr[heuristic_offset] = std.math.clamp(new_val, -max_history, max_history);
         }
 
         // Continuation heuristic
@@ -658,17 +661,13 @@ inline fn updateHeuristics(
                     const offset = (moved_piece_idx << 18) | (prev_idx << 12) | (move_from_idx << 6) | move_to_idx;
                     const continuation_ptr: [*]i32 = @ptrCast(searcher.continuation);
 
-                    const cont = continuation_ptr[offset] * adj;
+                    const cont = @as(i64, continuation_ptr[offset]) * @as(i64, adj);
                     if (is_best) {
-                        continuation_ptr[offset] += adj - @divTrunc(
-                            cont,
-                            max_history,
-                        );
+                        const new_val = continuation_ptr[offset] + adj - @as(i32, @intCast(@divTrunc(cont, max_history)));
+                        continuation_ptr[offset] = std.math.clamp(new_val, -max_history, max_history);
                     } else {
-                        continuation_ptr[offset] += -adj - @divTrunc(
-                            cont,
-                            max_history,
-                        );
+                        const new_val = continuation_ptr[offset] - adj - @as(i32, @intCast(@divTrunc(cont, max_history)));
+                        continuation_ptr[offset] = std.math.clamp(new_val, -max_history, max_history);
                     }
                 }
             }

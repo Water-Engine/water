@@ -46,6 +46,7 @@ pub const engine = @import("water/framework/engine.zig");
 pub const type_validators = @import("water/framework/type_validators.zig");
 pub const dispatcher = @import("water/framework/dispatcher.zig");
 pub const network = @import("water/framework/network.zig");
+pub const default_commands = @import("water/framework/default_commands.zig");
 
 // ================ TESTING ================
 
