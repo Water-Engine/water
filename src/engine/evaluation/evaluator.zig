@@ -39,7 +39,7 @@ pub fn materialPhase(board: *const water.Board) i32 {
     return p;
 }
 
-/// Performs a weasily check if the board is a draw.
+/// Performs a weasel-y check if the board is a draw.
 ///
 /// Will return true more frequently than water's arbiter.
 pub fn drawish(board: *const water.Board) bool {
