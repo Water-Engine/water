@@ -87,9 +87,14 @@ pub fn negamax(
     // Transposition table probing
     const probe = ttProbeEval(searcher, depth_val, &alpha_val, &beta_val, in_check, flags);
     if (probe.early_exit_score) |score| return score;
+    const hashmove = blk: {
+        if (movelist.find(probe.hashmove)) |_| {
+            @branchHint(.likely);
+            break :blk probe.hashmove;
+        } else break :blk water.Move.init();
+    };
 
     const static_eval = probe.static_eval;
-    const hashmove = probe.hashmove;
     const tthit = probe.tthit;
     const tt_eval = probe.tt_eval;
     const maybe_entry = probe.entry;

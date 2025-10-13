@@ -999,9 +999,7 @@ pub const Board = struct {
     ///
     /// Switches the side and updates core state only.
     pub fn unmakeNullMove(self: *Board) void {
-        const prev = self.previous_states.pop();
-
-        if (prev) |previous_state| {
+        if (self.previous_states.pop()) |previous_state| {
             self.ep_square = previous_state.en_passant;
             self.castling_rights = previous_state.castling;
             self.halfmove_clock = previous_state.half_moves;

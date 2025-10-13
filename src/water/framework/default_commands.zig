@@ -63,6 +63,8 @@ pub fn PositionCommand(comptime Searcher: type) type {
                     if (engine.searcher.governing_board.isMoveLegal(move)) {
                         engine.searcher.governing_board.makeMove(move, .{});
                         engine.last_played = move;
+                    } else {
+                        std.debug.print("Skipping move: \"{s}\"\n", .{move_str});
                     }
                 }
             }

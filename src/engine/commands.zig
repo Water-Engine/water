@@ -166,7 +166,16 @@ pub const GoCommand = struct {
             return;
         }
 
+        if (self.infinite or self.depth != null) {
+            engine.searcher.force_thinking = true;
+        } else {
+            engine.searcher.force_thinking = false;
+        }
+
         const think_time_ns = self.chooseThinkTimeNs(engine.searcher.governing_board);
+        engine.searcher.pv_size = @splat(0);
+        engine.searcher.search_board.deinit();
+        engine.searcher.search_board = try engine.searcher.governing_board.clone(engine.allocator);
         engine.searcher.max_nodes = self.nodes;
         engine.searcher.soft_max_nodes = self.nodes;
         engine.search(think_time_ns, .{ think_time_ns, self.depth }, .{});

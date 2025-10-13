@@ -40,6 +40,7 @@ pub const Searcher = struct {
 
     should_stop: std.atomic.Value(bool) = .init(true),
     silent_output: bool = false,
+    force_thinking: bool = false,
 
     nodes: u64 = 0,
     ply: usize = 0,
@@ -177,9 +178,15 @@ pub const Searcher = struct {
                 score = negamax;
 
                 if (score <= alpha) {
+                    // Fail low break at boundary
+                    if (alpha == -evaluator_.mate_score) break;
+
                     beta = @divTrunc(alpha + beta, 2);
                     alpha = @max(alpha - delta, -evaluator_.mate_score);
                 } else if (score >= beta) {
+                    // Fail high break at boundary
+                    if (beta == evaluator_.mate_score) break;
+
                     beta = @min(beta + delta, evaluator_.mate_score);
                     if (depth > 1 and (tdepth < 4 or depth > tdepth - 4)) {
                         depth -= 1;
@@ -200,6 +207,7 @@ pub const Searcher = struct {
             bm = self.best_move;
             const total_nodes: usize = self.nodes;
 
+            const mate_found = @abs(score) >= (evaluator_.mate_score - evaluator_.max_mate);
             if (!self.silent_output) {
                 const elapsed_ms = @max(1, self.timer.read() / std.time.ns_per_ms);
                 const elapsed_s = @max(1, elapsed_ms / std.time.ms_per_s);
@@ -212,16 +220,16 @@ pub const Searcher = struct {
                 });
 
                 // Print the mate score if close enough
-                if (@abs(score) >= (evaluator_.mate_score - evaluator_.max_mate)) {
+                if (mate_found) {
                     const mate_in: i32 = @divTrunc(evaluator_.mate_score - @as(i32, @intCast(@abs(score))), 2) + 1;
                     const perspective: i32 = if (score > 0) 1 else -1;
-                    try self.writer.print("mate {} pv", .{perspective * mate_in});
+                    try self.writer.print("mate {d} pv", .{perspective * mate_in});
 
                     if (bound == parameters.max_ply - 1) {
                         bound = depth + 2;
                     }
                 } else {
-                    try self.writer.print("cp {} pv", .{score});
+                    try self.writer.print("cp {d} pv", .{score});
                 }
 
                 // Print the pv sequence or the best move depending on the state
@@ -245,6 +253,11 @@ pub const Searcher = struct {
 
                 try self.writer.writeByte('\n');
                 try self.writer.flush();
+            }
+
+            // Stable positions at sufficient depths can stop
+            if (!self.force_thinking and stability >= 4 and tdepth >= 8) {
+                break :outer;
             }
 
             // Compute a cutoff factor for time management

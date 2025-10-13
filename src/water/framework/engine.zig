@@ -266,6 +266,7 @@ pub fn Engine(comptime Searcher: type) type {
             other_commands: []const type = &.{},
         }, comptime options: struct {
             windows_pread_workaround: bool = false,
+            windows_buffer_size: usize = 8192,
         }) !void {
             const command_list = comptime blk: {
                 var list: []const type = &.{};
@@ -305,7 +306,7 @@ pub fn Engine(comptime Searcher: type) type {
                     const stdIn: std.os.windows.HANDLE = try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE);
                     try std.os.windows.WaitForSingleObject(stdIn, std.os.windows.INFINITE);
 
-                    var buf: [1024]u8 = undefined;
+                    var buf: [options.windows_buffer_size]u8 = undefined;
                     const n = std.os.windows.ReadFile(
                         stdIn,
                         &buf,
@@ -316,21 +317,28 @@ pub fn Engine(comptime Searcher: type) type {
 
                     if (n == 0) continue;
                     const trimmed = std.mem.trim(u8, buf[0..n], " \r\n\t");
-
-                    // Manually handle the quit and stop commands as they are constants
                     if (trimmed.len == 0) continue;
-                    if (trimmed.len == 4) {
-                        if (std.mem.startsWith(u8, trimmed, "quit")) {
-                            self.notifyStopSearch();
-                            break;
-                        } else if (std.mem.startsWith(u8, trimmed, "stop")) {
-                            self.notifyStopSearch();
-                            continue;
-                        }
-                    }
 
-                    var tokens = std.mem.tokenizeAny(u8, trimmed, " ");
-                    Dispatcher.dispatch(&tokens, self) catch continue;
+                    // Split the entry at newlines and handle each newline
+                    var lines = std.mem.tokenizeAny(u8, trimmed, "\n");
+                    while (lines.next()) |line| {
+                        const trimmed_line = std.mem.trim(u8, line, " \r\n\t");
+
+                        // Manually handle the quit and stop commands as they are constants
+                        if (trimmed_line.len == 0) continue;
+                        if (trimmed_line.len == 4) {
+                            if (std.mem.startsWith(u8, trimmed_line, "quit")) {
+                                self.notifyStopSearch();
+                                break;
+                            } else if (std.mem.startsWith(u8, trimmed_line, "stop")) {
+                                self.notifyStopSearch();
+                                continue;
+                            }
+                        }
+
+                        var tokens = std.mem.tokenizeAny(u8, trimmed_line, " ");
+                        Dispatcher.dispatch(&tokens, self) catch continue;
+                    }
                 }
             } else {
                 // Start the main loop, only exiting with an error if not doing so would result in unrecoverable state
