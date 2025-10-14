@@ -166,7 +166,7 @@ pub const GoCommand = struct {
             return;
         }
 
-        if (self.infinite or self.depth != null) {
+        if (self.infinite or self.depth != null or self.movetime != null) {
             engine.searcher.force_thinking = true;
         } else {
             engine.searcher.force_thinking = false;
