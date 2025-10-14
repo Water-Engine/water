@@ -302,7 +302,7 @@ pub fn Engine(comptime Searcher: type) type {
                 }
 
                 // See the above issue for an explanation, though this does change it a little
-                while (true) {
+                outer: while (true) {
                     const stdIn: std.os.windows.HANDLE = try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE);
                     try std.os.windows.WaitForSingleObject(stdIn, std.os.windows.INFINITE);
 
@@ -329,7 +329,7 @@ pub fn Engine(comptime Searcher: type) type {
                         if (trimmed_line.len == 4) {
                             if (std.mem.startsWith(u8, trimmed_line, "quit")) {
                                 self.notifyStopSearch();
-                                break;
+                                break :outer;
                             } else if (std.mem.startsWith(u8, trimmed_line, "stop")) {
                                 self.notifyStopSearch();
                                 continue;
