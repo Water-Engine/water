@@ -48,6 +48,8 @@ pub const dispatcher = @import("water/framework/dispatcher.zig");
 pub const network = @import("water/framework/network.zig");
 pub const default_commands = @import("water/framework/default_commands.zig");
 
+pub const mem = @import("water/syzygy/mem.zig");
+
 // ================ TESTING ================
 
 test {
@@ -70,4 +72,6 @@ test {
     _ = @import("water/framework/engine.zig");
     _ = @import("water/framework/type_validators.zig");
     _ = @import("water/framework/dispatcher.zig");
+
+    _ = @import("water/syzygy/mem.zig");
 }

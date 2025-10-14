@@ -124,14 +124,18 @@ pub const Searcher = struct {
         self.evaluator.refresh(self.search_board, .full);
 
         self.nodes = 0;
-        self.best_move = .init();
         self.timer = std.time.Timer.start() catch unreachable;
         self.alloted_time_ns = alloted_time_ns;
         self.iterative_deepening_depth = 0;
 
+        // Defensively set the best move to a legal move if available
+        var root_moves = water.movegen.Movelist{};
+        water.movegen.legalmoves(self.search_board, &root_moves, .{});
+        self.best_move = if (root_moves.size > 0) root_moves.moves[0] else water.Move.init();
+        var bm = self.best_move;
+
         var prev_score = -evaluator_.mate_score;
         var score = -evaluator_.mate_score;
-        var bm = water.Move.init();
         var stability: usize = 0;
 
         var tdepth: usize = 1;

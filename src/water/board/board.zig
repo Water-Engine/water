@@ -1538,7 +1538,7 @@ test "Chess960 board" {
     );
 }
 
-test "Fen reconstruction" {
+test "Fen setting and reconstruction" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
     defer board.deinit();
@@ -1552,6 +1552,18 @@ test "Fen reconstruction" {
     defer board.allocator.free(fen_moveless);
 
     try expectEqualSlices(u8, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -", fen_moveless);
+
+    const test_fen_1: []const u8 = "8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80";
+    try expect(try board.setFen(test_fen_1, true));
+    const actual_1 = try board.getFen(true);
+    defer allocator.free(actual_1);
+    try expectEqualSlices(u8, test_fen_1, actual_1);
+
+    const test_fen_2: []const u8 = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQkq - 0 2";
+    try expect(try board.setFen(test_fen_2, true));
+    const actual_2 = try board.getFen(true);
+    defer allocator.free(actual_2);
+    try expectEqualSlices(u8, test_fen_2, actual_2);
 }
 
 test "EPD handling" {

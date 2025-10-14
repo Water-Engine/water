@@ -33,6 +33,12 @@ pub fn PositionCommand(comptime Searcher: type) type {
                 &.{"moves"},
             );
 
+            // Pull out the fen ending at the moves token if present
+            if (dispatcher.tokensAfter(tokens, "fen")) |rest| {
+                const last = std.mem.indexOf(u8, rest, "moves") orelse rest.len;
+                parsed.fen = rest[0..last];
+            }
+
             // Handle ambiguity with the fen/startpos
             if (parsed.startpos) |sp| {
                 if (sp) parsed.fen = board_.starting_fen;

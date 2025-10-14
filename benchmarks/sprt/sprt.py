@@ -10,7 +10,7 @@ sl_baseline = "C:/dev/chess/sprt/Chess-Coding-Adventure.exe"
 
 # SPRT parameters
 elo0 = 2725  # baseline elo
-elo1 = 2800  # minimum elo to consider baseline weaker
+elo1 = 2750  # minimum elo to consider baseline weaker
 alpha = 0.05
 beta = 0.05
 
@@ -18,7 +18,6 @@ cmd = [
     fastchess,
     "-engine",
     f"name=Water cmd={engine_test}",
-    "restart=on",
     # "-engine", f"name=SebLague cmd={engine_baseline}",
     "-engine", f"name=Stockfish cmd={engine_baseline} option.UCI_Elo={elo0} option.UCI_LimitStrength=true",
     "-each",
@@ -40,4 +39,5 @@ cmd = [
     # "-log", "file=water-v1-release.log", "engine=true"
 ]
 
-subprocess.run(" ".join(cmd), shell=True, check=True)
+# subprocess.run(" ".join(cmd), shell=True, check=True)
+print(" ".join(cmd))

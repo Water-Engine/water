@@ -9,7 +9,7 @@ engine_baseline = "C:/dev/chess/sprt/stockfish.exe"
 sl_baseline = "C:/dev/chess/sprt/Chess-Coding-Adventure.exe"
 
 # SPRT parameters
-elo0 = 2600  # baseline elo
+elo0 = 2500  # baseline elo
 elo1 = 2650  # minimum elo to consider baseline weaker
 alpha = 0.05
 beta = 0.05
@@ -20,9 +20,9 @@ cmd = [
     f"name=Water cmd={engine_test}",
     "-engine", f"name=Stockfish cmd={engine_baseline} option.UCI_Elo={elo0} option.UCI_LimitStrength=true",
     "-each",
-    "option.Hash=8",
+    "option.Hash=64",
     "proto=uci", 
-    "tc=40/120+0.1",
+    "tc=40/60+0.1",
     "-concurrency", "10",
     "-rounds 100",
     "-openings", "file=8moves_v3.pgn", "format=pgn", "order=random",
@@ -32,6 +32,7 @@ cmd = [
     f"\"Water v1 DEBUG vs. Stockfish {elo0} ELO\"",
     "-pgnout",
     "water-v1_dbg.pgn",
+    "-recover",
     "-log", "file=water-v1-dbg.log", "engine=true"
 ]
 
