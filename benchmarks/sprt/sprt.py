@@ -10,7 +10,7 @@ sl_baseline = "C:/dev/chess/sprt/Chess-Coding-Adventure.exe"
 
 # SPRT parameters
 elo0 = 2725  # baseline elo
-elo1 = 2750  # minimum elo to consider baseline weaker
+elo1 = 2740  # minimum elo to consider baseline weaker
 alpha = 0.05
 beta = 0.05
 
@@ -24,7 +24,7 @@ cmd = [
     "option.Hash=64",
     "proto=uci", 
     "tc=40/60+0.1",
-    "-rounds 200",
+    "-rounds 400",
     "-concurrency", "10",
     "-openings",
     "file=8moves_v3.PGN",
@@ -34,10 +34,9 @@ cmd = [
     "-event",
     f"\"Water v1 vs. Stockfish {elo0} ELO\"",
     "-pgnout",
-    "Water-v1.pgn",
+    "Water-v1-2.pgn",
     "-recover",
     # "-log", "file=water-v1-release.log", "engine=true"
 ]
 
-# subprocess.run(" ".join(cmd), shell=True, check=True)
-print(" ".join(cmd))
+subprocess.run(" ".join(cmd), shell=True, check=True)

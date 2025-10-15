@@ -29,7 +29,7 @@ pub fn main() !void {
     // The writer must flush after engine deinitializes to prevent a concurrency issue
     defer {
         engine.deinit(.{});
-        stdout.flush() catch unreachable;
+        stdout.flush() catch {};
     }
 
     var stdin_buffer: [1024]u8 = undefined;

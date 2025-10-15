@@ -173,6 +173,9 @@ pub const Board = struct {
     /// Will not modify the board if the fen cannot be updated correctly.
     /// You must use this function before setting an FRC fen.
     ///
+    /// Freely switching between FRC and Classical is not guaranteed.
+    /// For switching back to classical from FRC, the board must have a valid internal classical fen.
+    ///
     /// Using this in the middle of a game resets the board to its original fen position.
     pub fn setFischerRandom(self: *Board, fischer_random: bool) !bool {
         const previous_frc = self.fischer_random;
@@ -216,6 +219,8 @@ pub const Board = struct {
     }
 
     /// Attempts to set the board fen position, reallocating the board original fen representation if requested.
+    ///
+    /// Unless you are explicitly managing your fen elsewhere, reallocation is recommended.
     ///
     /// Returns `true` if the fen was set successfully. Unsuccessful setting does not mutate the Board.
     pub fn setFen(self: *Board, fen: []const u8, reallocate_fen: bool) !bool {
@@ -510,24 +515,23 @@ pub const Board = struct {
         var half_moves: usize = 0;
         var full_moves: usize = 1;
 
-        const hmvc = entryAfter(.scalar, &parts, "hmvc");
-        if (hmvc) |num| {
+        if (entryAfter(.scalar, &parts, "hmvc")) |hmvc| {
             half_moves = std.fmt.parseInt(
                 usize,
-                if (num[num.len - 1] == ';') num[0 .. num.len - 1] else num,
+                if (hmvc[hmvc.len - 1] == ';') hmvc[0 .. hmvc.len - 1] else hmvc,
                 10,
             ) catch 0;
         }
 
-        const fmvn = entryAfter(.scalar, &parts, "fmvn");
-        if (fmvn) |num| {
+        if (entryAfter(.scalar, &parts, "fmvn")) |fmvn| {
             full_moves = std.fmt.parseInt(
                 usize,
-                if (num[num.len - 1] == ';') num[0 .. num.len - 1] else num,
+                if (fmvn[fmvn.len - 1] == ';') fmvn[0 .. fmvn.len - 1] else fmvn,
                 10,
             ) catch 1;
         }
 
+        // The unwraps here are infallible since we early return for splits less than 4
         const fen = try std.fmt.allocPrint(
             self.allocator,
             "{s} {s} {s} {s} {d} {d}",
@@ -1069,7 +1073,6 @@ pub const Board = struct {
     ///
     /// This is ideal for chess engines.
     pub fn divide(self: *const Board, depth: usize, writer: *std.Io.Writer) !void {
-        defer writer.flush() catch {};
         var nodes: usize = 0;
         var branch: usize = 0;
 
@@ -1096,6 +1099,7 @@ pub const Board = struct {
         }
 
         try writer.print("\nNodes searched: {}\n", .{nodes});
+        try writer.flush();
     }
 
     /// Checks if the current position is a repetition.

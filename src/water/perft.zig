@@ -1,41 +1,153 @@
 const std = @import("std");
 const water = @import("water");
 
+const fischer: []const u8 = "benchmarks/perft/epd/fischer.epd";
+const marcel: []const u8 = "benchmarks/perft/epd/marcel.epd";
+const medium: []const u8 = "benchmarks/perft/epd/medium.epd";
+const reduced: []const u8 = "benchmarks/perft/epd/reduced.epd";
+const standard: []const u8 = "benchmarks/perft/epd/standard.epd";
+const terje: []const u8 = "benchmarks/perft/epd/terje_frc.epd";
+
+const result_filename: []const u8 = "benchmarks/perft/epd/results.txt";
+
 const TestCase = struct {
     fen: []const u8,
     depth: usize,
-    expected_nodes: ?usize,
+    expected_nodes: usize,
 };
 
-fn perft(board: *water.Board, test_case: TestCase) !void {
+var total_cases: usize = 0;
+var total_passed: usize = 0;
+var total_failed: usize = 0;
+var total_nodes: u128 = 0;
+
+/// Executes and times the test case on the given board.
+///
+/// Writes results to the passed writer. Assumes the board already has the position set.
+fn perft(board: *water.Board, writer: *std.Io.Writer, test_case: TestCase) !void {
     std.debug.assert(try board.setFen(test_case.fen, true));
+    total_cases += 1;
 
     const start = std.time.nanoTimestamp();
     const nodes = board.perft(test_case.depth, .{});
     const end = std.time.nanoTimestamp();
 
-    if (test_case.expected_nodes) |expected| {
-        if (nodes != expected) {
-            std.log.err("Perft error!\n\tExpected: {d}\n\tFound: {d}", .{ expected, nodes });
-            unreachable;
+    const elapsed_float_ms = @as(f128, @floatFromInt(end - start)) / 1_000_000.0;
+    const nps_float = (@as(f128, @floatFromInt(nodes)) * 1000.0) / (elapsed_float_ms + 1.0);
+
+    const elapsed_ms: u64 = @intFromFloat(elapsed_float_ms);
+    const nps: u64 = @intFromFloat(nps_float);
+
+    if (nodes != test_case.expected_nodes) {
+        try writer.print(
+            "[ERROR] depth {d:<2} time {d:<5} nodes [expected: {d:<12} | actual: {d:<12}] nps {d:<9} fen {s:<87}\n",
+            .{ test_case.depth, elapsed_ms, test_case.expected_nodes, nodes, nps, test_case.fen },
+        );
+        total_failed += 1;
+    } else {
+        try writer.print(
+            "depth {d:<2} time {d:<5} nodes {d:<12} nps {d:<9} fen {s:<87}\n",
+            .{ test_case.depth, elapsed_ms, nodes, nps, test_case.fen },
+        );
+        total_passed += 1;
+    }
+
+    total_nodes += nodes;
+}
+
+/// Collects the total number of tests to execute and returns the total count.
+///
+/// This is the first pass of the files, and also ensures all files can be accessed before dispatching.
+/// Malformed files do not error as they are skipped during the real test.
+/// All allocations are internal, and are the only source of failure besides file opening.
+///
+/// Inefficient? Of course!
+fn accumulate(allocator: std.mem.Allocator, files: []const []const u8) !usize {
+    var count: usize = 0;
+    for (files) |file| {
+        var input_file = try std.fs.cwd().openFile(file, .{ .mode = .read_only });
+        defer input_file.close();
+
+        const file_contents = try input_file.readToEndAlloc(allocator, std.math.maxInt(usize));
+        defer allocator.free(file_contents);
+
+        var lines = std.mem.splitScalar(u8, file_contents, '\n');
+        while (lines.next()) |line| {
+            var components = std.mem.tokenizeScalar(u8, line, ';');
+            _ = components.next() orelse continue;
+
+            // Now the components iterator only has depth values
+            while (components.next()) |depth_case| {
+                var split = std.mem.tokenizeScalar(u8, depth_case, ' ');
+
+                // Depth entries are formatted as "D<depth> <expected>"
+                const depth_str = split.next() orelse continue;
+                if (depth_str.len == 1) continue;
+                const expected_str = split.next() orelse continue;
+
+                _ = std.fmt.parseInt(usize, depth_str[1..], 10) catch continue;
+                _ = std.fmt.parseInt(usize, expected_str, 10) catch continue;
+
+                count += 1;
+            }
         }
     }
 
-    const elapsed_float = @as(f128, @floatFromInt(end - start)) / 1_000_000.0;
-    const nps_float = (@as(f128, @floatFromInt(nodes)) * 1000.0) / (elapsed_float + 1.0);
+    return count;
+}
 
-    const elapsed: u64 = @intFromFloat(elapsed_float);
-    const nps: u64 = @intFromFloat(nps_float);
+/// Parses and fully executes the epd-style perft test cases in the format:
+///
+/// 4k3/8/8/8/8/8/8/4K2R b K - 0 1 ;D1 5 ;D2 75 ;D3 459 ;D4 8290 ;D5 47635 ;D6 899442
+///
+/// This is the second pass of the file.
+///
+/// Inefficient? Of course!
+fn dispatch(allocator: std.mem.Allocator, case_filename: []const u8, frc: bool, writer: *std.Io.Writer, progress: *std.Progress.Node) !void {
+    var child_case = progress.start(case_filename, 0);
+    defer child_case.end();
 
-    var stdout_buffer: [1024]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    try writer.print("Running tests from '{s}'\n", .{case_filename});
+    var input_file = try std.fs.cwd().openFile(case_filename, .{ .mode = .read_only });
+    defer input_file.close();
 
-    try stdout_writer.interface.print(
-        "depth {d:<2} time {d:<5} nodes {d:<12} nps {d:<9} fen {s:<87}\n",
-        .{ test_case.depth, elapsed, nodes, nps, test_case.fen },
-    );
+    const file_contents = try input_file.readToEndAlloc(allocator, std.math.maxInt(usize));
+    defer allocator.free(file_contents);
 
-    try stdout_writer.interface.flush();
+    var board = try water.Board.init(allocator, .{ .fischer_random = frc });
+    defer board.deinit();
+
+    // Loop through all the lines, ignoring errors along the way since we're lazy
+    var lines = std.mem.splitScalar(u8, file_contents, '\n');
+    while (lines.next()) |line| {
+        var components = std.mem.tokenizeScalar(u8, line, ';');
+        const fen = components.next() orelse continue;
+        _ = board.setFen(fen, true) catch continue;
+
+        // Now the components iterator only has depth values
+        while (components.next()) |depth_case| {
+            var split = std.mem.tokenizeScalar(u8, depth_case, ' ');
+
+            // Depth entries are formatted as "D<depth> <expected>"
+            const depth_str = split.next() orelse continue;
+            if (depth_str.len == 1) continue;
+            const expected_str = split.next() orelse continue;
+
+            const depth = std.fmt.parseInt(usize, depth_str[1..], 10) catch continue;
+            const expected = std.fmt.parseInt(usize, expected_str, 10) catch continue;
+
+            // Since we already went past the initial set fen check, this can only fail from writing and allocating
+            try perft(board, writer, .{
+                .fen = fen,
+                .depth = depth,
+                .expected_nodes = expected,
+            });
+            progress.completeOne();
+        }
+    }
+
+    try writer.writeByte('\n');
+    try writer.flush();
 }
 
 pub fn main() !void {
@@ -43,41 +155,53 @@ pub fn main() !void {
     var board = try water.Board.init(allocator, .{});
     defer board.deinit();
 
-    // Test a variety of classical positions
-    std.debug.print("Classical Positions:\n", .{});
-    const classical_positions: [6]TestCase = .{
-        .{ .fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", .depth = 7, .expected_nodes = 3195901860 },
-        .{ .fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ", .depth = 5, .expected_nodes = 193690690 },
-        .{ .fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ", .depth = 7, .expected_nodes = 178633661 },
-        .{ .fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", .depth = 6, .expected_nodes = 706045033 },
-        .{ .fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", .depth = 5, .expected_nodes = 89941194 },
-        .{ .fen = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 1", .depth = 5, .expected_nodes = 164075551 },
-    };
+    var output_file = try std.fs.cwd().createFile(result_filename, .{});
+    defer output_file.close();
 
-    for (classical_positions) |tc| {
-        try perft(board, tc);
-    }
+    var buf: [0x2000]u8 = undefined;
+    var file_writer = output_file.writer(&buf);
+    const writer = &file_writer.interface;
 
-    // Test a variety of FRC positions
-    std.debug.print("\nFRC Positions:\n", .{});
-    if (!(board.setFischerRandom(true) catch false)) unreachable;
-    const frc_positions: [13]TestCase = .{
-        .{ .fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w AHah - 0 1", .depth = 6, .expected_nodes = 119060324 },
-        .{ .fen = "1rqbkrbn/1ppppp1p/1n6/p1N3p1/8/2P4P/PP1PPPP1/1RQBKRBN w FBfb - 0 9", .depth = 6, .expected_nodes = 191762235 },
-        .{ .fen = "rbbqn1kr/pp2p1pp/6n1/2pp1p2/2P4P/P7/BP1PPPP1/R1BQNNKR w HAha - 0 9", .depth = 6, .expected_nodes = 924181432 },
-        .{ .fen = "rqbbknr1/1ppp2pp/p5n1/4pp2/P7/1PP5/1Q1PPPPP/R1BBKNRN w GAga - 0 9", .depth = 6, .expected_nodes = 308553169 },
-        .{ .fen = "4rrb1/1kp3b1/1p1p4/pP1Pn2p/5p2/1PR2P2/2P1NB1P/2KR1B2 w D - 0 21", .depth = 6, .expected_nodes = 872323796 },
-        .{ .fen = "1rkr3b/1ppn3p/3pB1n1/6q1/R2P4/4N1P1/1P5P/2KRQ1B1 b Dbd - 0 14", .depth = 6, .expected_nodes = 2678022813 },
-        .{ .fen = "qbbnrkr1/p1pppppp/1p4n1/8/2P5/6N1/PPNPPPPP/1BRKBRQ1 b FCge - 1 3", .depth = 6, .expected_nodes = 521301336 },
-        .{ .fen = "rr6/2kpp3/1ppn2p1/p2b1q1p/P4P1P/1PNN2P1/2PP4/1K2R2R b E - 1 20", .depth = 2, .expected_nodes = 1438 },
-        .{ .fen = "rr6/2kpp3/1ppn2p1/p2b1q1p/P4P1P/1PNN2P1/2PP4/1K2RR2 w E - 0 20", .depth = 3, .expected_nodes = 37340 },
-        .{ .fen = "rr6/2kpp3/1ppnb1p1/p2Q1q1p/P4P1P/1PNN2P1/2PP4/1K2RR2 b E - 2 19", .depth = 4, .expected_nodes = 2237725 },
-        .{ .fen = "rr6/2kpp3/1ppnb1p1/p4q1p/P4P1P/1PNN2P1/2PP2Q1/1K2RR2 w E - 1 19", .depth = 4, .expected_nodes = 2098209 },
-        .{ .fen = "rr6/2kpp3/1ppnb1p1/p4q1p/P4P1P/1PNN2P1/2PP2Q1/1K2RR2 w E - 1 19", .depth = 5, .expected_nodes = 79014522 },
-        .{ .fen = "rr6/2kpp3/1ppnb1p1/p4q1p/P4P1P/1PNN2P1/2PP2Q1/1K2RR2 w E - 1 19", .depth = 6, .expected_nodes = 2998685421 },
-    };
+    const total_tests = try accumulate(allocator, &.{
+        fischer,
+        marcel,
+        medium,
+        reduced,
+        standard,
+        terje,
+    });
 
-    for (frc_positions) |tc| {
-        try perft(board, tc);
-    }
+    var progress = std.Progress.start(.{
+        .estimated_total_items = total_tests,
+        .root_name = "Perft Suite",
+    });
+    defer progress.end();
+
+    // Dispatch the tests synchronously
+    const start = std.time.nanoTimestamp();
+    try dispatch(allocator, fischer, true, writer, &progress);
+    try dispatch(allocator, marcel, false, writer, &progress);
+    try dispatch(allocator, medium, false, writer, &progress);
+    try dispatch(allocator, reduced, false, writer, &progress);
+    try dispatch(allocator, standard, false, writer, &progress);
+    try dispatch(allocator, terje, true, writer, &progress);
+    const end = std.time.nanoTimestamp();
+
+    try writer.flush();
+
+    // Print out the stats
+    var stdout_buf: [0x100]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buf);
+    const stdout = &stdout_writer.interface;
+
+    const elapsed_s: u128 = @intCast(@divTrunc(end - start, std.time.ns_per_s));
+
+    try stdout.print("\n\nPerft Suite Completed:\n", .{});
+    try stdout.print("  Total cases:  {d}\n", .{total_cases});
+    try stdout.print("    Total passed: {d}\n", .{total_passed});
+    try stdout.print("    Total failed: {d}\n", .{total_failed});
+    try stdout.print("  Total nodes:  {d}\n", .{total_nodes});
+    try stdout.print("  Total elapsed: {d}s\n", .{elapsed_s});
+
+    try stdout.flush();
 }
