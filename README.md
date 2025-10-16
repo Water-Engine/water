@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  A zero-dependency chess library written in Zig.
+  A comprehensive chess suite written in Zig.
 </p>
 
 # Goals
@@ -14,6 +14,8 @@ Water aims to provide a performant chess engine library allowing users to easily
 The water engine itself is crafted using this library, with the goals of making:
 - An iterative search engine with Alpha-Beta Pruning, Quiescence, etc.
 - A neural network-powered engine using NNUE
+
+Also included in this library is a minimal GUI called oasis, which is powered by the water library. This part of the project is still very much in the works, and more information about it will come in the future.
 
 # Getting Started
 For a quick build of the project, simply run `zig build run --release`.

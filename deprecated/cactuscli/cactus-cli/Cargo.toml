@@ -1,0 +1,13 @@
+[package]
+name = "cactus-cli"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+indicatif = "0.18.0"
+libcactus = { path = "../libcactus"}
+owo-colors = "4.2.2"
+which = "8.0.0"
