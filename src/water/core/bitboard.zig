@@ -192,6 +192,9 @@ pub const Bitboard = struct {
 
     // ================ MISC UTILS ================
 
+    /// Converts the BB into a 'board' representation. The board is:
+    /// - Separated by newlines every 8 bits, separating each bit with a space
+    /// - Printed from white's perspective
     pub fn asBoardStr(self: *const Bitboard) [127]u8 {
         var out: [127]u8 = undefined;
         const bits: u64 = @bitReverse(self.bits);

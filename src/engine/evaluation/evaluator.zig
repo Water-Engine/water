@@ -96,14 +96,14 @@ pub fn distance(board: *const water.Board, comptime white_winning: bool) i32 {
     const black_king = board.kingSq(.black).index();
 
     var score: i32 = 0;
-    const m_dist = water.manhattan_distance[white_king][black_king];
+    const m_dist = water.distance.manhattan[white_king][black_king];
 
     if (white_winning) {
         score -= m_dist * 5;
-        score += water.center_manhattan_distance[black_king] * 10;
+        score += water.distance.center_manhattan[black_king] * 10;
     } else {
         score += m_dist * 5;
-        score -= water.center_manhattan_distance[white_king] * 10;
+        score -= water.distance.center_manhattan[white_king] * 10;
     }
 
     return score;

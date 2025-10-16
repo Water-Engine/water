@@ -797,7 +797,7 @@ pub const Board = struct {
             self.halfmove_clock = 0;
 
             // A distance of 16 means a double push
-            if (distance.absolute_distance[move.to().index()][move.from().index()] == 16) {
+            if (distance.absolute[move.to().index()][move.from().index()] == 16) {
                 const ep_mask = attacks.pawn(self.side_to_move, move.to().ep());
 
                 // Add en passant only if enemy pawns are attacking the square

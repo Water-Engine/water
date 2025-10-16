@@ -6,31 +6,28 @@ const CastlingRights = castling.CastlingRights;
 const bitboard = @import("bitboard.zig");
 const Bitboard = bitboard.Bitboard;
 
-// ================ ERRORS ================
-
 pub const ChessError = error{
     IllegalFen,
     IllegalFenState,
     IllegalMove,
 };
 
-// ================ COLOR ================
-
+/// The player Color for a chess game.
+///
+/// Includes a sentinel `none` value in favor of using optionals.
 pub const Color = enum(u8) {
     white = 0,
     black = 1,
     none = 2,
 
-    pub fn init() Color {
-        return .none;
-    }
-
+    /// Checks if the Color is not `none`.
     pub fn valid(self: *const Color) bool {
         return self.* != .none;
     }
 
     // ================ INT UTILS ================
 
+    /// Creates a Color from the given integer.
     pub fn fromInt(comptime T: type, num: T) Color {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @enumFromInt(num),
@@ -38,6 +35,7 @@ pub const Color = enum(u8) {
         };
     }
 
+    // Returns the enum value as the given integer type.
     pub fn asInt(self: *const Color, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @intFromEnum(self.*),
@@ -45,22 +43,30 @@ pub const Color = enum(u8) {
         };
     }
 
+    // This does exactly what you think.
     pub fn index(self: *const Color) usize {
         return self.asInt(usize);
     }
 
     // ================ SLICE UTILS ================
 
+    /// Converts the first character of the input string to its Color representation.
+    ///
+    /// Invalid characters are `.none`.
     pub fn fromStr(str: []const u8) Color {
         return if (str.len == 0) .none else fromChar(str[0]);
     }
 
+    /// Returns the tag name of the Color.
     pub fn asStr(self: *const Color) []const u8 {
         return @tagName(self.*);
     }
 
     // ================ CHAR UTILS ================
 
+    /// Converts the byte to its Color representation.
+    ///
+    /// Invalid characters are `.none`.
     pub fn fromChar(char: u8) Color {
         return switch (std.ascii.toLower(char)) {
             'w' => .white,
@@ -69,6 +75,9 @@ pub const Color = enum(u8) {
         };
     }
 
+    /// Returns the byte representation of the Color.
+    ///
+    /// The `.none` variant is represented as '-'.
     pub fn asChar(self: *const Color) u8 {
         return switch (self.*) {
             .white => 'w',
@@ -88,6 +97,9 @@ pub const Color = enum(u8) {
 
     // ================ MISC UTILS ================
 
+    /// Returns the opponent of the Color.
+    ///
+    /// The `.none` Color does not have an opposite.
     pub fn opposite(self: *const Color) Color {
         return switch (self.*) {
             .white => .black,
@@ -109,8 +121,9 @@ pub const Color = enum(u8) {
     }
 };
 
-// ================ FILE ================
-
+/// A file on the chess board.
+///
+/// Includes a sentinel `none` value in favor of using optionals.
 pub const File = enum(u8) {
     fa = 0,
     fb = 1,
@@ -122,21 +135,27 @@ pub const File = enum(u8) {
     fh = 7,
     none = 8,
 
+    /// Precomputed file masks for easy & direct indexing.
     pub const masks: [8]u64 = .{
-        0x101010101010101,  0x202020202020202,  0x404040404040404,  0x808080808080808,
+        0x0101010101010101, 0x0202020202020202, 0x0404040404040404, 0x0808080808080808,
         0x1010101010101010, 0x2020202020202020, 0x4040404040404040, 0x8080808080808080,
     };
 
+    /// Alias for using `File.none`.
+    ///
+    /// Only included for unity with other more useful `init` functions.
     pub fn init() File {
         return .none;
     }
 
+    /// Checks if the File is not `none`.
     pub fn valid(self: *const File) bool {
         return self.* != .none;
     }
 
     // ================ INT UTILS ================
 
+    /// Creates a File from the given integer.
     pub fn fromInt(comptime T: type, num: T) File {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @enumFromInt(num),
@@ -144,6 +163,7 @@ pub const File = enum(u8) {
         };
     }
 
+    // Returns the enum value as the given integer type.
     pub fn asInt(self: *const File, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @intFromEnum(self.*),
@@ -151,22 +171,30 @@ pub const File = enum(u8) {
         };
     }
 
+    // This does exactly what you think.
     pub fn index(self: *const File) usize {
         return self.asInt(usize);
     }
 
     // ================ SLICE UTILS ================
 
+    /// Converts the first character of the input string to its File representation.
+    ///
+    /// Invalid characters are `.none`.
     pub fn fromStr(str: []const u8) File {
         return if (str.len == 0) .none else fromChar(str[0]);
     }
 
+    /// Returns the tag name of the File.
     pub fn asStr(self: *const File) []const u8 {
         return @tagName(self.*);
     }
 
     // ================ CHAR UTILS ================
 
+    /// Converts the byte to its File representation.
+    ///
+    /// Invalid characters are `.none`.
     pub fn fromChar(char: u8) File {
         return switch (std.ascii.toLower(char)) {
             'a' => .fa,
@@ -181,6 +209,9 @@ pub const File = enum(u8) {
         };
     }
 
+    /// Returns the byte representation of the File.
+    ///
+    /// The `.none` variant is represented as '-'.
     pub fn asChar(self: *const File) u8 {
         return switch (self.*) {
             .fa => 'a',
@@ -206,6 +237,7 @@ pub const File = enum(u8) {
 
     // ================ INCREMENTING & DECREMENTING ================
 
+    /// Increments and/or wraps the File in ascending order.
     pub fn next(self: *const File) File {
         return switch (self.*) {
             .fa => .fb,
@@ -220,6 +252,9 @@ pub const File = enum(u8) {
         };
     }
 
+    /// Increments and/or wraps the File in ascending order.
+    ///
+    /// Modifies the File's value.
     pub fn inc(self: *File) File {
         self.* = switch (self.*) {
             .fa => .fb,
@@ -237,14 +272,18 @@ pub const File = enum(u8) {
 
     // ================ MISC UTILS ================
 
+    /// Retrieves the mask of the File.
+    ///
+    /// Asserts that the File is valid.
     pub fn mask(self: *const File) u64 {
         std.debug.assert(self.valid());
         return masks[self.asInt(usize)];
     }
 };
 
-// ================ RANK ================
-
+/// A rank on the chess board.
+///
+/// Includes a sentinel `none` value in favor of using optionals.
 pub const Rank = enum(u8) {
     r1 = 0,
     r2 = 1,
@@ -256,21 +295,27 @@ pub const Rank = enum(u8) {
     r8 = 7,
     none = 8,
 
+    /// Precomputed rank masks for easy & direct indexing.
     pub const masks: [8]u64 = .{
         0x00000000000000FF, 0x000000000000FF00, 0x0000000000FF0000, 0x00000000FF000000,
         0x000000FF00000000, 0x0000FF0000000000, 0x00FF000000000000, 0xFF00000000000000,
     };
 
+    /// Alias for using `Rank.none`.
+    ///
+    /// Only included for unity with other more useful `init` functions.
     pub fn init() Rank {
         return .none;
     }
 
+    /// Checks if the Rank is not `none`.
     pub fn valid(self: *const Rank) bool {
         return self.* != .none;
     }
 
     // ================ INT UTILS ================
 
+    /// Creates a Rank from the given integer.
     pub fn fromInt(comptime T: type, num: T) Rank {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @enumFromInt(num),
@@ -278,6 +323,7 @@ pub const Rank = enum(u8) {
         };
     }
 
+    // Returns the enum value as the given integer type.
     pub fn asInt(self: *const Rank, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @intFromEnum(self.*),
@@ -285,22 +331,30 @@ pub const Rank = enum(u8) {
         };
     }
 
+    // This does exactly what you think.
     pub fn index(self: *const Rank) usize {
         return self.asInt(usize);
     }
 
     // ================ SLICE UTILS ================
 
+    /// Converts the first character of the input string to its Rank representation.
+    ///
+    /// Invalid characters are `.none`.
     pub fn fromStr(str: []const u8) Rank {
         return if (str.len == 0) .none else fromChar(str[0]);
     }
 
+    /// Returns the tag name of the Rank.
     pub fn asStr(self: *const Rank) []const u8 {
         return @tagName(self.*);
     }
 
     // ================ CHAR UTILS ================
 
+    /// Converts the byte to its Rank representation.
+    ///
+    /// Invalid characters are `.none`.
     pub fn fromChar(char: u8) Rank {
         return switch (std.ascii.toLower(char)) {
             '0' => .r1,
@@ -315,6 +369,9 @@ pub const Rank = enum(u8) {
         };
     }
 
+    /// Returns the byte representation of the Rank.
+    ///
+    /// The `.none` variant is represented as '-'.
     pub fn asChar(self: *const Rank) u8 {
         return switch (self.*) {
             .r1 => '0',
@@ -340,6 +397,7 @@ pub const Rank = enum(u8) {
 
     // ================ INCREMENTING & DECREMENTING ================
 
+    /// Increments and/or wraps the Rank in ascending order.
     pub fn next(self: *const Rank) Rank {
         return switch (self.*) {
             .r1 => .r2,
@@ -354,6 +412,9 @@ pub const Rank = enum(u8) {
         };
     }
 
+    /// Increments and/or wraps the Rank in ascending order.
+    ///
+    /// Modifies the Rank's value.
     pub fn inc(self: *Rank) Rank {
         self.* = switch (self.*) {
             .r1 => .r2,
@@ -371,22 +432,28 @@ pub const Rank = enum(u8) {
 
     // ================ MISC UTILS ================
 
+    /// Retrieves the mask of the Rank.
+    ///
+    /// Asserts that the Rank is valid.
     pub fn mask(self: *const Rank) u64 {
         std.debug.assert(self.valid());
         return masks[self.index()];
     }
 
+    /// Checks if the Rank is considered the back Rank for the given Color.
     pub fn backRank(self: *const Rank, color: Color) bool {
         return self.asInt(i32) == @intFromEnum(color) * 7;
     }
 
+    /// Orients the Rank for the given Color.
     pub fn orient(self: *const Rank, color: Color) Rank {
         return @enumFromInt(self.asInt(i32) ^ (color.asInt(i32) * 7));
     }
 };
 
-// ================ SQUARE ================
-
+/// A square on the chess board.
+///
+/// Includes a sentinel `none` value in favor of using optionals.
 pub const Square = enum(u8) {
     // zig fmt: off
     a1 = 0,  b1 = 1,  c1 = 2,  d1 = 3,  e1 = 4,  f1 = 5,  g1 = 6,  h1 = 7,
@@ -401,6 +468,7 @@ pub const Square = enum(u8) {
 
     none = 64,
 
+    /// A Color agnostic direction of the board.
     pub const Direction = enum(i8) {
         north = 8,
         west = -1,
@@ -412,6 +480,7 @@ pub const Square = enum(u8) {
         south_west = -9,
         south_east = -7,
 
+        /// Creates a direction oriented with respect to the given Color.
         pub fn make(direction: Direction, color: Color) Direction {
             if (color == .black) {
                 return @as(Direction, @enumFromInt(-direction.asInt(i8)));
@@ -419,6 +488,7 @@ pub const Square = enum(u8) {
             return direction;
         }
 
+        // Returns the enum value as the given integer type.
         pub fn asInt(self: *const Direction, comptime T: type) T {
             return switch (@typeInfo(T)) {
                 .int, .comptime_int => @intFromEnum(self.*),
@@ -426,21 +496,27 @@ pub const Square = enum(u8) {
             };
         }
 
+        /// Adds the direction to the given square.
         pub fn addToSquare(self: *const Direction, square: Square) Square {
             return Square.fromInt(i32, self.asInt(i32) + square.asInt(i32));
         }
     };
 
+    /// Alias for using `Square.none`.
+    ///
+    /// Only included for unity with other more useful `init` functions.
     pub fn init() Square {
         return .none;
     }
 
+    /// Checks if the Square is not `none`.
     pub fn valid(self: *const Square) bool {
         return self.* != .none;
     }
 
     // ================ INT UTILS ================
 
+    /// Creates a Square from the given integer.
     pub fn fromInt(comptime T: type, num: T) Square {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @enumFromInt(num),
@@ -448,6 +524,7 @@ pub const Square = enum(u8) {
         };
     }
 
+    // Returns the enum value as the given integer type.
     pub fn asInt(self: *const Square, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @intFromEnum(self.*),
@@ -455,12 +532,16 @@ pub const Square = enum(u8) {
         };
     }
 
+    // This does exactly what you think.
     pub fn index(self: *const Square) usize {
         return self.asInt(usize);
     }
 
     // ================ SLICE UTILS ================
 
+    /// Converts the input string to its Square representation.
+    ///
+    /// Invalid characters are `.none`.
     pub fn fromStr(str: []const u8) Square {
         if (str.len != 2) return .none;
 
@@ -476,21 +557,25 @@ pub const Square = enum(u8) {
         return Square.fromInt(u8, rank_val * 8 + file_val);
     }
 
+    /// Returns the tag name of the Square.
     pub fn asStr(self: *const Square) []const u8 {
         return @tagName(self.*);
     }
 
     // ================ FILE & RANK UTILS ================
 
+    /// Creates a Square from the given Rank and File.
     pub fn make(r: Rank, f: File) Square {
         std.debug.assert(r.valid() and f.valid());
         return Square.fromInt(usize, f.asInt(usize) + r.asInt(usize) * 8);
     }
 
+    /// Returns the File of the Square.
     pub fn file(self: *const Square) File {
         return File.fromInt(usize, self.index() & 7);
     }
 
+    /// Returns the Rank of the square.
     pub fn rank(self: *const Square) Rank {
         return Rank.fromInt(usize, self.index() >> 3);
     }
@@ -506,21 +591,29 @@ pub const Square = enum(u8) {
 
     // ================ INCREMENTING & DECREMENTING ================
 
+    /// Increments and/or wraps the Square in ascending order.
     pub fn next(self: *const Square) Square {
         if (self.* == .none) return .a1;
         return @enumFromInt((@intFromEnum(self.*) + 1) % 64);
     }
 
+    /// Increments and/or wraps the Square in descending order.
     pub fn prev(self: *const Square) Square {
         if (self.* == .none) return .h8;
         return @enumFromInt(((@intFromEnum(self.*) + 64 - 1) % 64));
     }
 
+    /// Increments and/or wraps the Square in ascending order.
+    ///
+    /// Modifies the Square's value.
     pub fn inc(self: *Square) Square {
         self.* = if (self.* == .none) .a1 else @enumFromInt((@intFromEnum(self.*) + 1) % 64);
         return self.*;
     }
 
+    /// Increments and/or wraps the Square in descending order.
+    ///
+    /// Modifies the Square's value.
     pub fn dec(self: *Square) Square {
         self.* = if (self.* == .none) .h8 else @enumFromInt(((@intFromEnum(self.*) + 64 - 1) % 64));
         return self.*;
@@ -528,56 +621,63 @@ pub const Square = enum(u8) {
 
     // ================ ARITHMETIC ================
 
+    /// Performs the addition operator with the other Square.
     pub fn add(self: *const Square, other: Square) Square {
         return fromInt(i32, self.asInt(i32) + other.asInt(i32));
     }
 
+    /// Performs the subtraction operator with the other Square.
     pub fn sub(self: *const Square, other: Square) Square {
         return fromInt(i32, self.asInt(i32) - other.asInt(i32));
     }
 
+    /// Performs the exclusive operator with the other Square.
     pub fn xor(self: *const Square, other: Square) Square {
         return fromInt(usize, self.index() ^ other.index());
     }
 
+    /// Adds the direction to the given square.
     pub fn addToDirection(self: *const Square, direction: Direction) Square {
         return Square.fromInt(i32, self.asInt(i32) + direction.asInt(i32));
     }
 
     // ================ MISC UTILS ================
 
+    /// Checks if the Square is a light square on the board.
     pub fn light(self: *const Square) bool {
         return ((self.file().index() + self.rank().index()) & 1) == 1;
     }
 
+    /// Checks if the Square is a dark square on the board.
     pub fn dark(self: *const Square) bool {
         return !self.light();
     }
 
+    /// Checks if the Square is the same board Color as the other Square.
     pub fn sameColor(self: *const Square, other: Square) bool {
         return ((9 * self.xor(other).index()) & 8) == 0;
     }
 
+    /// Flips a square along the horizontal axis.
     pub fn flip(self: *const Square) Square {
         return fromInt(usize, self.index() ^ 56);
     }
 
+    /// Flips a square along the horizontal axis relative to the given Color.
     pub fn flipRelative(self: *const Square, color: Color) Square {
         return fromInt(usize, self.index() ^ (color.index() * 56));
     }
 
+    /// Checks if the Square is considered the back rank for the given Color.
     pub fn backRank(self: *const Square, color: Color) bool {
         return self.rank().backRank(color);
     }
 
-    pub fn diagonal(self: *const Square) Square {
-        return fromInt(usize, 7 + self.rank().index() - self.file().index());
-    }
-
-    pub fn antidiagonal(self: *const Square) Square {
-        return fromInt(usize, self.rank().index() + self.file().index());
-    }
-
+    /// Returns the relevant en passant square from the given Square's Rank.
+    ///
+    /// This is a slightly ambiguous function that should be used with care.
+    ///
+    /// Ranks without a relevant en passant square return `.none`.
     pub fn ep(self: *const Square) Square {
         return switch (self.rank()) {
             .r3, .r4, .r5, .r6 => fromInt(usize, self.index() ^ 8),
@@ -585,10 +685,12 @@ pub const Square = enum(u8) {
         };
     }
 
+    /// Returns the square that a castling move for the given Color and Side would put the king at.
     pub fn castlingKingTo(side: CastlingRights.Side, color: Color) Square {
         return if (side == .king) Square.g1.flipRelative(color) else Square.c1.flipRelative(color);
     }
 
+    /// Returns the square that a castling move for the given Color and Side would put the rook at.
     pub fn castlingRookTo(side: CastlingRights.Side, color: Color) Square {
         return if (side == .king) Square.f1.flipRelative(color) else Square.d1.flipRelative(color);
     }
@@ -603,8 +705,6 @@ test "Color" {
     const white = Color.white;
     const black = Color.black;
     const none = Color.none;
-
-    try expectEqual(none, Color.init());
 
     // ================ INT UTILS ================
 

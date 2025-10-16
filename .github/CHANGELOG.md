@@ -1,2 +1,11 @@
 # 0.0 1
 - Initial release
+- Library
+    - 49,548 total perft tests passed
+    - Fully cross compatible and usable with engines
+    - Relatively performative, see benchmarks for more information
+- Engine
+    - 800 games played against elo limited stockfish, see benchmarks for specifics
+    - Initial estimates place engine somewhere between 2730 and 2775
+    - Tests ran at TC=40/60+0.1
+    - Crashed once throughout testing, though cause is unknown

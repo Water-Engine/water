@@ -6,6 +6,9 @@ const Square = types.Square;
 const piece = @import("piece.zig");
 const PieceType = piece.PieceType;
 
+/// THe various types a move can be.
+///
+/// A null move 'corrupts' the square bits of the move.
 pub const MoveType = enum(u16) {
     normal = 0,
     null_move = 65,
@@ -13,6 +16,7 @@ pub const MoveType = enum(u16) {
     en_passant = @as(u16, 2) << @truncate(14),
     castling = @as(u16, 3) << @truncate(14),
 
+    /// Creates a MoveType from the given integer.
     pub fn fromInt(comptime T: type, num: T) MoveType {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @enumFromInt(num),
@@ -20,6 +24,7 @@ pub const MoveType = enum(u16) {
         };
     }
 
+    // Returns the enum value as the given integer type.
     pub fn asInt(self: *const MoveType, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @intFromEnum(self.*),
@@ -28,6 +33,13 @@ pub const MoveType = enum(u16) {
     }
 };
 
+/// A 16-bit-represented move ordered as:
+/// - First 6 bits: to square
+/// - Next 6 bits: from square
+/// - Last 4 bits: type
+///
+/// Example: "e2e4" from startpos is:
+/// `0000_001100_011100`
 pub const Move = struct {
     move: u16,
     score: i32 = 0,
@@ -120,7 +132,6 @@ pub const Move = struct {
 
     // ================ COMPARISON ================
 
-    /// Comptime dispatch to ordering by the internal move or score.
     pub fn order(lhs: Move, rhs: Move, comptime by: enum { mv, sc }) std.math.Order {
         return switch (comptime by) {
             .mv => lhs.orderByMove(rhs),

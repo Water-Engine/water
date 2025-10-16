@@ -1,3 +1,7 @@
+//! Magic numbers, masks, attacks, and shifts generated from an old C++ iteration of water.
+//!
+//! https://github.com/Water-Engine/water/blob/f848f6c434552b50b69180dac40480431e9dad7e/src/bitboard/magics.cpp
+
 const bitboard = @import("../core/bitboard.zig");
 const Bitboard = bitboard.Bitboard;
 

@@ -10,12 +10,7 @@ pub const ChessError = types.ChessError;
 const bitboard = @import("water/core/bitboard.zig");
 pub const Bitboard = bitboard.Bitboard;
 
-const distance = @import("water/core/distance.zig");
-pub const manhattan_distance = distance.manhattan_distance;
-pub const center_manhattan_distance = distance.center_manhattan_distance;
-pub const chebyshev_distance = distance.chebyshev_distance;
-pub const absolute_distance = distance.absolute_distance;
-pub const squares_between = distance.squares_between;
+pub const distance = @import("water/core/distance.zig");
 
 const piece = @import("water/core/piece.zig");
 pub const PieceType = piece.PieceType;

@@ -9,7 +9,7 @@
 </p>
 
 # Goals
-Water aims to provide a performant chess engine library allowing users to easily architect chess engines by providing a core library and search management scheme.
+Water aims to provide a performant chess engine library allowing users to easily architect chess engines by providing a core library and uci interface management scheme.
 
 The water engine itself is crafted using this library, with the goals of making:
 - An iterative search engine with Alpha-Beta Pruning, Quiescence, etc.
@@ -29,15 +29,17 @@ _Note: The engine communicates through the UCI protocol. You can read more about
 |:------------|:--------------------------------------------------------------------------------------|
 | `build`     | Builds `water`. Pass `--release` for ReleaseFast.                                     |
 | `run`       | Build and run `water`. Pass `--release` for ReleaseFast.                              |
-| `perft`    | Run the perft suite. Running with `--release` is highly recommended.                   |
-| `bench`    | Run the perft benchmarking suite. Running with `--release` is highly recommended.      |
-| `search`   | Run the search benchmarking suite. Running with `--release` is highly recommended.     |
+| `perft`     | Run the perft suite. Running with `--release` is highly recommended.                  |
+| `bench`     | Run the perft benchmarking suite. Running with `--release` is highly recommended.     |
+| `search`    | Run the search benchmarking suite. Running with `--release` is highly recommended.    |
 | `test`      | Run all unit tests.                                                                   |
 | `lint`      | Checks formatting of all source files excluding `build.zig`.                          |
 | `fmt`       | Format all source code excluding `build.zig`.                                         |
 | `cloc`      | Count the total lines of zig code. Requires [cloc](https://github.com/AlDanial/cloc). |
 
 The `perft`, `bench`, and `search` commands are all ephemeral by default, but you can install all the binaries by appending `-Dephemeral=false` to your build command. This will install every (non-test) binary as implementing step specific ephemeral flags is too much mental overhead and was not found to be useful in the development process.
+
+It is generally not recommended to run the `perft` suite unless there have been significant changes made to the core library. Generally, the `bench` step is enough for verifying performance and correctness. If you choose to run the `perft` suit, then you will be executing about 50,000 tests which will take many hours to complete on most hardware. These perft tests are epd variants pulled from [pawnocchio](https://github.com/JonathanHallstrom/pawnocchio) as mentioned in the credits below. The [marcel.epd](benchmarks/perft/epd/marcel.epd) file takes up the majority of this step's runtime and should be skipped if looking for a quick yet comprehensive test. 
 
 ## Adding Water to Your Project
 To add water as a dependency to your project, simply run `zig fetch --save git+https://github.com/Water-Engine/water`. This will add water as a dependency to your `build.zig.zon` file.
@@ -86,6 +88,7 @@ Contributors are always welcome! As this project progresses and the engine impro
 Water could not be where it is today without the formative work done by experienced developers in the past. Core references used during development include:
 - [chess-library](https://github.com/Disservin/chess-library) inspired the of rewrite to zig and served as a core pillar for ideas and verifying behavior in the core library.
 - The [Chess Programming Wiki](https://www.chessprogramming.org/) for obvious reasons, but especially for their explanation and code examples for [NNUE](https://www.chessprogramming.org/NNUE)
-- The [Avalanche](https://github.com/SnowballSH/Avalanche) chess engine which is dubbed 'the first and strongest UCI chess engine written in zig' for providing a huge source of motivation for improvement. The transposition table and classical search/evaluation algorithms are heavily inspired by this project. The neural networks from this project are currently used in the engine.
+- The [Avalanche](https://github.com/SnowballSH/Avalanche) chess engine which is dubbed 'the first and strongest UCI chess engine written in zig' for providing a huge source of motivation for improvement. The transposition table and classical search/evaluation algorithms are heavily inspired by this project. Though I can confirm that it is still the strongest engine written in Zig, the neural networks from this project are currently used in the water engine.
+- The [pawnocchio](https://github.com/JonathanHallstrom/pawnocchio)  chess engine for their extensive perft test suite which is directly used by the library's `perft` step.
 - The [Fathom](https://github.com/basil00/Fathom) library which was used as a reference for the included syzygy suite. 
-- The legendary [Stockfish](https://github.com/official-stockfish/Stockfish) engine which served as an invaluable resource through all steps of the development process.
+- The legendary [Stockfish](https://github.com/official-stockfish/Stockfish) engine which served as an invaluable resource through all steps of the development process. This engine helped point out critical bugs _early_, and served as my reference point for initial elo estimates for the water engine.

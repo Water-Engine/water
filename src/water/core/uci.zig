@@ -73,7 +73,7 @@ pub fn uciToMove(board: *const Board, uci: []const u8) Move {
             return Move.make(source, target, .{ .move_type = .castling });
         }
     } else {
-        if (pt_source == .king and distance.chebyshev_distance[target.index()][source.index()] == 2) {
+        if (pt_source == .king and distance.chebyshev[target.index()][source.index()] == 2) {
             const corrected_target = Square.make(source.rank(), if (target.order(source) == .gt) .fh else .fa);
             return Move.make(source, corrected_target, .{ .move_type = .castling });
         }
