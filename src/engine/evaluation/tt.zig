@@ -125,7 +125,21 @@ pub const TranspositionTable = struct {
             or p_val.depth <= entry.depth + 4
         ) {
         // zig fmt: on
-            @atomicStore(i128, p, @bitCast(entry), .release);
+            _ = @atomicRmw(
+                i64,
+                @as(*i64, @ptrFromInt(@intFromPtr(p))),
+                .Xchg,
+                @as(*const i64, @ptrFromInt(@intFromPtr(&entry))).*,
+                .acquire,
+            );
+
+            _ = @atomicRmw(
+                i64,
+                @as(*i64, @ptrFromInt(@intFromPtr(p) + 8)),
+                .Xchg,
+                @as(*const i64, @ptrFromInt(@intFromPtr(&entry) + 8)).*,
+                .acquire,
+            );
         }
     }
 
