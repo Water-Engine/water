@@ -17,15 +17,54 @@ const Board = board_.Board;
 
 const slider_bbs = @import("slider_bbs.zig");
 
-const FlatSliderAttacks = struct {
+const SliderAttacks = struct {
     attacks: []const Bitboard,
     offsets: [64]usize,
     masks: [64]Bitboard,
     magics: [64]u64,
     shifts: [64]u64,
 
+    /// Creates a statically allocated, comptime SliderAttack wrapper.
+    ///
+    /// There is no reason to think about calling this during runtime.
+    pub fn init(
+        comptime attacks_2d: [64][]const Bitboard,
+        comptime masks: [64]Bitboard,
+        comptime magics: [64]u64,
+        comptime shifts: [64]u64,
+    ) SliderAttacks {
+        @setEvalBranchQuota(100_000_000);
+
+        var total_len: comptime_int = 0;
+        inline for (attacks_2d) |slice| {
+            total_len += slice.len;
+        }
+
+        var flat_attacks: [total_len]Bitboard = undefined;
+        var offsets: [64]usize = undefined;
+        var current_offset: usize = 0;
+
+        inline for (attacks_2d, 0..) |slice, i| {
+            offsets[i] = current_offset;
+            inline for (slice, 0..) |bb, j| {
+                flat_attacks[current_offset + j] = bb;
+            }
+
+            current_offset += slice.len;
+        }
+
+        const s_attacks = flat_attacks;
+        return SliderAttacks{
+            .attacks = &s_attacks,
+            .offsets = offsets,
+            .masks = masks,
+            .magics = magics,
+            .shifts = shifts,
+        };
+    }
+
     /// Computes the attacks for the piece on the square with the given occ bb
-    pub fn compute(self: *const FlatSliderAttacks, square: Square, occupied: Bitboard) Bitboard {
+    pub fn compute(self: *const SliderAttacks, square: Square, occupied: Bitboard) Bitboard {
         const index = square.index();
         const masked_occ = occupied.andBB(self.masks[index]);
         const key = (masked_occ.mulU64Wrapped(self.magics[index])).shr(self.shifts[index]);
@@ -64,43 +103,6 @@ pub fn toBitboardArray(comptime T: type, arr: T) BitboardArrayTransformer(T) {
     }
 
     return result;
-}
-
-/// Creates a slider attack instance by flattening a 2d attack array of Bitboards.
-fn flatten(
-    comptime attacks_2d: [64][]const Bitboard,
-    comptime masks: [64]Bitboard,
-    comptime magics: [64]u64,
-    comptime shifts: [64]u64,
-) FlatSliderAttacks {
-    @setEvalBranchQuota(100_000_000);
-
-    var total_len: comptime_int = 0;
-    inline for (attacks_2d) |slice| {
-        total_len += slice.len;
-    }
-
-    var flat_attacks: [total_len]Bitboard = undefined;
-    var offsets: [64]usize = undefined;
-    var current_offset: usize = 0;
-
-    inline for (attacks_2d, 0..) |slice, i| {
-        offsets[i] = current_offset;
-        inline for (slice, 0..) |bb, j| {
-            flat_attacks[current_offset + j] = bb;
-        }
-
-        current_offset += slice.len;
-    }
-
-    const s_attacks = flat_attacks;
-    return FlatSliderAttacks{
-        .attacks = &s_attacks,
-        .offsets = offsets,
-        .masks = masks,
-        .magics = magics,
-        .shifts = shifts,
-    };
 }
 
 const pawn_attacks_u64: [2][64]u64 = .{
@@ -189,25 +191,27 @@ const pawn_attacks: [128]Bitboard = pawn_attacks_2d[0] ++ pawn_attacks_2d[1];
 const knight_attacks: [64]Bitboard = toBitboardArray(@TypeOf(knight_attacks_u64), knight_attacks_u64);
 const king_attacks: [64]Bitboard = toBitboardArray(@TypeOf(king_attacks_u64), king_attacks_u64);
 
-const rook_attacks = flatten(
+const rook_attacks = SliderAttacks.init(
     slider_bbs.rook_attacks_2d,
     slider_bbs.rook_masks,
     slider_bbs.rook_magics,
     slider_bbs.rook_shifts,
 );
 
-const bishop_attacks = flatten(
+const bishop_attacks = SliderAttacks.init(
     slider_bbs.bishop_attacks_2d,
     slider_bbs.bishop_masks,
     slider_bbs.bishop_magics,
     slider_bbs.bishop_shifts,
 );
 
+/// Returns all of the attacks for a pawn of the given Color on the given Square.
 pub fn pawn(color: Color, square: Square) Bitboard {
     std.debug.assert(color.valid());
     return pawn_attacks[64 * color.index() + square.index()];
 }
 
+/// Returns all of the left attacks for a pawn of the given Color on the given Square.
 pub fn pawnLeftAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
     return blk: {
         if (comptime C.isWhite()) {
@@ -218,6 +222,7 @@ pub fn pawnLeftAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
     };
 }
 
+/// Returns all of the right attacks for a pawn of the given Color on the given Square.
 pub fn pawnRightAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
     return blk: {
         if (comptime C.isWhite()) {
@@ -228,22 +233,27 @@ pub fn pawnRightAttacks(comptime C: Color, pawns: Bitboard) Bitboard {
     };
 }
 
+/// Returns all of the attacks for a knight on the given Square.
 pub fn knight(square: Square) Bitboard {
     return knight_attacks[square.index()];
 }
 
+/// Returns all of the attacks for a king on the given Square.
 pub fn king(square: Square) Bitboard {
     return king_attacks[square.index()];
 }
 
+/// Returns all of the attacks for a rook on the given Square.
 pub fn rook(square: Square, occupied: Bitboard) Bitboard {
     return rook_attacks.compute(square, occupied);
 }
 
+/// Returns all of the attacks for a bishop on the given Square.
 pub fn bishop(square: Square, occupied: Bitboard) Bitboard {
     return bishop_attacks.compute(square, occupied);
 }
 
+/// Returns all of the attacks for a queen on the given Square.
 pub fn queen(square: Square, occupied: Bitboard) Bitboard {
     return rook(square, occupied).orBB(bishop(square, occupied));
 }

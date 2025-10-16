@@ -11,6 +11,10 @@ const movegen = @import("../movegen/movegen.zig");
 const dispatcher = @import("dispatcher.zig");
 const engine_ = @import("engine.zig");
 
+/// A position handler equipped to handle the following uci commands:
+/// - Commands with the `startpos` position
+/// - Commands with a `fen` position
+/// - Commands with a position followed by a list of `moves`
 pub fn PositionCommand(comptime Searcher: type) type {
     return struct {
         const Self = @This();
@@ -33,6 +37,12 @@ pub fn PositionCommand(comptime Searcher: type) type {
                 &.{"moves"},
             );
 
+            // Pull out the fen ending at the moves token if present
+            if (dispatcher.tokensAfter(tokens, "fen")) |rest| {
+                const last = std.mem.indexOf(u8, rest, "moves") orelse rest.len;
+                parsed.fen = rest[0..last];
+            }
+
             // Handle ambiguity with the fen/startpos
             if (parsed.startpos) |sp| {
                 if (sp) parsed.fen = board_.starting_fen;
@@ -54,16 +64,13 @@ pub fn PositionCommand(comptime Searcher: type) type {
                 return types.ChessError.IllegalFen;
             }
 
+            engine.last_played = null;
             if (self.moves) |moves| {
                 var move_tokens = std.mem.tokenizeAny(u8, moves, " ");
                 while (move_tokens.next()) |move_str| {
                     const move = uci.uciToMove(engine.searcher.governing_board, move_str);
 
-                    // Robustly verify the legality of the move before making the move
-                    var movelist = movegen.Movelist{};
-                    movegen.legalmoves(engine.searcher.governing_board, &movelist, .{});
-
-                    if (movelist.find(move)) |_| {
+                    if (engine.searcher.governing_board.isMoveLegal(move)) {
                         engine.searcher.governing_board.makeMove(move, .{});
                         engine.last_played = move;
                     }
@@ -77,6 +84,7 @@ pub fn PositionCommand(comptime Searcher: type) type {
     };
 }
 
+/// A display handler equipped to handle the `d` command.
 pub fn DisplayCommand(comptime Searcher: type) type {
     return struct {
         const Self = @This();
@@ -115,6 +123,11 @@ pub fn DisplayCommand(comptime Searcher: type) type {
     };
 }
 
+/// A uci handler equipped to handle the `uci` command.
+///
+/// More complex engine's should consider implementing a heavier command here, handling 'id' info.
+///
+/// The deserialize function is a noop and the dispatcher function simply prints 'uciok'.
 pub fn UciCommand(comptime Searcher: type) type {
     return struct {
         const Self = @This();
@@ -140,6 +153,11 @@ pub fn UciCommand(comptime Searcher: type) type {
     };
 }
 
+/// A isready handler equipped to handle the `isready` command.
+///
+/// More complex engine's should consider implementing a heavier command here.
+///
+/// The deserialize function is a noop and the dispatcher function simply prints 'readyok'.
 pub fn ReadyCommand(comptime Searcher: type) type {
     return struct {
         const Self = @This();

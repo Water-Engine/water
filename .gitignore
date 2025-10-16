@@ -63,7 +63,9 @@ Water-Main.json
 full_dataset.bin
 larger_book.bin
 
-**.nnue
+benchmarks/sprt/water-**.pgn
+benchmarks/sprt/**.json
+benchmarks/perft/epd/results.txt
 
 release/
 tb/

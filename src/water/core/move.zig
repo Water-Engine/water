@@ -6,6 +6,9 @@ const Square = types.Square;
 const piece = @import("piece.zig");
 const PieceType = piece.PieceType;
 
+/// THe various types a move can be.
+///
+/// A null move 'corrupts' the square bits of the move.
 pub const MoveType = enum(u16) {
     normal = 0,
     null_move = 65,
@@ -13,6 +16,7 @@ pub const MoveType = enum(u16) {
     en_passant = @as(u16, 2) << @truncate(14),
     castling = @as(u16, 3) << @truncate(14),
 
+    /// Creates a MoveType from the given integer.
     pub fn fromInt(comptime T: type, num: T) MoveType {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @enumFromInt(num),
@@ -20,6 +24,7 @@ pub const MoveType = enum(u16) {
         };
     }
 
+    // Returns the enum value as the given integer type.
     pub fn asInt(self: *const MoveType, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @intFromEnum(self.*),
@@ -28,24 +33,39 @@ pub const MoveType = enum(u16) {
     }
 };
 
+/// A 16-bit-represented move ordered as:
+/// - First 6 bits: to square
+/// - Next 6 bits: from square
+/// - Last 4 bits: type
+///
+/// Example: "e2e4" from startpos is:
+/// `0000_001100_011100`
 pub const Move = struct {
     move: u16,
     score: i32 = 0,
 
-    // ================ INITIALIZATION - NO INLINE!!! ================
+    // ================ INITIALIZATION ================
 
+    /// Creates a zeroed move.
+    ///
+    /// THe uci representation of this is `a1a1`.
     pub fn init() Move {
         return .{ .move = 0 };
     }
 
+    /// Checks if the move is the zero `a1a1` move.
     pub fn valid(self: *const Move) bool {
         return self.move != 0;
     }
 
+    /// Creates a move with the given value and 0 score.
     pub fn fromMove(value: u16) Move {
         return .{ .move = value };
     }
 
+    /// Creates a move from the source to the target square with the given options.
+    ///
+    /// The promotion type must always be between a knight and queen regardless of the move.
     pub fn make(
         source: Square,
         target: Square,
@@ -79,10 +99,12 @@ pub const Move = struct {
 
     // ================ UTILITIES ================
 
+    /// Returns the `from` square stored in the move's bits.
     pub fn from(self: *const Move) Square {
         return Square.fromInt(u16, (self.move >> @truncate(6)) & 0x3F);
     }
 
+    /// Returns the `to` square stored in the move's bits.
     pub fn to(self: *const Move) Square {
         return Square.fromInt(u16, self.move & 0x3F);
     }
@@ -100,6 +122,9 @@ pub const Move = struct {
         }
     }
 
+    /// Returns the promotion PieceType.
+    ///
+    /// Asserts that the moves flag is a promotion.
     pub fn promotionType(self: *const Move) PieceType {
         std.debug.assert(self.typeOf(MoveType) == .promotion);
         return PieceType.fromInt(u16, ((self.move >> @truncate(12)) & 3) + PieceType.knight.asInt(u16));
@@ -114,6 +139,7 @@ pub const Move = struct {
         };
     }
 
+    /// Compares the underlying integer representation of the moves.
     pub fn orderByMove(lhs: Move, rhs: Move) std.math.Order {
         const lhs_val = lhs.move;
         const rhs_val = rhs.move;
@@ -121,6 +147,7 @@ pub const Move = struct {
         return std.math.order(lhs_val, rhs_val);
     }
 
+    /// Compares the underlying scores of the moves.
     pub fn orderByScore(lhs: Move, rhs: Move) std.math.Order {
         const lhs_val = lhs.score;
         const rhs_val = rhs.score;

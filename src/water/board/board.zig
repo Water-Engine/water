@@ -69,11 +69,14 @@ fn entryAfter(
     return null;
 }
 
-/// A chess board representation, valid for standard chess only.
+/// A chess board representation, valid for Classical and Fischer Random Chess only.
 ///
 /// The internal 'original_fen' and 'previous_states' are heap allocated.
 /// They are assumed to be owned by the instance and are freed with deinit.
-/// Directly assigning values to these fields is unsafe.
+/// Directly assigning values to these two fields is unsafe, but mutating them is acceptable.
+///
+/// While 'previous_states' is heap allocated, it is capped at a size of 2048 entries
+/// and will never request any other amount of memory.
 pub const Board = struct {
     allocator: std.mem.Allocator,
 
@@ -82,7 +85,7 @@ pub const Board = struct {
 
     pieces_bbs: [6]Bitboard = @splat(Bitboard.init()),
     occ_bbs: [2]Bitboard = @splat(Bitboard.init()),
-    mailbox: [64]Piece = @splat(Piece.init()),
+    mailbox: [64]Piece = @splat(Piece.none),
 
     key: u64 = 0,
     castling_rights: CastlingRights = .{},
@@ -170,6 +173,9 @@ pub const Board = struct {
     /// Will not modify the board if the fen cannot be updated correctly.
     /// You must use this function before setting an FRC fen.
     ///
+    /// Freely switching between FRC and Classical is not guaranteed.
+    /// For switching back to classical from FRC, the board must have a valid internal classical fen.
+    ///
     /// Using this in the middle of a game resets the board to its original fen position.
     pub fn setFischerRandom(self: *Board, fischer_random: bool) !bool {
         const previous_frc = self.fischer_random;
@@ -213,6 +219,8 @@ pub const Board = struct {
     }
 
     /// Attempts to set the board fen position, reallocating the board original fen representation if requested.
+    ///
+    /// Unless you are explicitly managing your fen elsewhere, reallocation is recommended.
     ///
     /// Returns `true` if the fen was set successfully. Unsuccessful setting does not mutate the Board.
     pub fn setFen(self: *Board, fen: []const u8, reallocate_fen: bool) !bool {
@@ -507,24 +515,23 @@ pub const Board = struct {
         var half_moves: usize = 0;
         var full_moves: usize = 1;
 
-        const hmvc = entryAfter(.scalar, &parts, "hmvc");
-        if (hmvc) |num| {
+        if (entryAfter(.scalar, &parts, "hmvc")) |hmvc| {
             half_moves = std.fmt.parseInt(
                 usize,
-                if (num[num.len - 1] == ';') num[0 .. num.len - 1] else num,
+                if (hmvc[hmvc.len - 1] == ';') hmvc[0 .. hmvc.len - 1] else hmvc,
                 10,
             ) catch 0;
         }
 
-        const fmvn = entryAfter(.scalar, &parts, "fmvn");
-        if (fmvn) |num| {
+        if (entryAfter(.scalar, &parts, "fmvn")) |fmvn| {
             full_moves = std.fmt.parseInt(
                 usize,
-                if (num[num.len - 1] == ';') num[0 .. num.len - 1] else num,
+                if (fmvn[fmvn.len - 1] == ';') fmvn[0 .. fmvn.len - 1] else fmvn,
                 10,
             ) catch 1;
         }
 
+        // The unwraps here are infallible since we early return for splits less than 4
         const fen = try std.fmt.allocPrint(
             self.allocator,
             "{s} {s} {s} {s} {d} {d}",
@@ -600,7 +607,6 @@ pub const Board = struct {
         self.mailbox[index] = piece;
     }
 
-    /// For internal use only, opts for errors instead of assertions for explicit handling.
     fn placePieceNAssert(self: *Board, piece: Piece, square: Square) !void {
         var success = true;
         if (!(square.valid() and self.mailbox[square.index()] == .none)) success = false;
@@ -646,7 +652,6 @@ pub const Board = struct {
         return self.pieces(color, .king).lsb();
     }
 
-    /// For internal use only, opts for errors instead of assertions for explicit handling.
     fn kingSqNAssert(self: *const Board, color: Color) !Square {
         if (!(color.valid() and self.pieces(color, .king).bits != 0)) {
             return types.ChessError.IllegalFenState;
@@ -792,7 +797,7 @@ pub const Board = struct {
             self.halfmove_clock = 0;
 
             // A distance of 16 means a double push
-            if (distance.absolute_distance[move.to().index()][move.from().index()] == 16) {
+            if (distance.absolute[move.to().index()][move.from().index()] == 16) {
                 const ep_mask = attacks.pawn(self.side_to_move, move.to().ep());
 
                 // Add en passant only if enemy pawns are attacking the square
@@ -998,9 +1003,7 @@ pub const Board = struct {
     ///
     /// Switches the side and updates core state only.
     pub fn unmakeNullMove(self: *Board) void {
-        const prev = self.previous_states.pop();
-
-        if (prev) |previous_state| {
+        if (self.previous_states.pop()) |previous_state| {
             self.ep_square = previous_state.en_passant;
             self.castling_rights = previous_state.castling;
             self.halfmove_clock = previous_state.half_moves;
@@ -1013,9 +1016,10 @@ pub const Board = struct {
 
     /// Perform a perft test to the given depth.
     ///
-    /// Indicating `check_checks` tests `givesCheck` against `inCheck`.
-    pub fn perft(self: *Board, depth: usize, comptime options: struct {
+    /// `test_options` can be used to verify certain implementations via panic messages.
+    pub fn perft(self: *Board, depth: usize, comptime test_options: struct {
         check_checks: bool = false,
+        check_hashes: bool = false,
     }) usize {
         var movelist = movegen.Movelist{};
         movegen.legalmoves(self, &movelist, .{});
@@ -1027,27 +1031,36 @@ pub const Board = struct {
         var nodes: usize = 0;
         for (movelist.moves[0..movelist.size]) |move| {
             // Verify alignment of checks if asked
-            if (comptime options.check_checks) {
+            if (comptime test_options.check_checks or test_options.check_hashes) {
                 const gives_check = self.givesCheck(move).check();
                 self.makeMove(move, .{});
                 const in_check = self.inCheck(.{});
 
-                if (gives_check != in_check) {
-                    std.log.err(
-                        "Move: {d}, givesCheck(...) = {} but inCheck(...) = {}",
-                        .{ move.move, gives_check, in_check },
-                    );
-                    unreachable;
+                if (comptime test_options.check_checks) {
+                    if (gives_check != in_check) {
+                        @panic("givesCheck(...) and inCheck(...) do not agree!");
+                    }
                 }
 
-                nodes += self.perft(depth - 1, options);
+                nodes += self.perft(depth - 1, test_options);
                 self.unmakeMove(move);
+
+                if (comptime test_options.check_hashes) {
+                    const recomp = Zobrist.fromBoard(self);
+                    if (recomp != self.key) {
+                        std.debug.panic(
+                            "Hashes do not match! Depth = {d} RE = {d} INC = {d}\n",
+                            .{ depth, recomp, self.key },
+                        );
+                    }
+                }
+
                 continue;
             }
 
             // Otherwise just perform normal perft
             self.makeMove(move, .{});
-            nodes += self.perft(depth - 1, options);
+            nodes += self.perft(depth - 1, test_options);
             self.unmakeMove(move);
         }
 
@@ -1060,7 +1073,6 @@ pub const Board = struct {
     ///
     /// This is ideal for chess engines.
     pub fn divide(self: *const Board, depth: usize, writer: *std.Io.Writer) !void {
-        defer writer.flush() catch {};
         var nodes: usize = 0;
         var branch: usize = 0;
 
@@ -1087,6 +1099,7 @@ pub const Board = struct {
         }
 
         try writer.print("\nNodes searched: {}\n", .{nodes});
+        try writer.flush();
     }
 
     /// Checks if the current position is a repetition.
@@ -1121,7 +1134,6 @@ pub const Board = struct {
         return attacks.isAttacked(self, color.opposite(), self.kingSq(color));
     }
 
-    /// For internal use only, opts for errors instead of assertions for explicit handling.
     fn inCheckNAssert(self: *const Board, comptime options: struct {
         color: ?Color = null,
     }) !bool {
@@ -1249,7 +1261,14 @@ pub const Board = struct {
         };
     }
 
-    // TODO: Robust fen validation
+    /// Determines if a move is valid based on the current legal moves in the position.
+    ///
+    /// This should only ever be used when validating external moves, as its wildly inefficient for most other purposes.
+    pub fn isMoveLegal(self: *const Board, move: Move) bool {
+        var movelist = movegen.Movelist{};
+        movegen.legalmoves(self, &movelist, .{});
+        return move.valid() and movelist.find(move) != null;
+    }
 };
 
 // ================ TESTING ================
@@ -1523,7 +1542,7 @@ test "Chess960 board" {
     );
 }
 
-test "Fen reconstruction" {
+test "Fen setting and reconstruction" {
     const allocator = testing.allocator;
     var board = try Board.init(allocator, .{});
     defer board.deinit();
@@ -1537,6 +1556,18 @@ test "Fen reconstruction" {
     defer board.allocator.free(fen_moveless);
 
     try expectEqualSlices(u8, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -", fen_moveless);
+
+    const test_fen_1: []const u8 = "8/3r4/pr1Pk1p1/8/7P/6P1/3R3K/5R2 w - - 20 80";
+    try expect(try board.setFen(test_fen_1, true));
+    const actual_1 = try board.getFen(true);
+    defer allocator.free(actual_1);
+    try expectEqualSlices(u8, test_fen_1, actual_1);
+
+    const test_fen_2: []const u8 = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQkq - 0 2";
+    try expect(try board.setFen(test_fen_2, true));
+    const actual_2 = try board.getFen(true);
+    defer allocator.free(actual_2);
+    try expectEqualSlices(u8, test_fen_2, actual_2);
 }
 
 test "EPD handling" {
@@ -1767,7 +1798,13 @@ test "Shallow perft and check alignment" {
     };
 
     for (expected_nodes, 1..5) |expected, i| {
-        try expectEqual(expected, board.perft(i, .{ .check_checks = true }));
+        try expectEqual(expected, board.perft(
+            i,
+            .{
+                .check_checks = true,
+                .check_hashes = true,
+            },
+        ));
     }
 }
 
@@ -1825,4 +1862,18 @@ test "Non-pawn material calculation" {
     try expect(try board.setFen("8/8/8/8/8/7K/8/7k b - - 0 1", true));
     try expectEqual(0, board.nonPawnMaterial(.white));
     try expectEqual(0, board.nonPawnMaterial(.black));
+}
+
+test "Legal move detection" {
+    const allocator = testing.allocator;
+    var board = try Board.init(allocator, .{});
+    defer board.deinit();
+
+    const ok_move = uci.uciToMove(board, "a2a3");
+    const null_move = uci.uciToMove(board, "a1a1");
+    const bad_move = uci.uciToMove(board, "h4h6");
+
+    try expect(board.isMoveLegal(ok_move));
+    try expect(!board.isMoveLegal(null_move));
+    try expect(!board.isMoveLegal(bad_move));
 }

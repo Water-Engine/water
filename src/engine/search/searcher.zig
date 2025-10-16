@@ -1,14 +1,11 @@
 const std = @import("std");
 const water = @import("water");
 
-const search_ = @import("search.zig");
+const algorithm = @import("algorithm.zig");
 const parameters = @import("../parameters.zig");
 
 const evaluator_ = @import("../evaluation/evaluator.zig");
 const tt = @import("../evaluation/tt.zig");
-
-pub const max_ply: usize = 128;
-pub const max_game_ply: usize = 1024;
 
 pub const NodeType = enum { root, pv, non_pv };
 
@@ -43,28 +40,29 @@ pub const Searcher = struct {
 
     should_stop: std.atomic.Value(bool) = .init(true),
     silent_output: bool = false,
+    force_thinking: bool = false,
 
     nodes: u64 = 0,
     ply: usize = 0,
     seldepth: usize = 0,
 
-    exclude_move: [max_ply]water.Move = @splat(water.Move.init()),
+    exclude_move: [parameters.max_ply]water.Move = @splat(water.Move.init()),
     nmp_min_ply: usize = 0,
 
-    killers: [max_ply][2]water.Move = @splat(@splat(water.Move.init())),
+    killers: [parameters.max_ply][2]water.Move = @splat(@splat(water.Move.init())),
     history: struct {
-        heuristic: [2][64][64]i32 = std.mem.zeroes([2][64][64]i32),
-        evaluations: [max_ply]i32 = @splat(0),
-        moves: [max_ply]water.Move = @splat(water.Move.init()),
-        moved_pieces: [max_ply]water.Piece = @splat(water.Piece.init()),
+        heuristic: [2 * 64 * 64]i32 = @splat(0),
+        evaluations: [parameters.max_ply]i32 = @splat(0),
+        moves: [parameters.max_ply]water.Move = @splat(water.Move.init()),
+        moved_pieces: [parameters.max_ply]water.Piece = @splat(water.Piece.init()),
     } = .{},
 
     best_move: water.Move = .init(),
-    pv: [max_ply][max_ply]water.Move = @splat(@splat(water.Move.init())),
-    pv_size: [max_ply]usize = @splat(0),
+    pv: [parameters.max_ply][parameters.max_ply]water.Move = @splat(@splat(water.Move.init())),
+    pv_size: [parameters.max_ply]usize = @splat(0),
 
     counter_moves: [2][64][64]water.Move = @splat(@splat(@splat(water.Move.init()))),
-    continuation: *[12][64][64][64]i32,
+    continuation: *[12 * 64 * 64 * 64]i32,
 
     pub fn init(allocator: std.mem.Allocator, board: *water.Board, writer: *std.Io.Writer) anyerror!*Searcher {
         const searcher = try allocator.create(Searcher);
@@ -73,7 +71,7 @@ pub const Searcher = struct {
             .writer = writer,
             .governing_board = board,
             .search_board = try board.clone(allocator),
-            .continuation = try allocator.create([12][64][64][64]i32),
+            .continuation = try allocator.create([12 * 64 * 64 * 64]i32),
         };
 
         searcher.resetHeuristics(true);
@@ -87,18 +85,19 @@ pub const Searcher = struct {
     }
 
     /// Resets the searcher's heuristics. The history heuristic is halved if `total_reset` is false.
-    fn resetHeuristics(self: *Searcher, comptime total_reset: bool) void {
+    pub fn resetHeuristics(self: *Searcher, comptime total_reset: bool) void {
         self.nmp_min_ply = 0;
 
         // Only reset the history heuristic fully if requested
         if (total_reset) {
-            self.history.heuristic = std.mem.zeroes([2][64][64]i32);
+            self.history.heuristic = @splat(0);
         } else {
             for (0..64) |j| {
                 for (0..64) |k| {
                     for (0..2) |i| {
-                        self.history.heuristic[i][j][k] = @divTrunc(
-                            self.history.heuristic[i][j][k],
+                        const offset = (i << 12) | (j << 6) | k;
+                        self.history.heuristic[offset] = @divTrunc(
+                            self.history.heuristic[offset],
                             2,
                         );
                     }
@@ -112,7 +111,7 @@ pub const Searcher = struct {
 
         self.killers = @splat(@splat(water.Move.init()));
         self.exclude_move = @splat(water.Move.init());
-        self.continuation.* = @splat(@splat(@splat(@splat(0))));
+        self.continuation.* = @splat(0);
         self.counter_moves = @splat(@splat(@splat(water.Move.init())));
 
         self.pv = @splat(@splat(water.Move.init()));
@@ -122,21 +121,25 @@ pub const Searcher = struct {
     pub fn search(self: *Searcher, alloted_time_ns: ?i128, max_depth: ?usize) anyerror!void {
         self.should_stop.store(false, .release);
         self.resetHeuristics(false);
-        self.evaluator.refresh(self.search_board, .pesto);
+        self.evaluator.refresh(self.search_board, .full);
 
         self.nodes = 0;
-        self.best_move = .init();
         self.timer = std.time.Timer.start() catch unreachable;
         self.alloted_time_ns = alloted_time_ns;
         self.iterative_deepening_depth = 0;
 
+        // Defensively set the best move to a legal move if available
+        var root_moves = water.movegen.Movelist{};
+        water.movegen.legalmoves(self.search_board, &root_moves, .{});
+        self.best_move = if (root_moves.size > 0) root_moves.moves[0] else water.Move.init();
+        var bm = self.best_move;
+
         var prev_score = -evaluator_.mate_score;
         var score = -evaluator_.mate_score;
-        var bm = water.Move.init();
         var stability: usize = 0;
 
         var tdepth: usize = 1;
-        var bound = if (max_depth) |md| md else max_ply - 2;
+        var bound = if (max_depth) |md| md else parameters.max_ply - 2;
 
         outer: while (tdepth <= bound) {
             self.ply = 0;
@@ -160,7 +163,7 @@ pub const Searcher = struct {
                 self.iterative_deepening_depth = @max(depth, self.iterative_deepening_depth);
                 self.nmp_min_ply = 0;
 
-                const negamax = search_.negamax(
+                const negamax = algorithm.negamax(
                     self,
                     depth,
                     alpha,
@@ -179,9 +182,15 @@ pub const Searcher = struct {
                 score = negamax;
 
                 if (score <= alpha) {
+                    // Fail low break at boundary
+                    if (alpha == -evaluator_.mate_score) break;
+
                     beta = @divTrunc(alpha + beta, 2);
                     alpha = @max(alpha - delta, -evaluator_.mate_score);
                 } else if (score >= beta) {
+                    // Fail high break at boundary
+                    if (beta == evaluator_.mate_score) break;
+
                     beta = @min(beta + delta, evaluator_.mate_score);
                     if (depth > 1 and (tdepth < 4 or depth > tdepth - 4)) {
                         depth -= 1;
@@ -202,6 +211,7 @@ pub const Searcher = struct {
             bm = self.best_move;
             const total_nodes: usize = self.nodes;
 
+            const mate_found = @abs(score) >= (evaluator_.mate_score - evaluator_.max_mate);
             if (!self.silent_output) {
                 const elapsed_ms = @max(1, self.timer.read() / std.time.ns_per_ms);
                 const elapsed_s = @max(1, elapsed_ms / std.time.ms_per_s);
@@ -214,16 +224,16 @@ pub const Searcher = struct {
                 });
 
                 // Print the mate score if close enough
-                if (@abs(score) >= (evaluator_.mate_score - evaluator_.max_mate)) {
+                if (mate_found) {
                     const mate_in: i32 = @divTrunc(evaluator_.mate_score - @as(i32, @intCast(@abs(score))), 2) + 1;
                     const perspective: i32 = if (score > 0) 1 else -1;
-                    try self.writer.print("mate {} pv", .{perspective * mate_in});
+                    try self.writer.print("mate {d} pv", .{perspective * mate_in});
 
-                    if (bound == max_ply - 1) {
+                    if (bound == parameters.max_ply - 1) {
                         bound = depth + 2;
                     }
                 } else {
-                    try self.writer.print("cp {} pv", .{score});
+                    try self.writer.print("cp {d} pv", .{score});
                 }
 
                 // Print the pv sequence or the best move depending on the state
@@ -249,6 +259,11 @@ pub const Searcher = struct {
                 try self.writer.flush();
             }
 
+            // Stable positions at sufficient depths can stop
+            if (!self.force_thinking and stability >= 4 and tdepth >= 8) {
+                break :outer;
+            }
+
             // Compute a cutoff factor for time management
             var factor: f32 = @max(0.5, 1.1 - 0.03 * @as(f32, @floatFromInt(stability)));
             if (score - prev_score > parameters.aspiration_window) {
@@ -266,7 +281,7 @@ pub const Searcher = struct {
         self.should_stop.store(true, .release);
         self.alloted_time_ns = null;
 
-        // The uci spec has a specific requirement about null moves, a single heap allocation here is fine
+        // The uci spec has a specific requirement about null moves, a couple heap allocations here is fine
         const bm_str = try water.uci.moveToUci(
             self.allocator,
             self.best_move,
@@ -277,6 +292,7 @@ pub const Searcher = struct {
         try self.writer.print("bestmove {s}\n", .{
             if (std.mem.eql(u8, bm_str, "a1a1")) "0000" else bm_str,
         });
+
         try self.writer.flush();
     }
 

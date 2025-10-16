@@ -10,12 +10,7 @@ pub const ChessError = types.ChessError;
 const bitboard = @import("water/core/bitboard.zig");
 pub const Bitboard = bitboard.Bitboard;
 
-const distance = @import("water/core/distance.zig");
-pub const manhattan_distance = distance.manhattan_distance;
-pub const center_manhattan_distance = distance.center_manhattan_distance;
-pub const chebyshev_distance = distance.chebyshev_distance;
-pub const absolute_distance = distance.absolute_distance;
-pub const squares_between = distance.squares_between;
+pub const distance = @import("water/core/distance.zig");
 
 const piece = @import("water/core/piece.zig");
 pub const PieceType = piece.PieceType;
@@ -45,6 +40,10 @@ pub const movegen = @import("water/movegen/movegen.zig");
 pub const engine = @import("water/framework/engine.zig");
 pub const type_validators = @import("water/framework/type_validators.zig");
 pub const dispatcher = @import("water/framework/dispatcher.zig");
+pub const network = @import("water/framework/network.zig");
+pub const default_commands = @import("water/framework/default_commands.zig");
+
+pub const mem = @import("water/syzygy/mem.zig");
 
 // ================ TESTING ================
 
@@ -68,4 +67,6 @@ test {
     _ = @import("water/framework/engine.zig");
     _ = @import("water/framework/type_validators.zig");
     _ = @import("water/framework/dispatcher.zig");
+
+    _ = @import("water/syzygy/mem.zig");
 }

@@ -4,6 +4,7 @@ const water = @import("water");
 const parameters = @import("parameters.zig");
 
 const tt = @import("evaluation/tt.zig");
+const evaluator = @import("evaluation/evaluator.zig");
 
 const searcher = @import("search/searcher.zig");
 
@@ -27,12 +28,12 @@ pub const NewGameCommand = struct {
     ) anyerror!void {
         _ = self;
 
-        // Only reset the searcher when we aren't actively searching since this is heavily destructive
         engine.notifyStopSearch();
-
         try tt.global_tt.reset(null);
         _ = try engine.searcher.governing_board.setFen(water.board.starting_fen, true);
         _ = try engine.searcher.search_board.setFen(water.board.starting_fen, true);
+        engine.searcher.resetHeuristics(true);
+        engine.searcher.evaluator.refresh(engine.searcher.governing_board, .full);
     }
 };
 
@@ -165,17 +166,16 @@ pub const GoCommand = struct {
             return;
         }
 
-        // Check for game over first
-        if (water.arbiter.gameOver(engine.searcher.governing_board, null)) |result| {
-            // Only early return if the result is a checkmate
-            if (result.result == .win) {
-                try engine.writer.print("0000\n", .{});
-                try engine.writer.flush();
-                return;
-            }
+        if (self.infinite or self.depth != null or self.movetime != null) {
+            engine.searcher.force_thinking = true;
+        } else {
+            engine.searcher.force_thinking = false;
         }
 
         const think_time_ns = self.chooseThinkTimeNs(engine.searcher.governing_board);
+        engine.searcher.pv_size = @splat(0);
+        engine.searcher.search_board.deinit();
+        engine.searcher.search_board = try engine.searcher.governing_board.clone(engine.allocator);
         engine.searcher.max_nodes = self.nodes;
         engine.searcher.soft_max_nodes = self.nodes;
         engine.search(think_time_ns, .{ think_time_ns, self.depth }, .{});
@@ -253,6 +253,32 @@ pub const DebugCommand = struct {
                 engine.searcher.silent_output = true;
             }
         }
+    }
+};
+
+pub const EvalCommand = struct {
+    pub const command_name: []const u8 = "eval";
+
+    pub fn deserialize(
+        allocator: std.mem.Allocator,
+        tokens: *std.mem.TokenIterator(u8, .any),
+    ) anyerror!EvalCommand {
+        _ = allocator;
+        _ = tokens;
+        return .{};
+    }
+
+    pub fn dispatch(
+        self: *const EvalCommand,
+        engine: *Engine,
+    ) anyerror!void {
+        _ = self;
+        var eval = evaluator.Evaluator{};
+        eval.refresh(engine.searcher.governing_board, .full);
+        try engine.writer.print("info string eval {d}\n", .{
+            eval.evaluate(engine.searcher.governing_board),
+        });
+        try engine.writer.flush();
     }
 };
 

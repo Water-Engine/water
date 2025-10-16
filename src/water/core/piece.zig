@@ -2,6 +2,9 @@ const std = @import("std");
 
 const Color = @import("../core/types.zig").Color;
 
+/// All possible piece types for classical and fischer random chess.
+///
+/// Includes a sentinel `none` value in favor of using optionals.
 pub const PieceType = enum(u3) {
     pawn = 0,
     knight = 1,
@@ -12,18 +15,17 @@ pub const PieceType = enum(u3) {
 
     none = 6,
 
+    /// All of the valid PieceType, especially useful in for loops.
     pub const all: [6]PieceType = .{ .pawn, .knight, .bishop, .rook, .queen, .king };
 
-    pub fn init() PieceType {
-        return .none;
-    }
-
+    /// Checks if the PieceType is not `none`.
     pub fn valid(self: *const PieceType) bool {
         return self.* != .none;
     }
 
     // ================ INT UTILS ================
 
+    /// Creates a PieceType from the given integer.
     pub fn fromInt(comptime T: type, num: T) PieceType {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @enumFromInt(num),
@@ -31,6 +33,7 @@ pub const PieceType = enum(u3) {
         };
     }
 
+    // Returns the enum value as the given integer type.
     pub fn asInt(self: *const PieceType, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @intFromEnum(self.*),
@@ -38,22 +41,30 @@ pub const PieceType = enum(u3) {
         };
     }
 
+    // This does exactly what you think.
     pub fn index(self: *const PieceType) usize {
         return self.asInt(usize);
     }
 
     // ================ SLICE UTILS ================
 
+    /// Converts the first character of the input string to its PieceType representation.
+    ///
+    /// Invalid characters are `.none`.
     pub fn fromStr(str: []const u8) PieceType {
         return if (str.len == 0) .none else fromChar(str[0]);
     }
 
+    /// Returns the tag name of the PieceType.
     pub fn asStr(self: *const PieceType) []const u8 {
         return @tagName(self.*);
     }
 
     // ================ CHAR UTILS ================
 
+    /// Converts the byte to its PieceType representation.
+    ///
+    /// Invalid characters are `.none`.
     pub fn fromChar(char: u8) PieceType {
         return switch (std.ascii.toLower(char)) {
             'p' => .pawn,
@@ -66,6 +77,9 @@ pub const PieceType = enum(u3) {
         };
     }
 
+    /// Returns the byte representation of the PieceType.
+    ///
+    /// The `.none` variant is represented as '-'.
     pub fn asChar(self: *const PieceType) u8 {
         return switch (self.*) {
             .pawn => 'p',
@@ -88,6 +102,9 @@ pub const PieceType = enum(u3) {
     }
 };
 
+/// All possible pieces for classical and fischer random chess.
+///
+/// Includes a sentinel `none` value in favor of using optionals.
 pub const Piece = enum(u8) {
     white_pawn = 0,
     white_knight = 1,
@@ -105,10 +122,16 @@ pub const Piece = enum(u8) {
 
     none = 12,
 
+    /// Alias for using `Piece.none`.
+    ///
+    /// Only included for unity with other more useful `init` functions.
     pub fn init() Piece {
         return .none;
     }
 
+    /// Makes a Piece with the given color and type.
+    ///
+    /// No assertions are made.
     pub fn make(piece_color: Color, piece_type: PieceType) Piece {
         return Piece.fromInt(
             usize,
@@ -116,12 +139,14 @@ pub const Piece = enum(u8) {
         );
     }
 
+    /// Checks if the Piece is not `none`.
     pub fn valid(self: *const Piece) bool {
         return self.* != .none;
     }
 
     // ================ INT UTILS ================
 
+    /// Creates a Piece from the given integer.
     pub fn fromInt(comptime T: type, num: T) Piece {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @enumFromInt(num),
@@ -129,6 +154,7 @@ pub const Piece = enum(u8) {
         };
     }
 
+    // Returns the enum value as the given integer type.
     pub fn asInt(self: *const Piece, comptime T: type) T {
         return switch (@typeInfo(T)) {
             .int, .comptime_int => @intFromEnum(self.*),
@@ -136,12 +162,16 @@ pub const Piece = enum(u8) {
         };
     }
 
+    // This does exactly what you think.
     pub fn index(self: *const Piece) usize {
         return self.asInt(usize);
     }
 
     // ================ CHAR UTILS ================
 
+    /// Converts the byte to its Piece representation.
+    ///
+    /// Invalid characters are `.none`.
     pub fn fromChar(char: u8) Piece {
         return switch (char) {
             'P' => .white_pawn,
@@ -160,6 +190,9 @@ pub const Piece = enum(u8) {
         };
     }
 
+    /// Returns the byte representation of the Piece.
+    ///
+    /// The `.none` variant is represented as '-'.
     pub fn asChar(self: *const Piece) u8 {
         return switch (self.*) {
             .white_pawn => 'P',
@@ -189,12 +222,18 @@ pub const Piece = enum(u8) {
 
     // ================ MISC UTILS ================
 
+    /// Determines the underlying PieceType of the Piece.
+    ///
+    /// This is branchless and generally very inexpensive.
     pub fn asType(self: *const Piece) PieceType {
         const is_black = @intFromBool(self.asInt(i32) > 5);
         const offset = 6 * @as(i32, is_black);
         return PieceType.fromInt(i32, self.asInt(i32) - offset);
     }
 
+    /// Determines the underlying Color of the Piece.
+    ///
+    /// This is branchless and generally very inexpensive.
     pub fn color(self: *const Piece) Color {
         const is_black = self.order(.white_king) == .gt;
         const color_if_valid = @as(u8, @intFromBool(is_black));
@@ -222,19 +261,9 @@ test "PieceType" {
         try expectEqual(expected, actual);
     }
 
-    // ================ INIT / VALID =================
-    var pt = PieceType.init();
-    try expect(pt == .none);
-    try expect(!pt.valid());
-    pt = .pawn;
-    try expect(pt.valid());
-
     // ================ FROM / AS INT =================
     try expectEqual(PieceType.pawn, PieceType.fromInt(u8, 0));
     try expectEqual(PieceType.knight, PieceType.fromInt(u8, 1));
-
-    try expectEqual(0, pt.asInt(u8));
-    try expectEqual(0, pt.asInt(i32));
 
     // ================ FROM / AS CHAR =================
     try expectEqual(PieceType.pawn, PieceType.fromChar('p'));

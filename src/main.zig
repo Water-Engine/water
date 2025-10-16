@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const water = @import("water");
 
 const tt = @import("engine/evaluation/tt.zig");
@@ -7,12 +8,9 @@ const commands = @import("engine/commands.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
-    var tt_arena = std.heap.ArenaAllocator.init(allocator);
-    defer tt_arena.deinit();
-    const tt_allocator = tt_arena.allocator();
 
     search.reloadQLMR();
-    tt.global_tt = try tt.TranspositionTable.init(tt_allocator, null);
+    tt.global_tt = try tt.TranspositionTable.init(allocator, null);
 
     var board = try water.Board.init(allocator, .{});
     defer board.deinit();
@@ -31,25 +29,25 @@ pub fn main() !void {
     // The writer must flush after engine deinitializes to prevent a concurrency issue
     defer {
         engine.deinit(.{});
-        stdout.flush() catch unreachable;
+        stdout.flush() catch {};
     }
 
     var stdin_buffer: [1024]u8 = undefined;
     var stdin_reader = std.fs.File.stdin().reader(&stdin_buffer);
     const stdin = &stdin_reader.interface;
 
-    try engine.launch(
-        stdin,
-        .{
-            .go_command = commands.GoCommand,
-            .opt_command = commands.OptCommand,
-            .uci_command = commands.UciCommand,
-            .other_commands = &.{
-                commands.NewGameCommand,
-                commands.DebugCommand,
-            },
+    try engine.launch(stdin, .{
+        .go_command = commands.GoCommand,
+        .opt_command = commands.OptCommand,
+        .uci_command = commands.UciCommand,
+        .other_commands = &.{
+            commands.NewGameCommand,
+            commands.DebugCommand,
+            commands.EvalCommand,
         },
-    );
+    }, .{
+        .windows_pread_workaround = builtin.os.tag == .windows,
+    });
 }
 
 test {
@@ -57,11 +55,12 @@ test {
     _ = @import("engine/parameters.zig");
 
     _ = @import("engine/search/searcher.zig");
-    _ = @import("engine/search/search.zig");
+    _ = @import("engine/search/algorithm.zig");
 
     _ = @import("engine/evaluation/evaluator.zig");
     _ = @import("engine/evaluation/orderer.zig");
     _ = @import("engine/evaluation/pesto.zig");
     _ = @import("engine/evaluation/see.zig");
     _ = @import("engine/evaluation/tt.zig");
+    _ = @import("engine/evaluation/nnue.zig");
 }

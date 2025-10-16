@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const board_ = @import("../board/board.zig");
 const Board = board_.Board;
@@ -184,7 +185,10 @@ pub fn Engine(comptime Searcher: type) type {
                 .{ .stack_size = options.searcher_stack_size_mb * 1024 * 1024 },
                 Searcher.search,
                 if (options.forward_ptr) .{self.searcher} ++ search_args else search_args,
-            ) catch unreachable;
+            ) catch |err| blk: {
+                std.debug.print("Failed to launch searcher: {any}\n", .{err});
+                break :blk null;
+            };
 
             self.search_start_time_ns = std.time.nanoTimestamp();
             self.alloted_search_time_ns = search_time_ns;
@@ -193,7 +197,10 @@ pub fn Engine(comptime Searcher: type) type {
                     .{},
                     timerThread,
                     .{ self, limit_ns },
-                ) catch unreachable;
+                ) catch |err| blk: {
+                    std.debug.print("Failed to launch timer: {any}\n", .{err});
+                    break :blk null;
+                };
             }
         }
 
@@ -244,6 +251,10 @@ pub fn Engine(comptime Searcher: type) type {
         ///
         /// The 'quit' and 'stop' commands are handled internally. Cleanup of resources is not a responsibility of this function.
         ///
+        /// WARN: Zig 0.15.1 panics on child processes for stdin. A workaround is implemented here but is disabled by default.
+        /// To enable this, see the flag in `options`. When enabled, the passed reader is never used.
+        /// https://github.com/ziglang/zig/issues/25291#issuecomment-3312701254
+        ///
         /// The reader is used for handling user input and should almost always be `stdin`.
         pub fn launch(self: *Self, reader: *std.Io.Reader, comptime commands: struct {
             uci_command: type = default_commands.UciCommand(Searcher),
@@ -253,6 +264,9 @@ pub fn Engine(comptime Searcher: type) type {
             go_command: type,
             opt_command: type,
             other_commands: []const type = &.{},
+        }, comptime options: struct {
+            windows_pread_workaround: bool = false,
+            windows_buffer_size: usize = 8192,
         }) !void {
             const command_list = comptime blk: {
                 var list: []const type = &.{};
@@ -279,32 +293,74 @@ pub fn Engine(comptime Searcher: type) type {
                 try self.writer.flush();
             }
 
-            // Start the main loop, only exiting with an error if not doing so would result in unrecoverable state
-            while (true) {
-                // TODO: Investigate buffer overflow penalty
-                var line = reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
-                    error.EndOfStream, error.ReadFailed => break,
-                    else => continue,
-                };
-
-                // Handle the carriage return if present
-                if (line.len > 0 and line[line.len - 1] == '\r') {
-                    line = line[0 .. line.len - 1];
+            // TODO: Remove ambiguity when issue is addressed
+            // The code below is hopefully only temporary, so spending time abstracting it makes no sense
+            // https://github.com/ziglang/zig/issues/25291#issuecomment-3312701254
+            if (comptime options.windows_pread_workaround) {
+                if (comptime builtin.os.tag != .windows) {
+                    @compileError("This workaround can only be used on Windows. Other systems can use their own reader");
                 }
 
-                // Manually handle the quit and stop commands as they are constants
-                if (line.len == 4) {
-                    if (std.mem.startsWith(u8, line, "quit")) {
-                        self.notifyStopSearch();
-                        break;
-                    } else if (std.mem.startsWith(u8, line, "stop")) {
-                        self.notifyStopSearch();
-                        continue;
+                // See the above issue for an explanation, though this does change it a little
+                outer: while (true) {
+                    const stdIn: std.os.windows.HANDLE = try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE);
+                    try std.os.windows.WaitForSingleObject(stdIn, std.os.windows.INFINITE);
+
+                    var buf: [options.windows_buffer_size]u8 = undefined;
+                    const n = std.os.windows.ReadFile(
+                        stdIn,
+                        &buf,
+                        null,
+                    ) catch |err| switch (err) {
+                        else => return err,
+                    };
+
+                    if (n == 0) continue;
+                    const trimmed = std.mem.trim(u8, buf[0..n], " \r\n\t");
+                    if (trimmed.len == 0) continue;
+
+                    // Split the entry at newlines and handle each newline
+                    var lines = std.mem.tokenizeAny(u8, trimmed, "\n");
+                    while (lines.next()) |line| {
+                        const trimmed_line = std.mem.trim(u8, line, " \r\n\t");
+
+                        // Manually handle the quit and stop commands as they are constants
+                        if (trimmed_line.len == 0) continue;
+                        if (trimmed_line.len == 4) {
+                            if (std.mem.startsWith(u8, trimmed_line, "quit")) {
+                                self.notifyStopSearch();
+                                break :outer;
+                            } else if (std.mem.startsWith(u8, trimmed_line, "stop")) {
+                                self.notifyStopSearch();
+                                continue;
+                            }
+                        }
+
+                        var tokens = std.mem.tokenizeAny(u8, trimmed_line, " ");
+                        Dispatcher.dispatch(&tokens, self) catch continue;
                     }
                 }
+            } else {
+                // Start the main loop, only exiting with an error if not doing so would result in unrecoverable state
+                while (true) {
+                    const line = reader.takeDelimiterExclusive('\n') catch continue;
+                    const trimmed = std.mem.trim(u8, line, " \r\n\t");
 
-                var tokens = std.mem.tokenizeAny(u8, line, " ");
-                Dispatcher.dispatch(&tokens, self) catch continue;
+                    // Manually handle the quit and stop commands as they are constants
+                    if (trimmed.len == 0) continue;
+                    if (trimmed.len == 4) {
+                        if (std.mem.startsWith(u8, trimmed, "quit")) {
+                            self.notifyStopSearch();
+                            break;
+                        } else if (std.mem.startsWith(u8, trimmed, "stop")) {
+                            self.notifyStopSearch();
+                            continue;
+                        }
+                    }
+
+                    var tokens = std.mem.tokenizeAny(u8, trimmed, " ");
+                    Dispatcher.dispatch(&tokens, self) catch continue;
+                }
             }
         }
     };

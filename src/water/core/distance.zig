@@ -14,18 +14,18 @@ const attacks = @import("../movegen/attacks.zig");
 const square_fields = @typeInfo(Square).@"enum".fields;
 
 /// The 'rook' distance between two squares.
-pub const manhattan_distance = genManhattan();
+pub const manhattan = genManhattan();
 
 /// The distance from a square to the 2x2 'center' of the board.
-pub const center_manhattan_distance = genCenterManhattan();
+pub const center_manhattan = genCenterManhattan();
 
 /// The 'king' distance between two squares.
 ///
 /// The number of moves it would take a king to travel between indices.
-pub const chebyshev_distance = genChebyshev();
+pub const chebyshev = genChebyshev();
 
 /// The absolute difference between two squares indices
-pub const absolute_distance = genValueDistance();
+pub const absolute = genValueDistance();
 
 /// The 'ray' distance between two squares.
 ///
@@ -163,7 +163,7 @@ test "Manhattan Distance" {
         for (0..64) |b| {
             try expectEqual(
                 manManDistance(@intCast(a), @intCast(b)),
-                manhattan_distance[b][a],
+                manhattan[b][a],
             );
         }
     }
@@ -182,7 +182,7 @@ test "Center Manhattan Distance" {
         6, 5, 4, 3, 3, 4, 5, 6,
     };
     for (expecteds, 0..) |expected, i| {
-        try expectEqual(expected, center_manhattan_distance[i]);
+        try expectEqual(expected, center_manhattan[i]);
     }
 }
 
@@ -202,7 +202,7 @@ test "Chebyshev Distance" {
         for (0..64) |b| {
             try expectEqual(
                 manChevDistance(@intCast(a), @intCast(b)),
-                chebyshev_distance[b][a],
+                chebyshev[b][a],
             );
         }
     }
@@ -211,7 +211,7 @@ test "Chebyshev Distance" {
 test "Absolute Value Distance" {
     for (0..64) |a| {
         for (0..64) |b| {
-            try expectEqual(if (a > b) a - b else b - a, absolute_distance[a][b]);
+            try expectEqual(if (a > b) a - b else b - a, absolute[a][b]);
         }
     }
 }

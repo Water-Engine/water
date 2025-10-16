@@ -13,6 +13,7 @@ const CastlingRights = castling.CastlingRights;
 const board_ = @import("board.zig");
 const Board = board_.Board;
 
+/// The type of check, associated with a decoupled move.
 pub const CheckType = enum {
     direct,
     discovery,
@@ -253,27 +254,33 @@ fn generateCastlingKey(index: usize) u64 {
     return key;
 }
 
+/// The manager for Zobrist hash values.
 pub const Zobrist = struct {
+    /// Computes the piece hash value for a piece on the given square.
     pub fn piece(p: Piece, s: Square) u64 {
-        std.debug.assert(p.index() < 12);
+        std.debug.assert(p.valid());
         return zobrist_randoms[64 * map_hash_piece[p.index()] + s.index()];
     }
 
+    /// Computes the ep hash from the ep squares file.
     pub fn enPassant(f: File) u64 {
-        std.debug.assert(f.index() < 8);
+        std.debug.assert(f.valid());
         return zobrist_randoms[772 + f.index()];
     }
 
-    pub fn castling(c: usize) u64 {
-        std.debug.assert(c >= 0 and c < 16);
-        return castling_keys[c];
+    /// Computes the castling hash using the 4 bit castling representation.
+    pub fn castling(four_bit_idx: usize) u64 {
+        std.debug.assert(four_bit_idx < 16);
+        return castling_keys[four_bit_idx];
     }
 
+    /// Computes the castling hash using the exact index.
     pub fn castlingIdx(idx: usize) u64 {
-        std.debug.assert(idx >= 0 and idx < 4);
+        std.debug.assert(idx < 4);
         return zobrist_randoms[768 + idx];
     }
 
+    /// Returns the stm hash value.
     pub fn sideToMove() u64 {
         return zobrist_randoms[780];
     }
@@ -302,6 +309,7 @@ pub const Zobrist = struct {
     }
 };
 
+/// The undo information for a snapshot of the board, often per-ply.
 pub const State = struct {
     hash: u64,
     castling: CastlingRights,

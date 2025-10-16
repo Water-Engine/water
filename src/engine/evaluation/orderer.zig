@@ -66,7 +66,12 @@ pub fn orderMoves(
             }
         } else {
             var last = if (searcher.ply > 0) searcher.history.moves[searcher.ply - 1] else water.Move.init();
-            std.debug.assert(last.from().valid() and last.to().valid());
+            std.debug.assert(blk: {
+                if (searcher.ply == 0) {
+                    break :blk true;
+                }
+                break :blk last.from().valid() and last.to().valid();
+            });
             if (searcher.killers[searcher.ply][0].order(move.*, .mv) == .eq) {
                 score += killer_one_bonus;
             } else if (searcher.killers[searcher.ply][1].order(move.*, .mv) == .eq) {
@@ -84,29 +89,30 @@ pub fn orderMoves(
                 const move_to_idx = move.to().index();
 
                 const heuristic_offset = (stm_idx << 12) | (move_from_idx << 6) | move_to_idx;
-                const heuristic_ptr: [*]const i32 = @ptrCast(&searcher.history.heuristic);
-                const heuristic_value = heuristic_ptr[heuristic_offset];
 
-                score += heuristic_value;
+                if (heuristic_offset < searcher.history.heuristic.len) {
+                    @branchHint(.likely);
+                    const heuristic_value = searcher.history.heuristic[heuristic_offset];
+                    score += heuristic_value;
+                }
 
                 if (comptime !is_null) {
                     if (searcher.ply >= 1) {
                         inline for ([_]usize{ 0, 1, 3 }) |plies_ago| {
-                            const divider: i32 = 1;
                             if (searcher.ply >= plies_ago + 1) {
                                 const prev = searcher.history.moves[searcher.ply - plies_ago - 1];
                                 const moved_piece = searcher.history.moved_pieces[searcher.ply - plies_ago - 1];
 
-                                // Perform pointer arithmetic to index continuation
                                 const moved_piece_idx = moved_piece.index();
                                 const prev_idx = prev.to().index();
 
-                                // Not using a many-item pointer here results in about 98% of performance being spent on 12 MiB copy!
                                 const continuation_offset = (moved_piece_idx << 18) | (prev_idx << 12) | (move_from_idx << 6) | move_to_idx;
-                                const continuation_ptr: [*]const i32 = @ptrCast(searcher.continuation);
-                                const continuation_value = continuation_ptr[continuation_offset];
 
-                                score += @intFromBool(prev.valid()) * @divTrunc(continuation_value, divider);
+                                if (continuation_offset < searcher.continuation.len) {
+                                    @branchHint(.likely);
+                                    const continuation_value = searcher.continuation[continuation_offset];
+                                    score += @intFromBool(prev.valid()) * continuation_value;
+                                }
                             }
                         }
                     }
