@@ -87,6 +87,7 @@ Contributors are always welcome! As this project progresses and the engine impro
 # Credits
 Water could not be where it is today without the formative work done by experienced developers in the past. Core references used during development include:
 - [chess-library](https://github.com/Disservin/chess-library) inspired the of rewrite to zig and served as a core pillar for ideas and verifying behavior in the core library.
+- The [zigMemMapper](https://github.com/SuSonicTH/zigMemMapper) project which drove the development of the included memory mapper for tablebase parsing.
 - The [Chess Programming Wiki](https://www.chessprogramming.org/) for obvious reasons, but especially for their explanation and code examples for [NNUE](https://www.chessprogramming.org/NNUE)
 - The [Avalanche](https://github.com/SnowballSH/Avalanche) chess engine which is dubbed 'the first and strongest UCI chess engine written in zig' for providing a huge source of motivation for improvement. The transposition table and classical search/evaluation algorithms are heavily inspired by this project. Though I can confirm that it is still the strongest engine written in Zig, the neural networks from this project are currently used in the water engine.
 - The [pawnocchio](https://github.com/JonathanHallstrom/pawnocchio)  chess engine for their extensive perft test suite which is directly used by the library's `perft` step.

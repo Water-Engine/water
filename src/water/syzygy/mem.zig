@@ -156,7 +156,7 @@ pub const ROMMap = struct {
                 _ = windows.CloseHandle(self.platform.handle);
             },
             .posix => {
-                std.posix.munmap(self.bytes);
+                std.posix.munmap(@alignCast(self.bytes));
             },
         }
     }
