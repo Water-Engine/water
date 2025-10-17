@@ -143,7 +143,7 @@ pub fn build(b: *std.Build) !void {
             const out_dir = try std.fs.cwd().openDir(out_dirname, .{});
 
             try std.fs.cwd().copyFile("LICENSE", out_dir, "LICENSE", .{});
-            try std.fs.cwd().copyFile(".github/README.md", out_dir, "README.md", .{});
+            try std.fs.cwd().copyFile("README.md", out_dir, "README.md", .{});
             try std.fs.cwd().copyFile(".github/AUTHORS.md", out_dir, "AUTHORS.md", .{});
             try std.fs.cwd().copyFile(".github/CHANGELOG.md", out_dir, "CHANGELOG.md", .{});
         }
