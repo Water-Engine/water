@@ -116,7 +116,6 @@ pub fn validateCommand(comptime Command: type, comptime Searcher: type) void {
     validateReturnType(@TypeOf(Command.dispatch), anyerror!void, dispatch_msg);
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

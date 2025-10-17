@@ -133,7 +133,6 @@ pub fn orderMoves(
     std.mem.sort(water.Move, movelist.moves[0..movelist.size], {}, greaterThanFn);
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

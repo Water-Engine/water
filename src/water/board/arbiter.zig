@@ -149,7 +149,6 @@ pub fn gameOver(board: *const Board, precomputed_movelist: ?*const movegen.Movel
     return null;
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

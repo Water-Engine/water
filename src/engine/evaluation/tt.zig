@@ -155,14 +155,13 @@ pub const TranspositionTable = struct {
     /// Tries to retrieve the given hash from the table.
     pub inline fn get(self: *TranspositionTable, hash: u64) ?TTEntry {
         const entry: *TTEntry = @ptrCast(&self.data[self.index(hash)]);
-        if (entry.flag != Bound.none and entry.hash == hash) {
+        if (entry.flag != .none and entry.hash == hash) {
             return entry.*;
         }
         return null;
     }
 };
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

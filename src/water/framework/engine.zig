@@ -366,7 +366,6 @@ pub fn Engine(comptime Searcher: type) type {
     };
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

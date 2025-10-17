@@ -318,7 +318,6 @@ pub const State = struct {
     captured_piece: Piece,
 };
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

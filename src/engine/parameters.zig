@@ -388,7 +388,6 @@ pub fn setoption(
     return error.UnknownOption;
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

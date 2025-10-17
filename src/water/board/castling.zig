@@ -115,7 +115,6 @@ pub const CastlingRights = struct {
     }
 };
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

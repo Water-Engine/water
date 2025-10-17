@@ -10,7 +10,8 @@
         "build.zig.zon",
         "src",
         "LICENSE",
-        "README.md",
+        ".github/README.md",
+        ".github/CHANGELOG.md",
         "AUTHORS.md",
     },
 }

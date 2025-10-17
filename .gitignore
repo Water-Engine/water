@@ -48,6 +48,7 @@ target
 /target
 
 # Zig build system
+zig-cache
 .zig-cache
 zig-out
 

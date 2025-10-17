@@ -44,8 +44,6 @@ pub const Move = struct {
     move: u16,
     score: i32 = 0,
 
-    // ================ INITIALIZATION ================
-
     /// Creates a zeroed move.
     ///
     /// THe uci representation of this is `a1a1`.
@@ -97,8 +95,6 @@ pub const Move = struct {
         };
     }
 
-    // ================ UTILITIES ================
-
     /// Returns the `from` square stored in the move's bits.
     pub fn from(self: *const Move) Square {
         return Square.fromInt(u16, (self.move >> @truncate(6)) & 0x3F);
@@ -130,8 +126,6 @@ pub const Move = struct {
         return PieceType.fromInt(u16, ((self.move >> @truncate(12)) & 3) + PieceType.knight.asInt(u16));
     }
 
-    // ================ COMPARISON ================
-
     pub fn order(lhs: Move, rhs: Move, comptime by: enum { mv, sc }) std.math.Order {
         return switch (comptime by) {
             .mv => lhs.orderByMove(rhs),
@@ -156,13 +150,11 @@ pub const Move = struct {
     }
 };
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 
 test "Move" {
-    // ================ MoveType tests ================
     try expectEqual(MoveType.normal, MoveType.fromInt(u16, 0));
     try expectEqual(MoveType.null_move, MoveType.fromInt(u16, 65));
     try expectEqual(MoveType.promotion, MoveType.fromInt(u16, 16384));
@@ -172,7 +164,6 @@ test "Move" {
     const mt = MoveType.castling;
     try expectEqual(@as(u16, 49152), mt.asInt(u16));
 
-    // ================ Initialization ================
     const empty = Move.init();
     try expect(!empty.valid());
 
@@ -183,7 +174,6 @@ test "Move" {
     const same_move = Move.fromMove(opening_move.move);
     try expectEqual(opening_move.move, same_move.move);
 
-    // ================ Utilities ================
     try expectEqual(@as(u16, 8), opening_move.from().asInt(u16));
     try expectEqual(@as(u16, 16), opening_move.to().asInt(u16));
     try expectEqual(MoveType.normal.asInt(u16), opening_move.typeOf(u16));
@@ -196,7 +186,6 @@ test "Move" {
     try expectEqual(MoveType.promotion, promo_move.typeOf(MoveType));
     try expectEqual(PieceType.queen, promo_move.promotionType());
 
-    // ================ Move comparison ================
     const m1 = Move.fromMove(100);
     const m2 = Move.fromMove(200);
     const m3 = Move.fromMove(100);
@@ -206,7 +195,6 @@ test "Move" {
     try expect(m1.orderByMove(m2) == .lt);
     try expect(m2.orderByMove(m1) == .gt);
 
-    // ================ Score comparison ================
     var s1 = Move.fromMove(10);
     s1.score = 50;
     var s2 = Move.fromMove(20);

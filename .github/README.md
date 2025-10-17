@@ -1,12 +1,5 @@
-# water [![Zig](https://img.shields.io/badge/zig-0.15.1-orange)](https://ziglang.org/) [![License](https://img.shields.io/github/license/Water-Engine/water)](LICENSE) [![Last commit](https://img.shields.io/github/last-commit/Water-Engine/water)](https://github.com/Water-Engine/water) [![Formatting](https://github.com/Water-Engine/water/actions/workflows/format.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/format.yml) [![CI](https://github.com/Water-Engine/water/actions/workflows/ci.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/ci.yml)
-
-<p align="center">
-  <img src="/.github/resources/logo.png" alt="water logo" width="250"/>
-</p>
-
-<p align="center">
-  A comprehensive chess suite written in Zig.
-</p>
+# water 
+A comprehensive chess suite written in Zig.
 
 # Goals
 Water aims to provide a performant chess engine library allowing users to easily architect chess engines by providing a core library and uci interface management scheme.
@@ -23,7 +16,7 @@ For a quick build of the project, simply run `zig build run --release`.
 _Note: The engine communicates through the UCI protocol. You can read more about the standard [here](https://gist.github.com/DOBRO/2592c6dad754ba67e6dcaec8c90165bf)._
 
 ## Build Tools
-- [Zig 0.15.1](https://ziglang.org/download/) - other versions _will not_ work due to 'Writergate' and other potentially breaking changes
+- [Zig 0.15.1](https://ziglang.org/download/) - older versions _will not_ work due to 'Writergate'
 - [cloc](https://github.com/AlDanial/cloc) for the cloc step (optional)
 
 ## All Build Steps

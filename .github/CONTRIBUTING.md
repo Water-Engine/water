@@ -11,3 +11,10 @@ Tests should be written for anything that has considerable weight. This is a sub
 If you would like to submit benchmark information for perft or the engine itself, please be as specific as possible regarding your findings. This should include, but not be limited to: hardware/architecture, os, multi-threadedness, and the followed benchmarking procedure.
 
 As the project progresses, I hope to conjure up a standard benchmarking procedure, but until then, use your best judgement.
+
+# Updating Dependencies
+As zig progresses, dependencies may require updates. When needed, you can update the dependency hashes by running the following:
+
+```sh
+zig fetch --save=sokol git+https://github.com/floooh/sokol-zig.git
+```

@@ -9,8 +9,6 @@ const Rank = types.Rank;
 pub const Bitboard = struct {
     bits: u64,
 
-    // ================ INITIALIZATION ================
-
     /// Creates a BB with all of the bits set to 0.
     pub inline fn init() Bitboard {
         return .{ .bits = 0 };
@@ -57,8 +55,6 @@ pub const Bitboard = struct {
             else => @compileError("T must be a known integer type"),
         }
     }
-
-    // ================ BIT MANIPULATION ================
 
     /// Returns the index of the most significant bit.
     pub inline fn msb(self: *const Bitboard) Square {
@@ -125,8 +121,6 @@ pub const Bitboard = struct {
         self.bits = self.bits >> @truncate(rhs);
     }
 
-    // ================= OPS WITH U64 =================
-
     pub inline fn andU64(self: *const Bitboard, rhs: u64) Bitboard {
         return .{ .bits = self.bits & rhs };
     }
@@ -146,8 +140,6 @@ pub const Bitboard = struct {
     pub inline fn neqU64(self: *const Bitboard, rhs: u64) bool {
         return self.bits != rhs;
     }
-
-    // ================= OPS WITH BITBOARD =================
 
     pub inline fn andBB(self: *const Bitboard, rhs: Bitboard) Bitboard {
         return .{ .bits = self.bits & rhs.bits };
@@ -173,8 +165,6 @@ pub const Bitboard = struct {
         return .{ .bits = ~self.bits };
     }
 
-    // ================= IN-PLACE OPS =================
-
     pub inline fn andAssign(self: *Bitboard, rhs: Bitboard) *Bitboard {
         self.bits &= rhs.bits;
         return self;
@@ -189,8 +179,6 @@ pub const Bitboard = struct {
         self.bits ^= rhs.bits;
         return self;
     }
-
-    // ================ MISC UTILS ================
 
     /// Converts the BB into a 'board' representation. The board is:
     /// - Separated by newlines every 8 bits, separating each bit with a space
@@ -235,8 +223,6 @@ pub const Bitboard = struct {
         return !self.empty();
     }
 
-    // ================= WRAPPING ARITHMETIC =================
-
     pub inline fn addU64Wrapped(self: *const Bitboard, rhs: u64) Bitboard {
         return .{ .bits = self.bits +% rhs };
     }
@@ -250,7 +236,6 @@ pub const Bitboard = struct {
     }
 };
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;
@@ -263,7 +248,6 @@ test "Bitboard base" {
     try expect(!empty.nonzero());
     try expectEqual(0, empty.count());
 
-    // ================ FROM RANK / FILE / SQUARE / INT ================
     const r2 = Rank.r2;
     const fa = File.fa;
     const sq_e4 = Square.e4;
@@ -291,7 +275,6 @@ test "Bitboard base" {
     try expect(bb_int.contains(24));
     try expect(!bb_int.contains(0));
 
-    // ================ SET / REMOVE / CONTAINS ================
     var bb = Bitboard.init();
     _ = bb.set(0);
     try expect(bb.contains(0));
@@ -304,7 +287,6 @@ test "Bitboard base" {
     _ = bb.remove(63);
     try expect(!bb.contains(63));
 
-    // ================ POP LSB / LSB / MSB ================
     bb = Bitboard.init();
     _ = bb.set(0);
     _ = bb.set(7);
@@ -320,7 +302,6 @@ test "Bitboard base" {
     try expect(!bb.contains(0));
     try expect(bb.count() == 2);
 
-    // ================ COUNT / EMPTY / NONZERO ================
     bb.clear();
     try expect(bb.empty());
     try expect(!bb.nonzero());
@@ -332,7 +313,6 @@ test "Bitboard base" {
     try expect(bb.nonzero());
     try expectEqual(2, bb.count());
 
-    // ================ EDGE CASES ================
     bb.clear();
     for (0..64) |i| {
         _ = bb.set(i);
@@ -345,7 +325,6 @@ test "Bitboard base" {
     bb.clear();
     try expectEqual(0, bb.count());
 
-    // ================ POPULATED SEQUENCE ================
     bb = Bitboard.init();
     _ = bb.set(1);
     _ = bb.set(3);
@@ -442,14 +421,12 @@ test "Bitboard operators" {
     _ = a.set(63);
     const b = Bitboard.fromSquare(Square.e4);
 
-    // ================= SHIFTS =================
     var shl_a = a.shl(1);
     try expect(shl_a.contains(1));
     var shr_a = a.shr(1);
     try expect(shr_a.contains(62));
     try expect(shr_a.contains(63) == false);
 
-    // ================= OPS WITH U64 =================
     var and_u64 = a.andU64(0x1);
     try expect(and_u64.contains(0));
     try expect(!and_u64.contains(63));
@@ -467,7 +444,6 @@ test "Bitboard operators" {
     try expect(a.neqU64(0));
     try expect(!a.neqU64(a.bits));
 
-    // ================= OPS WITH BITBOARD =================
     var and_bb = a.andBB(b);
     try expect(and_bb.count() <= 1);
     var or_bb = a.orBB(b);
@@ -489,7 +465,6 @@ test "Bitboard operators" {
     try expect(!not_a.contains(63));
     try expect(not_a.contains(1));
 
-    // ================= IN-PLACE OPS =================
     var c = a;
     _ = c.andAssign(b);
     try expect(c.count() <= 1);
@@ -505,7 +480,6 @@ test "Bitboard operators" {
     try expect(c.contains(0));
     try expect(c.contains(63) or c.contains(b.lsb().index()));
 
-    // ================= BOOLEAN OPS =================
     try expect(a.nonzero() and b.nonzero());
     try expect(a.nonzero() or Bitboard.init().nonzero());
 }
@@ -513,16 +487,13 @@ test "Bitboard operators" {
 test "BB arithmetic wrapping" {
     var bb = Bitboard{ .bits = std.math.maxInt(u64) };
 
-    // ====== ADD ======
     const added = bb.addU64Wrapped(1);
     try expectEqual(@as(u64, 0), added.bits);
 
-    // ====== SUB ======
     bb = Bitboard{ .bits = 0 };
     const subbed = bb.subU64Wrapped(1);
     try expectEqual(std.math.maxInt(u64), subbed.bits);
 
-    // ====== MUL ======
     bb = Bitboard{ .bits = 2 };
     const muld = bb.mulU64Wrapped(std.math.maxInt(u64));
     try expectEqual(@as(u64, std.math.maxInt(u64) - 1), muld.bits);
