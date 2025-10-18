@@ -2,9 +2,9 @@ const std = @import("std");
 const builtin = @import("builtin");
 const water = @import("water");
 
-const tt = @import("evaluation/tt.zig");
-const search = @import("search/searcher.zig");
-const commands = @import("commands.zig");
+const tt = @import("engine/evaluation/tt.zig");
+const search = @import("engine/search/searcher.zig");
+const commands = @import("engine/commands.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -51,16 +51,16 @@ pub fn main() !void {
 }
 
 test {
-    _ = @import("commands.zig");
-    _ = @import("parameters.zig");
+    _ = @import("engine/commands.zig");
+    _ = @import("engine/parameters.zig");
 
-    _ = @import("search/searcher.zig");
-    _ = @import("search/algorithm.zig");
+    _ = @import("engine/search/searcher.zig");
+    _ = @import("engine/search/algorithm.zig");
 
-    _ = @import("evaluation/evaluator.zig");
-    _ = @import("evaluation/orderer.zig");
-    _ = @import("evaluation/pesto.zig");
-    _ = @import("evaluation/see.zig");
-    _ = @import("evaluation/tt.zig");
-    _ = @import("evaluation/nnue.zig");
+    _ = @import("engine/evaluation/evaluator.zig");
+    _ = @import("engine/evaluation/orderer.zig");
+    _ = @import("engine/evaluation/pesto.zig");
+    _ = @import("engine/evaluation/see.zig");
+    _ = @import("engine/evaluation/tt.zig");
+    _ = @import("engine/evaluation/nnue.zig");
 }

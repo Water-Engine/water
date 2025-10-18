@@ -15,8 +15,6 @@ The water engine itself is crafted using this library, with the goals of making:
 - An iterative search engine with Alpha-Beta Pruning, Quiescence, etc.
 - A neural network-powered engine using NNUE
 
-Also included in this library is a minimal GUI called oasis, which is powered by the water library. This part of the project is still very much in the works, and more information about it will come in the future.
-
 # Getting Started
 For a quick build of the project, simply run `zig build run --release`.
 
@@ -34,7 +32,7 @@ _Note: The engine communicates through the UCI protocol. You can read more about
 | `perft`     | Run the perft suite. Running with `--release` is highly recommended.                            |
 | `bench`     | Run the perft benchmarking suite. Running with `--release` is highly recommended.               |
 | `search`    | Run the search benchmarking suite. Running with `--release` is highly recommended.              |
-| `package`   | Builds the engine & gui executables in ReleaseFast for the triples specified in `build.zig`.    |
+| `package`   | Builds the engine executable in ReleaseFast for the triples specified in `build.zig`.           |
 | `test`      | Run all unit tests.                                                                             |
 | `lint`      | Checks formatting of all source files excluding `build.zig`.                                    |
 | `fmt`       | Format all source code excluding `build.zig`.                                                   |

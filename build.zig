@@ -51,7 +51,7 @@ pub fn build(b: *std.Build) !void {
         .preferred_optimize_mode = .ReleaseFast,
     });
 
-    const engine, const gui, const mod = makeCore(
+    const engine, const mod = artifacts(
         b,
         target,
         optimize,
@@ -61,12 +61,10 @@ pub fn build(b: *std.Build) !void {
     const nets = b.addOptions();
     nets.addOption([]const u8, "bingshan", bingshan);
     engine.root_module.addOptions("nets", nets);
-    gui.root_module.addOptions("nets", nets);
     b.installArtifact(engine);
 
     // Artifacts
     addRunStep(b, engine, "run", "Run the engine");
-    addRunStep(b, gui, "gui", "Run the gui");
     addPerftStep(b, mod);
     addBenchStep(b, mod);
     addSearchStep(b, mod, nets);
@@ -93,8 +91,15 @@ pub fn build(b: *std.Build) !void {
         "Copy core project information into package directories",
     ) orelse false;
 
+    const compress = b.option(
+        bool,
+        "compress",
+        "Compress package directories into gzip archives",
+    ) orelse false;
+    _ = compress; // TODO
+
     for (targets) |t| {
-        const pack_engine, const pack_gui, _ = makeCore(
+        const pack_engine, _ = artifacts(
             b,
             b.resolveTargetQuery(t),
             .ReleaseFast,
@@ -106,14 +111,6 @@ pub fn build(b: *std.Build) !void {
             b.allocator,
             "{s}-{s}",
             .{ pack_engine.name, version },
-        );
-
-        pack_gui.root_module.addOptions("nets", nets);
-        pack_gui.root_module.strip = true;
-        pack_gui.name = try std.fmt.allocPrint(
-            b.allocator,
-            "{s}-{s}",
-            .{ pack_gui.name, version },
         );
 
         const package_options: std.Build.Step.InstallArtifact.Options = .{
@@ -129,18 +126,14 @@ pub fn build(b: *std.Build) !void {
             package_options,
         ).step);
 
-        package_step.dependOn(&b.addInstallArtifact(
-            pack_gui,
-            package_options,
-        ).step);
-
         if (legal) {
             const out_dirname = try std.fmt.allocPrint(
                 b.allocator,
                 "zig-out/{s}",
                 .{package_options.dest_dir.override.custom},
             );
-            const out_dir = try std.fs.cwd().openDir(out_dirname, .{});
+            var out_dir = try std.fs.cwd().openDir(out_dirname, .{});
+            defer out_dir.close();
 
             try std.fs.cwd().copyFile("LICENSE", out_dir, "LICENSE", .{});
             try std.fs.cwd().copyFile("README.md", out_dir, "README.md", .{});
@@ -150,17 +143,16 @@ pub fn build(b: *std.Build) !void {
     }
 }
 
-fn makeCore(
+fn artifacts(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
 ) struct {
     *std.Build.Step.Compile,
-    *std.Build.Step.Compile,
     *std.Build.Module,
 } {
     const water = b.addModule("water", .{
-        .root_source_file = b.path("src/water/root.zig"),
+        .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -168,7 +160,7 @@ fn makeCore(
     const engine = b.addExecutable(.{
         .name = "water",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/engine/main.zig"),
+            .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
@@ -177,19 +169,7 @@ fn makeCore(
         }),
     });
 
-    const gui = b.addExecutable(.{
-        .name = "oasis",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/gui/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "water", .module = water },
-            },
-        }),
-    });
-
-    return .{ engine, gui, water };
+    return .{ engine, water };
 }
 
 fn addRunStep(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8, desc: []const u8) void {
