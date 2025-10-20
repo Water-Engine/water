@@ -7,7 +7,7 @@ const version: []const u8 = "0.0.0-dev";
 
 comptime {
     const current_zig = builtin.zig_version;
-    const required_zig = std.SemanticVersion.parse("0.15.1") catch unreachable;
+    const required_zig = std.SemanticVersion.parse("0.15.2") catch unreachable;
 
     if (current_zig.order(required_zig) != .eq) {
         const error_message =
