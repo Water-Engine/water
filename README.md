@@ -21,7 +21,7 @@ For a quick build of the project, simply run `zig build run --release`.
 _Note: The engine communicates through the UCI protocol. You can read more about the standard [here](https://gist.github.com/DOBRO/2592c6dad754ba67e6dcaec8c90165bf)._
 
 ## Build Tools
-- [Zig 0.15.1](https://ziglang.org/download/) - other versions _will not_ work due to 'Writergate' and other potentially breaking changes
+- [Zig 0.15.2](https://ziglang.org/download/) - other versions _will not_ work due to 'Writergate' and other potentially breaking changes
 - [cloc](https://github.com/AlDanial/cloc) for the cloc step (optional)
 
 ## All Build Steps
