@@ -1,4 +1,4 @@
-# water [![Zig](https://img.shields.io/badge/zig-0.15.2-orange)](https://ziglang.org/) [![License](https://img.shields.io/github/license/Water-Engine/water)](LICENSE) [![Last commit](https://img.shields.io/github/last-commit/Water-Engine/water)](https://github.com/Water-Engine/water) [![Formatting](https://github.com/Water-Engine/water/actions/workflows/format.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/format.yml) [![CI](https://github.com/Water-Engine/water/actions/workflows/ci.yml/badge.svg)](https://github.com/Water-Engine/water/actions/workflows/ci.yml)
+# water [![Zig](https://img.shields.io/badge/zig-0.15.2-orange)](https://ziglang.org/) [![License](https://img.shields.io/github/license/trevorswan11/water)](LICENSE) [![Last commit](https://img.shields.io/github/last-commit/trevorswan11/water)](https://github.com/trevorswan11/water) [![Formatting](https://github.com/trevorswan11/water/actions/workflows/format.yml/badge.svg)](https://github.com/trevorswan11/water/actions/workflows/format.yml) [![CI](https://github.com/trevorswan11/water/actions/workflows/ci.yml/badge.svg)](https://github.com/trevorswan11/water/actions/workflows/ci.yml)
 
 <p align="center">
   <img src="/.github/resources/logo.png" alt="water logo" width="250"/>
@@ -44,7 +44,7 @@ It is generally not recommended to run the `perft` suite unless there have been 
 _Note: While the `docs` step is able to emit the correct files, a bug in the standard library prevents reading the emitted docs on some systems. See this [issue](https://github.com/ziglang/zig/issues/24944) for more details._
 
 ## Adding Water to Your Project
-To add water as a dependency to your project, simply run `zig fetch --save git+https://github.com/Water-Engine/water`. This will add water as a dependency to your `build.zig.zon` file.
+To add water as a dependency to your project, simply run `zig fetch --save git+https://github.com/trevorswan11/water`. This will add water as a dependency to your `build.zig.zon` file.
 
 You'll then need to explicitly add it as a module in `build.zig`, which might looks like:
 
