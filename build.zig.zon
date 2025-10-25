@@ -1,7 +1,7 @@
 .{
     .name = .water,
 
-    .version = "1.0.0",
+    .version = "1.0.1",
     .fingerprint = 0xfb3314daceaf482d,
     .minimum_zig_version = "0.15.2",
 
