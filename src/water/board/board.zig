@@ -981,13 +981,13 @@ pub const Board = struct {
     ///
     /// Switches the side and updates core state only.
     pub fn makeNullMove(self: *Board) void {
-        self.previous_states.append(self.allocator, .{
+        self.previous_states.appendAssumeCapacity(.{
             .hash = self.key,
             .castling = self.castling_rights,
             .en_passant = self.ep_square,
             .half_moves = @intCast(self.halfmove_clock),
             .captured_piece = .none,
-        }) catch unreachable;
+        });
 
         self.key ^= Zobrist.sideToMove();
         if (self.ep_square.valid()) {
