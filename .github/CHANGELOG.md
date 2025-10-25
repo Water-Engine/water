@@ -13,3 +13,5 @@
 # 1.0.1
 - Updated NNUE dependency resolution technique to be local to the project and not visible by users using this as a library
 - Added clarification to README regarding the zig llvm backend
+
+# 1.0.2

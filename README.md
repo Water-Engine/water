@@ -83,7 +83,7 @@ pub fn main() !void {
 }
 ```
 
-When running using `zig build run`, you might see some target feature errors reported by the build system. I believe this is due to a change made with the x86 backend in Zig 0.15.2, but these errors are harmless and should not get in the way of compilation. I have found that forces the llvm backend eliminates this issue. 
+When running using `zig build run`, you might see some target feature errors reported by the build system. I believe this is due to a change made with the x86 backend in Zig 0.15.2, but these errors are harmless and should not get in the way of compilation or functionality.
 
 # Contributing
 Contributors are always welcome! As this project progresses and the engine improves, it will become increasingly difficult for a single developer to make meaningful improvements or address bugs in a timely manner. Checkout [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the project's guidelines.
