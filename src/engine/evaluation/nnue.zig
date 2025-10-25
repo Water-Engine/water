@@ -1,7 +1,7 @@
 const std = @import("std");
 const water = @import("water");
-const nets = @import("nets");
 
+const nets = @import("nets.zig");
 const parameters = @import("../parameters.zig");
 
 // This is a gem https://www.chessprogramming.org/NNUE

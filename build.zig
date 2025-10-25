@@ -1,8 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const bingshan = @embedFile("assets/nnue/bingshan.nnue");
-
 const version: []const u8 = "1.0.0";
 
 comptime {
@@ -56,18 +54,13 @@ pub fn build(b: *std.Build) !void {
         target,
         optimize,
     );
-
-    // Neural nets will be comptime only, and are restricted to the executables
-    const nets = b.addOptions();
-    nets.addOption([]const u8, "bingshan", bingshan);
-    engine.root_module.addOptions("nets", nets);
     b.installArtifact(engine);
 
     // Artifacts
     addRunStep(b, engine, "run", "Run the engine");
     addPerftStep(b, mod);
     addBenchStep(b, mod);
-    addSearchStep(b, mod, nets);
+    addSearchStep(b, mod);
 
     // Utils
     addFmtStep(b);
@@ -98,7 +91,6 @@ pub fn build(b: *std.Build) !void {
             .ReleaseFast,
         );
 
-        pack_engine.root_module.addOptions("nets", nets);
         pack_engine.root_module.strip = true;
         pack_engine.out_filename = blk: {
             if (target.result.os.tag == .windows) {
@@ -230,7 +222,7 @@ fn addBenchStep(b: *std.Build, module: *std.Build.Module) void {
     bench_step.dependOn(&b.addInstallArtifact(bench_exe, .{}).step);
 }
 
-fn addSearchStep(b: *std.Build, module: *std.Build.Module, nets: *std.Build.Step.Options) void {
+fn addSearchStep(b: *std.Build, module: *std.Build.Module) void {
     const bench_exe = b.addExecutable(.{
         .name = "search",
         .root_module = b.createModule(.{
@@ -242,7 +234,6 @@ fn addSearchStep(b: *std.Build, module: *std.Build.Module, nets: *std.Build.Step
             },
         }),
     });
-    bench_exe.root_module.addOptions("nets", nets);
 
     const run_bench = b.addRunArtifact(bench_exe);
     run_bench.step.dependOn(b.getInstallStep());
