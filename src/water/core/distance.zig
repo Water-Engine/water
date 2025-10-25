@@ -143,7 +143,6 @@ fn genSquaresBetween() [64][64]Bitboard {
     return table;
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expectEqual = testing.expectEqual;
 

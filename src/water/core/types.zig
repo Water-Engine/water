@@ -25,8 +25,6 @@ pub const Color = enum(u8) {
         return self.* != .none;
     }
 
-    // ================ INT UTILS ================
-
     /// Creates a Color from the given integer.
     pub fn fromInt(comptime T: type, num: T) Color {
         return switch (@typeInfo(T)) {
@@ -48,8 +46,6 @@ pub const Color = enum(u8) {
         return self.asInt(usize);
     }
 
-    // ================ SLICE UTILS ================
-
     /// Converts the first character of the input string to its Color representation.
     ///
     /// Invalid characters are `.none`.
@@ -61,8 +57,6 @@ pub const Color = enum(u8) {
     pub fn asStr(self: *const Color) []const u8 {
         return @tagName(self.*);
     }
-
-    // ================ CHAR UTILS ================
 
     /// Converts the byte to its Color representation.
     ///
@@ -86,16 +80,12 @@ pub const Color = enum(u8) {
         };
     }
 
-    // ================ COMPARISON ================
-
     pub fn order(lhs: Color, rhs: Color) std.math.Order {
         const lhs_val = lhs.asInt(i32);
         const rhs_val = rhs.asInt(i32);
 
         return std.math.order(lhs_val, rhs_val);
     }
-
-    // ================ MISC UTILS ================
 
     /// Returns the opponent of the Color.
     ///
@@ -153,8 +143,6 @@ pub const File = enum(u8) {
         return self.* != .none;
     }
 
-    // ================ INT UTILS ================
-
     /// Creates a File from the given integer.
     pub fn fromInt(comptime T: type, num: T) File {
         return switch (@typeInfo(T)) {
@@ -176,8 +164,6 @@ pub const File = enum(u8) {
         return self.asInt(usize);
     }
 
-    // ================ SLICE UTILS ================
-
     /// Converts the first character of the input string to its File representation.
     ///
     /// Invalid characters are `.none`.
@@ -189,8 +175,6 @@ pub const File = enum(u8) {
     pub fn asStr(self: *const File) []const u8 {
         return @tagName(self.*);
     }
-
-    // ================ CHAR UTILS ================
 
     /// Converts the byte to its File representation.
     ///
@@ -226,16 +210,12 @@ pub const File = enum(u8) {
         };
     }
 
-    // ================ COMPARISON ================
-
     pub fn order(lhs: File, rhs: File) std.math.Order {
         const lhs_val = lhs.asInt(i32);
         const rhs_val = rhs.asInt(i32);
 
         return std.math.order(lhs_val, rhs_val);
     }
-
-    // ================ INCREMENTING & DECREMENTING ================
 
     /// Increments and/or wraps the File in ascending order.
     pub fn next(self: *const File) File {
@@ -269,8 +249,6 @@ pub const File = enum(u8) {
         };
         return self.*;
     }
-
-    // ================ MISC UTILS ================
 
     /// Retrieves the mask of the File.
     ///
@@ -313,8 +291,6 @@ pub const Rank = enum(u8) {
         return self.* != .none;
     }
 
-    // ================ INT UTILS ================
-
     /// Creates a Rank from the given integer.
     pub fn fromInt(comptime T: type, num: T) Rank {
         return switch (@typeInfo(T)) {
@@ -336,8 +312,6 @@ pub const Rank = enum(u8) {
         return self.asInt(usize);
     }
 
-    // ================ SLICE UTILS ================
-
     /// Converts the first character of the input string to its Rank representation.
     ///
     /// Invalid characters are `.none`.
@@ -349,8 +323,6 @@ pub const Rank = enum(u8) {
     pub fn asStr(self: *const Rank) []const u8 {
         return @tagName(self.*);
     }
-
-    // ================ CHAR UTILS ================
 
     /// Converts the byte to its Rank representation.
     ///
@@ -386,16 +358,12 @@ pub const Rank = enum(u8) {
         };
     }
 
-    // ================ COMPARISON ================
-
     pub fn order(lhs: Rank, rhs: Rank) std.math.Order {
         const lhs_val = lhs.asInt(i32);
         const rhs_val = rhs.asInt(i32);
 
         return std.math.order(lhs_val, rhs_val);
     }
-
-    // ================ INCREMENTING & DECREMENTING ================
 
     /// Increments and/or wraps the Rank in ascending order.
     pub fn next(self: *const Rank) Rank {
@@ -429,8 +397,6 @@ pub const Rank = enum(u8) {
         };
         return self.*;
     }
-
-    // ================ MISC UTILS ================
 
     /// Retrieves the mask of the Rank.
     ///
@@ -514,8 +480,6 @@ pub const Square = enum(u8) {
         return self.* != .none;
     }
 
-    // ================ INT UTILS ================
-
     /// Creates a Square from the given integer.
     pub fn fromInt(comptime T: type, num: T) Square {
         return switch (@typeInfo(T)) {
@@ -536,8 +500,6 @@ pub const Square = enum(u8) {
     pub fn index(self: *const Square) usize {
         return self.asInt(usize);
     }
-
-    // ================ SLICE UTILS ================
 
     /// Converts the input string to its Square representation.
     ///
@@ -562,8 +524,6 @@ pub const Square = enum(u8) {
         return @tagName(self.*);
     }
 
-    // ================ FILE & RANK UTILS ================
-
     /// Creates a Square from the given Rank and File.
     pub fn make(r: Rank, f: File) Square {
         std.debug.assert(r.valid() and f.valid());
@@ -580,16 +540,12 @@ pub const Square = enum(u8) {
         return Rank.fromInt(usize, self.index() >> 3);
     }
 
-    // ================ COMPARISON ================
-
     pub fn order(lhs: Square, rhs: Square) std.math.Order {
         const lhs_val = lhs.asInt(i32);
         const rhs_val = rhs.asInt(i32);
 
         return std.math.order(lhs_val, rhs_val);
     }
-
-    // ================ INCREMENTING & DECREMENTING ================
 
     /// Increments and/or wraps the Square in ascending order.
     pub fn next(self: *const Square) Square {
@@ -619,8 +575,6 @@ pub const Square = enum(u8) {
         return self.*;
     }
 
-    // ================ ARITHMETIC ================
-
     /// Performs the addition operator with the other Square.
     pub fn add(self: *const Square, other: Square) Square {
         return fromInt(i32, self.asInt(i32) + other.asInt(i32));
@@ -640,8 +594,6 @@ pub const Square = enum(u8) {
     pub fn addToDirection(self: *const Square, direction: Direction) Square {
         return Square.fromInt(i32, self.asInt(i32) + direction.asInt(i32));
     }
-
-    // ================ MISC UTILS ================
 
     /// Checks if the Square is a light square on the board.
     pub fn light(self: *const Square) bool {
@@ -696,7 +648,6 @@ pub const Square = enum(u8) {
     }
 };
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;
@@ -706,16 +657,12 @@ test "Color" {
     const black = Color.black;
     const none = Color.none;
 
-    // ================ INT UTILS ================
-
     try expectEqual(white, Color.fromInt(i32, 0));
     try expectEqual(black, Color.fromInt(i32, 1));
 
     try expectEqual(0, white.asInt(i32));
     try expectEqual(1, black.asInt(i32));
     try expectEqual(2, none.asInt(i32));
-
-    // ================ SLICE UTILS ================
 
     try expectEqual(white, Color.fromStr("White"));
     try expectEqual(white, Color.fromStr("w"));
@@ -727,8 +674,6 @@ test "Color" {
     try testing.expectEqualSlices(u8, "black", black.asStr());
     try testing.expectEqualSlices(u8, "none", none.asStr());
 
-    // ================ CHAR UTILS ================
-
     try expectEqual(white, Color.fromChar('w'));
     try expectEqual(black, Color.fromChar('b'));
     try expectEqual(none, Color.fromChar('n'));
@@ -736,8 +681,6 @@ test "Color" {
     try expectEqual('w', white.asChar());
     try expectEqual('b', black.asChar());
     try expectEqual('-', none.asChar());
-
-    // ================ COMPARISON ================
 
     try expect(white.order(.white) == .eq);
     try expect(black.order(.black) == .eq);
@@ -755,8 +698,6 @@ test "File" {
 
     try expectEqual(none, File.init());
 
-    // ================ INT UTILS ================
-
     try expectEqual(fa, File.fromInt(i32, 0));
     try expectEqual(fb, File.fromInt(i32, 1));
     try expectEqual(fh, File.fromInt(i32, 7));
@@ -766,8 +707,6 @@ test "File" {
     try expectEqual(1, fb.asInt(i32));
     try expectEqual(7, fh.asInt(i32));
     try expectEqual(8, none.asInt(i32));
-
-    // ================ SLICE UTILS ================
 
     try expectEqual(fa, File.fromStr("a"));
     try expectEqual(fa, File.fromStr("A"));
@@ -781,8 +720,6 @@ test "File" {
     try testing.expectEqualSlices(u8, "fh", fh.asStr());
     try testing.expectEqualSlices(u8, "none", none.asStr());
 
-    // ================ CHAR UTILS ================
-
     try expectEqual(fa, File.fromChar('a'));
     try expectEqual(fa, File.fromChar('A'));
     try expectEqual(fh, File.fromChar('h'));
@@ -793,8 +730,6 @@ test "File" {
     try expectEqual('b', fb.asChar());
     try expectEqual('h', fh.asChar());
     try expectEqual('-', none.asChar());
-
-    // ================ COMPARISON ================
 
     try expect(fa.order(.fa) == .eq);
     try expect(fa.order(fb) != .eq);
@@ -808,8 +743,6 @@ test "File" {
     var cur = fa;
     try expectEqual(fb, cur.inc());
     try expectEqual(fb, cur);
-
-    // ================ MASK ================
 
     try expectEqual(@as(u64, 0x101010101010101), fa.mask());
     try expectEqual(@as(u64, 0x202020202020202), fb.mask());
@@ -828,8 +761,6 @@ test "Rank" {
 
     try expectEqual(none, Rank.init());
 
-    // ================ INT UTILS ================
-
     try expectEqual(r1, Rank.fromInt(i32, 0));
     try expectEqual(r2, Rank.fromInt(i32, 1));
     try expectEqual(r8, Rank.fromInt(i32, 7));
@@ -839,8 +770,6 @@ test "Rank" {
     try expectEqual(1, r2.asInt(i32));
     try expectEqual(7, r8.asInt(i32));
     try expectEqual(8, none.asInt(i32));
-
-    // ================ SLICE UTILS ================
 
     try expectEqual(r1, Rank.fromStr("0"));
     try expectEqual(r2, Rank.fromStr("1"));
@@ -853,8 +782,6 @@ test "Rank" {
     try testing.expectEqualSlices(u8, "r8", r8.asStr());
     try testing.expectEqualSlices(u8, "none", none.asStr());
 
-    // ================ CHAR UTILS ================
-
     try expectEqual(r1, Rank.fromChar('0'));
     try expectEqual(r2, Rank.fromChar('1'));
     try expectEqual(r8, Rank.fromChar('7'));
@@ -864,8 +791,6 @@ test "Rank" {
     try expectEqual('1', r2.asChar());
     try expectEqual('7', r8.asChar());
     try expectEqual('-', none.asChar());
-
-    // ================ COMPARISON ================
 
     try expect(r1.order(.r1) == .eq);
     try expect(r1.order(r2) != .eq);
@@ -880,21 +805,15 @@ test "Rank" {
     try expectEqual(r2, cur.inc());
     try expectEqual(r2, cur);
 
-    // ================ MASK ================
-
     try expectEqual(@as(u64, 0x00000000000000FF), r1.mask());
     try expectEqual(@as(u64, 0x000000000000FF00), r2.mask());
     try expectEqual(@as(u64, 0x00000000FF000000), r4.mask());
     try expectEqual(@as(u64, 0xFF00000000000000), r8.mask());
 
-    // ================ BACK RANK ================
-
     try expect(r1.backRank(white));
     try expect(!r8.backRank(white));
     try expect(r8.backRank(black));
     try expect(!r1.backRank(black));
-
-    // ================ ORIENT ================
 
     try expectEqual(Rank.r1, r1.orient(white));
     try expectEqual(Rank.r8, r8.orient(white));
@@ -917,8 +836,6 @@ test "Square" {
 
     try expectEqual(none, Square.init());
 
-    // ================ INT UTILS ================
-
     try expectEqual(a1, Square.fromInt(i32, 0));
     try expectEqual(h8, Square.fromInt(i32, 63));
     try expectEqual(none, Square.fromInt(i32, 64));
@@ -927,15 +844,11 @@ test "Square" {
     try expectEqual(64, none.asInt(i32));
     try expectEqual(a1, Square.fromInt(usize, a1.index()));
 
-    // ================ SLICE UTILS ================
-
     try expectEqual(a1, Square.fromStr("a1"));
     try expectEqual(e4, Square.fromStr("e4"));
     try expectEqual(none, Square.fromStr("z9"));
     try testing.expectEqualSlices(u8, "a1", a1.asStr());
     try testing.expectEqualSlices(u8, "none", none.asStr());
-
-    // ================ FILE & RANK UTILS ================
 
     try expectEqual(File.fa, a1.file());
     try expectEqual(File.fh, h8.file());
@@ -944,14 +857,10 @@ test "Square" {
 
     try expectEqual(e4, Square.make(Rank.r4, File.fe));
 
-    // ================ COMPARISON ================
-
     try expect(a1.order(.a1) == .eq);
     try expect(a1.order(h8) != .eq);
     try expect(a1.order(h8) == .lt);
     try expect(h8.order(a1) == .gt);
-
-    // ================ INCREMENTING & DECREMENTING ================
 
     try expectEqual(Square.b1, a1.next());
     try expectEqual(Square.a1, none.next());
@@ -963,13 +872,9 @@ test "Square" {
     try expectEqual(Square.g8, h8.prev());
     try expectEqual(Square.h8, none.prev());
 
-    // ================ ARITHMETIC ================
-
     try expectEqual(Square.b1, a1.add(Square.b1));
     try expectEqual(a1, Square.b1.sub(Square.b1));
     try expectEqual(Square.b2, a1.xor(Square.b2));
-
-    // ================ OTHER UTILITIES ================
 
     try expectEqual(a4, a3.ep());
     try expectEqual(a3, a4.ep());
@@ -1005,8 +910,6 @@ test "Direction" {
     const white = Color.white;
     const black = Color.black;
 
-    // ================ DIRECTION ================
-
     const north = Square.Direction.north;
     const south_east = Square.Direction.south_east;
 
@@ -1020,8 +923,6 @@ test "Direction" {
 
     try expectEqual(Square.fromInt(usize, a1.index() + 8), north.addToSquare(a1));
     try expectEqual(Square.fromInt(usize, h8.index() - 7), south_east.addToSquare(h8));
-
-    // ================ SQUARE + DIRECTION ================
 
     try expectEqual(Square.fromInt(i32, a1.asInt(i32) + north.asInt(i32)), a1.addToDirection(north));
     try expectEqual(Square.fromInt(i32, h8.asInt(i32) + south_east.asInt(i32)), h8.addToDirection(south_east));

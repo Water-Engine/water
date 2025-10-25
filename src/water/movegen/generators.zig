@@ -569,8 +569,6 @@ pub fn all(
     }
 }
 
-// ================ PIECE SPECIFIC GENERATORS ================
-
 /// Adds moves to the movelist for each square in the mask.
 ///
 /// The args to the function should assume to be starting at index 1.
@@ -640,7 +638,6 @@ fn queenMoveGenerator(
     ).andBB(moveable_square);
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

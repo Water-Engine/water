@@ -23,8 +23,6 @@ pub const PieceType = enum(u3) {
         return self.* != .none;
     }
 
-    // ================ INT UTILS ================
-
     /// Creates a PieceType from the given integer.
     pub fn fromInt(comptime T: type, num: T) PieceType {
         return switch (@typeInfo(T)) {
@@ -46,8 +44,6 @@ pub const PieceType = enum(u3) {
         return self.asInt(usize);
     }
 
-    // ================ SLICE UTILS ================
-
     /// Converts the first character of the input string to its PieceType representation.
     ///
     /// Invalid characters are `.none`.
@@ -59,8 +55,6 @@ pub const PieceType = enum(u3) {
     pub fn asStr(self: *const PieceType) []const u8 {
         return @tagName(self.*);
     }
-
-    // ================ CHAR UTILS ================
 
     /// Converts the byte to its PieceType representation.
     ///
@@ -91,8 +85,6 @@ pub const PieceType = enum(u3) {
             .none => '-',
         };
     }
-
-    // ================ COMPARISON ================
 
     pub fn order(lhs: PieceType, rhs: PieceType) std.math.Order {
         const lhs_val = lhs.asInt(i32);
@@ -144,8 +136,6 @@ pub const Piece = enum(u8) {
         return self.* != .none;
     }
 
-    // ================ INT UTILS ================
-
     /// Creates a Piece from the given integer.
     pub fn fromInt(comptime T: type, num: T) Piece {
         return switch (@typeInfo(T)) {
@@ -166,8 +156,6 @@ pub const Piece = enum(u8) {
     pub fn index(self: *const Piece) usize {
         return self.asInt(usize);
     }
-
-    // ================ CHAR UTILS ================
 
     /// Converts the byte to its Piece representation.
     ///
@@ -211,16 +199,12 @@ pub const Piece = enum(u8) {
         };
     }
 
-    // ================ COMPARISON ================
-
     pub fn order(lhs: Piece, rhs: Piece) std.math.Order {
         const lhs_val = lhs.asInt(i32);
         const rhs_val = rhs.asInt(i32);
 
         return std.math.order(lhs_val, rhs_val);
     }
-
-    // ================ MISC UTILS ================
 
     /// Determines the underlying PieceType of the Piece.
     ///
@@ -249,23 +233,19 @@ pub const Piece = enum(u8) {
     }
 };
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 
 test "PieceType" {
-    // ================ ALL =================
     const expected_all: [6]PieceType = .{ .pawn, .knight, .bishop, .rook, .queen, .king };
     for (expected_all, PieceType.all) |expected, actual| {
         try expectEqual(expected, actual);
     }
 
-    // ================ FROM / AS INT =================
     try expectEqual(PieceType.pawn, PieceType.fromInt(u8, 0));
     try expectEqual(PieceType.knight, PieceType.fromInt(u8, 1));
 
-    // ================ FROM / AS CHAR =================
     try expectEqual(PieceType.pawn, PieceType.fromChar('p'));
     try expectEqual(PieceType.knight, PieceType.fromChar('N'));
     try expectEqual(PieceType.none, PieceType.fromChar('x'));
@@ -274,7 +254,6 @@ test "PieceType" {
     try expectEqual('n', PieceType.knight.asChar());
     try expectEqual('-', PieceType.none.asChar());
 
-    // ================ COMPARISONS =================
     try expect(PieceType.pawn.order(.pawn) == .eq);
     try expect(PieceType.pawn.order(.knight) != .eq);
     try expect(PieceType.pawn.order(.knight) == .lt);
@@ -282,25 +261,21 @@ test "PieceType" {
 }
 
 test "Piece" {
-    // ================ INIT / VALID =================
     var pc = Piece.init();
     try expect(pc == .none);
     try expect(!pc.valid());
     pc = .white_pawn;
     try expect(pc.valid());
 
-    // ================ FROM / AS INT =================
     try expectEqual(Piece.white_pawn, Piece.fromInt(u8, 0));
     try expectEqual(Piece.black_king, Piece.fromInt(u8, 11));
 
     try expectEqual(0, Piece.white_pawn.asInt(u8));
     try expectEqual(11, Piece.black_king.asInt(u8));
 
-    // ================ MAKE =================
     try expectEqual(Piece.black_knight, Piece.make(.black, .knight));
     try expectEqual(Piece.white_pawn, Piece.make(.white, .pawn));
 
-    // ================ FROM / AS CHAR =================
     try expectEqual(Piece.white_pawn, Piece.fromChar('P'));
     try expectEqual(Piece.black_knight, Piece.fromChar('n'));
     try expectEqual(Piece.none, Piece.fromChar('x'));
@@ -309,13 +284,11 @@ test "Piece" {
     try expectEqual('n', Piece.black_knight.asChar());
     try expectEqual('-', Piece.none.asChar());
 
-    // ================ COMPARISONS =================
     try expect(Piece.white_pawn.order(.white_pawn) == .eq);
     try expect(Piece.white_pawn.order(.white_knight) != .eq);
     try expect(Piece.white_pawn.order(.white_knight) == .lt);
     try expect(Piece.black_pawn.order(.white_king) == .gt);
 
-    // ================ UTILITIES =================
     try expectEqual(PieceType.pawn, Piece.white_pawn.asType());
     try expectEqual(PieceType.knight, Piece.black_knight.asType());
     try expectEqual(Color.white, Piece.white_queen.color());

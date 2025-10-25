@@ -190,7 +190,6 @@ pub fn Dispatcher(comptime commands: []const type, comptime Searcher: type) type
     };
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

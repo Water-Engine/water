@@ -82,7 +82,6 @@ pub fn seeThreshold(board: *const water.Board, move: water.Move, threshold: i32)
     return stm != board.at(water.Piece, from).color();
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

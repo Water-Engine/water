@@ -1,5 +1,3 @@
-pub const version: []const u8 = "0.0.0-dev";
-
 const types = @import("water/core/types.zig");
 pub const Color = types.Color;
 pub const File = types.File;
@@ -44,8 +42,6 @@ pub const network = @import("water/framework/network.zig");
 pub const default_commands = @import("water/framework/default_commands.zig");
 
 pub const mem = @import("water/syzygy/mem.zig");
-
-// ================ TESTING ================
 
 test {
     _ = @import("water/core/types.zig");

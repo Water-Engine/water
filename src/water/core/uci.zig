@@ -207,7 +207,6 @@ pub fn uciBoardDiagram(board: *const Board, options: struct {
     return try board.allocator.dupe(u8, writer.buffered());
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

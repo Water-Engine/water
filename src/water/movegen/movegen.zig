@@ -292,7 +292,6 @@ pub fn isEpSquareValid(board: *const Board, color: Color, ep: Square) bool {
     return found;
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;

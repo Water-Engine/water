@@ -11,3 +11,6 @@ Tests should be written for anything that has considerable weight. This is a sub
 If you would like to submit benchmark information for perft or the engine itself, please be as specific as possible regarding your findings. This should include, but not be limited to: hardware/architecture, os, multi-threadedness, and the followed benchmarking procedure.
 
 As the project progresses, I hope to conjure up a standard benchmarking procedure, but until then, use your best judgement.
+
+# Packaging
+For packing the engine, you should pass the -Dlegal and -Dcompress flags to the build script. This will include all housekeeping files like `AUTHORS.md`, `LICENSE`, `README.md`, etc. for each target.

@@ -364,12 +364,10 @@ pub fn isAttacked(board: *const Board, color: Color, square: Square) bool {
     return false;
 }
 
-// ================ TESTING ================
 const testing = std.testing;
 const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 
-// === TESTING ===
 test "Bitboard Array Transformations" {
     // Types converted appropriately
     try expectEqual([3]Bitboard, BitboardArrayTransformer([3]u64));
