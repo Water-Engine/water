@@ -175,9 +175,8 @@ pub fn checkMask(board: *const Board, color: Color, square: Square) struct {
     );
     checks += @intCast(rook_check_toggle);
 
-    // selector will be -1 (all bits set) if mask is empty, or 0 otherwise.
-    const selector = -@as(i64, @intFromBool(mask.empty()));
-    const final_mask_value = mask.bits | ((comptime Bitboard.full().bits) & @as(u64, @bitCast(selector)));
+    const selector = -%@as(u64, @intFromBool(mask.empty()));
+    const final_mask_value = mask.bits | ((comptime Bitboard.full().bits) & selector);
 
     return .{
         .mask = .{ .bits = final_mask_value },
