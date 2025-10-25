@@ -89,13 +89,8 @@ pub const Accumulator = struct {
         inline for (vec16_iter) |i| {
             // White accumulator operation
             const white_acc_ptr = @as(*VecI16_16, @alignCast(self.white[i .. i + 16]));
-            const white_weights_ptr = @as(
-                *const VecI16_16,
-                @ptrCast(@alignCast(model.layers.layer_1[data.white + i .. data.white + i + 16])),
-            );
-
+            const white_weights_vec: VecI16_16 = model.layers.layer_1[data.white + i .. data.white + i + 16][0..16].*;
             const white_acc_vec = white_acc_ptr.*;
-            const white_weights_vec = white_weights_ptr.*;
 
             white_acc_ptr.* = switch (comptime delta) {
                 .add => white_acc_vec + white_weights_vec,
@@ -104,13 +99,8 @@ pub const Accumulator = struct {
 
             // Black accumulator operation
             const black_acc_ptr = @as(*VecI16_16, @alignCast(self.black[i .. i + 16]));
-            const black_weights_ptr = @as(
-                *const VecI16_16,
-                @ptrCast(@alignCast(model.layers.layer_1[data.black + i .. data.black + i + 16])),
-            );
-
+            const black_weights_vec: VecI16_16 = model.layers.layer_1[data.black + i .. data.black + i + 16][0..16].*;
             const black_acc_vec = black_acc_ptr.*;
-            const black_weights_vec = black_weights_ptr.*;
 
             black_acc_ptr.* = switch (comptime delta) {
                 .add => black_acc_vec + black_weights_vec,
