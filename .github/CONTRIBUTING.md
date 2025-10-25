@@ -13,4 +13,4 @@ If you would like to submit benchmark information for perft or the engine itself
 As the project progresses, I hope to conjure up a standard benchmarking procedure, but until then, use your best judgement.
 
 # Packaging
-For packing the engine, you should pass the -Dlegal and -Dcompress flags to the build script. This will include all housekeeping files like `AUTHORS.md`, `LICENSE`, `README.md`, etc. for each target. The compression step will not work without the legal step, but the inverse is not true. This is to ensure compressed artifacts contain the most up-to-date auxiliary information.
+For packing the engine, you should pass the -Dlegal and -Dcompress flags to the build script. This will include all housekeeping files like `AUTHORS.md`, `LICENSE`, `README.md`, etc. for each target.

@@ -91,13 +91,6 @@ pub fn build(b: *std.Build) !void {
         "Copy core project information into package directories",
     ) orelse false;
 
-    const compress = b.option(
-        bool,
-        "compress",
-        "Compress package directories into gzip archives",
-    ) orelse false;
-    _ = compress; // TODO
-
     for (targets) |t| {
         const pack_engine, _ = artifacts(
             b,
