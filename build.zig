@@ -3,7 +3,7 @@ const builtin = @import("builtin");
 
 const bingshan = @embedFile("assets/nnue/bingshan.nnue");
 
-const version: []const u8 = "0.0.0-dev";
+const version: []const u8 = "1.0.0";
 
 comptime {
     const current_zig = builtin.zig_version;
@@ -13,7 +13,7 @@ comptime {
         const error_message =
             \\Sorry, it looks like your version of Zig isn't right. :-(
             \\
-            \\Water requires zig version {}
+            \\Water requires zig version {f}
             \\
             \\https://ziglang.org/download/
             \\
@@ -100,11 +100,21 @@ pub fn build(b: *std.Build) !void {
 
         pack_engine.root_module.addOptions("nets", nets);
         pack_engine.root_module.strip = true;
-        pack_engine.name = try std.fmt.allocPrint(
-            b.allocator,
-            "{s}-{s}",
-            .{ pack_engine.name, version },
-        );
+        pack_engine.out_filename = blk: {
+            if (target.result.os.tag == .windows) {
+                break :blk try std.fmt.allocPrint(
+                    b.allocator,
+                    "{s}-{s}.exe",
+                    .{ pack_engine.name, version },
+                );
+            } else {
+                break :blk try std.fmt.allocPrint(
+                    b.allocator,
+                    "{s}-{s}",
+                    .{ pack_engine.name, version },
+                );
+            }
+        };
 
         const package_options: std.Build.Step.InstallArtifact.Options = .{
             .dest_dir = .{
@@ -125,6 +135,7 @@ pub fn build(b: *std.Build) !void {
                 "zig-out/{s}",
                 .{package_options.dest_dir.override.custom},
             );
+            try std.fs.cwd().makePath(out_dirname);
             var out_dir = try std.fs.cwd().openDir(out_dirname, .{});
             defer out_dir.close();
 
