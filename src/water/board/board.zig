@@ -974,6 +974,7 @@ pub const Board = struct {
             }
 
             self.key = previous_state.hash;
+            std.debug.assert(Zobrist.fromBoard(self) == self.key);
         }
     }
 
