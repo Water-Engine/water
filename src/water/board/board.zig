@@ -890,6 +890,7 @@ pub const Board = struct {
 
         self.key ^= Zobrist.sideToMove();
         self.side_to_move = self.side_to_move.opposite();
+        std.debug.assert(Zobrist.fromBoard(self) == self.key);
 
         if (comptime options.return_captured) {
             return tracked_captured;
