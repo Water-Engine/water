@@ -71,7 +71,7 @@ fn accumulate(allocator: std.mem.Allocator, files: []const []const u8) !usize {
         const file_contents = try input_file.readToEndAlloc(allocator, std.math.maxInt(usize));
         defer allocator.free(file_contents);
 
-        var lines = std.mem.splitScalar(u8, file_contents, '\n');
+        var lines = std.mem.tokenizeAny(u8, file_contents, "\n\r");
         while (lines.next()) |line| {
             var components = std.mem.tokenizeScalar(u8, line, ';');
             _ = components.next() orelse continue;
@@ -118,7 +118,7 @@ fn dispatch(allocator: std.mem.Allocator, case_filename: []const u8, frc: bool, 
     defer board.deinit();
 
     // Loop through all the lines, ignoring errors along the way since we're lazy
-    var lines = std.mem.splitScalar(u8, file_contents, '\n');
+    var lines = std.mem.tokenizeAny(u8, file_contents, "\n\r");
     while (lines.next()) |line| {
         var components = std.mem.tokenizeScalar(u8, line, ';');
         const fen = components.next() orelse continue;
