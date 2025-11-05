@@ -15,3 +15,7 @@
 - Added clarification to README regarding the zig llvm backend
 
 # 1.0.2
+- Added Zobrist assertions into movers
+- Fixed issue where perft divide would not flush the buffer at depth 1
+
+# 1.0.3

@@ -890,6 +890,7 @@ pub const Board = struct {
 
         self.key ^= Zobrist.sideToMove();
         self.side_to_move = self.side_to_move.opposite();
+        std.debug.assert(Zobrist.fromBoard(self) == self.key);
 
         if (comptime options.return_captured) {
             return tracked_captured;
@@ -974,6 +975,7 @@ pub const Board = struct {
             }
 
             self.key = previous_state.hash;
+            std.debug.assert(Zobrist.fromBoard(self) == self.key);
         }
     }
 
@@ -1084,6 +1086,7 @@ pub const Board = struct {
 
         if (depth <= 1) {
             try writer.print("\nNodes searched: {}\n", .{movelist.size});
+            try writer.flush();
             return;
         }
 

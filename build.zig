@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const version: []const u8 = "1.0.1";
+const version: []const u8 = "1.0.2";
 
 comptime {
     const current_zig = builtin.zig_version;
