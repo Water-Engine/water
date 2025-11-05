@@ -1086,6 +1086,7 @@ pub const Board = struct {
 
         if (depth <= 1) {
             try writer.print("\nNodes searched: {}\n", .{movelist.size});
+            try writer.flush();
             return;
         }
 
