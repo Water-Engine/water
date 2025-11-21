@@ -343,6 +343,7 @@ pub fn Engine(comptime Searcher: type) type {
             } else {
                 // Start the main loop, only exiting with an error if not doing so would result in unrecoverable state
                 while (true) {
+                    reader.tossBuffered();
                     const line = reader.takeDelimiterExclusive('\n') catch continue;
                     const trimmed = std.mem.trim(u8, line, " \r\n\t");
 
