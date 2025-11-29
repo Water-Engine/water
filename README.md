@@ -11,7 +11,7 @@
 # Goals
 Water aims to provide a performant chess engine library allowing users to easily architect chess engines by providing a core library and uci interface management scheme.
 
-The water engine itself is crafted using this library, with the goals of making:
+The [water engine](https://lichess.org/@/Water-Engine) itself is crafted using this library, with the goals of making:
 - An iterative search engine with Alpha-Beta Pruning, Quiescence, etc.
 - A neural network-powered engine using NNUE
 
